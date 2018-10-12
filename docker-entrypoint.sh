@@ -16,4 +16,6 @@ if [ "x$DJANGO_MANAGEPY_COLLECTSTATIC" = 'xon' ]; then
     /venv/bin/python netbox/manage.py collectstatic --noinput
 fi
 
+cd /code/netbox
+
 exec "$@"

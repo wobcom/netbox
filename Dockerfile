@@ -19,13 +19,13 @@ RUN set -ex \
             libxslt1-dev \
             libffi-dev \
             graphviz \
-            uwsgi \
             libpq-dev \
             libssl-dev \
             zlib1g-dev \
     && pip3 install virtualenv \
     && virtualenv /venv \
     && /venv/bin/pip install -U pip \
+    && /venv/bin/pip install uwsgi \
     && /venv/bin/pip install --no-cache-dir -r /requirements.txt
 
 # Copy your application code to the container (make sure you create a .dockerignore file if any large files or directories should be excluded)
@@ -37,12 +37,12 @@ ADD . /code/
 EXPOSE 8000
 
 # uWSGI configuration (customize as needed):
-ENV UWSGI_VIRTUALENV=/venv UWSGI_WSGI_FILE=netbox/netbox/wsgi.py UWSGI_HTTP=:8000 UWSGI_MASTER=1 UWSGI_WORKERS=2 UWSGI_THREADS=8 UWSGI_UID=1000 UWSGI_GID=2000 UWSGI_LAZY_APPS=1 UWSGI_WSGI_ENV_BEHAVIOR=holy
+ENV UWSGI_VIRTUALENV=/venv UWSGI_WSGI_FILE=netbox/wsgi.py UWSGI_HTTP=:8000 UWSGI_MASTER=1 UWSGI_WORKERS=2 UWSGI_THREADS=8 UWSGI_UID=1000 UWSGI_GID=2000 UWSGI_LAZY_APPS=1 UWSGI_WSGI_ENV_BEHAVIOR=holy
 
 # Call collectstatic (customize the following line with the minimal environment variables needed for manage.py to run):
 RUN DATABASE_URL=none /venv/bin/python netbox/manage.py collectstatic --noinput
 
 ENTRYPOINT ["/code/docker-entrypoint.sh"]
 # Start uWSGI
-#CMD ["uwsgi", "-H", "/venv/", "--http-auto-chunked", "--http-keepalive"]
-CMD ["/venv/bin/python", "/code/netbox/manage.py", "runserver", "0.0.0.0:8000"]
+CMD ["/venv/bin/uwsgi", "--http-auto-chunked", "--http-keepalive", "--static-map", "/static=/code/netbox/static"]
+#CMD ["/venv/bin/python", "/code/netbox/manage.py", "runserver", "0.0.0.0:8000"]
