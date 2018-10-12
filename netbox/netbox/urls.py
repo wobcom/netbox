@@ -32,6 +32,7 @@ _patterns = [
     url(r'^logout/$', LogoutView.as_view(), name='logout'),
 
     # Apps
+    url(r'^change/', include('change.urls')),
     url(r'^circuits/', include('circuits.urls')),
     url(r'^dcim/', include('dcim.urls')),
     url(r'^extras/', include('extras.urls')),
