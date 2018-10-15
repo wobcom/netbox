@@ -7,11 +7,9 @@
 {% block content %}
 <div class="row">
   <div class="col-md-6">
-    <ul>
-      {% for change in changes %}
-        <li>{{change}}.</li>
-      {% endfor %}
-    </ul>
+    <pre>
+      {{ changes }}
+    </pre>
   </div>
 </div>
 {% endblock %}
