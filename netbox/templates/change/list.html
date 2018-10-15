@@ -1,0 +1,17 @@
+{% extends '_base.html' %}
+{% load helpers %}
+
+{% block header %}
+{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-md-6">
+    <ul>
+      {% for change in changes %}
+        <li>{{change}}: {{change.object_data}}</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endblock %}
