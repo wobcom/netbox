@@ -13,8 +13,8 @@ services:
   app:
     environment:
       DATABASE_URL: postgres://netbox:netbox@db/netbox
-      DJANGO_MANAGEPY_MIGRATE: 'off'
-      DJANGO_MANAGEPY_COLLECTSTATIC: 'off'
+      DJANGO_MANAGEPY_MIGRATE: 'on'
+      DJANGO_MANAGEPY_COLLECTSTATIC: 'on'
     build:
       context: .
       dockerfile: ./Dockerfile

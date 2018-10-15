@@ -5,7 +5,7 @@ from django.shortcuts import redirect, render
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 
-from extras.models import ObjectChange
+from .models import ChangedField
 
 @method_decorator(login_required, name='dispatch')
 class ToggleView(View):
@@ -21,7 +21,7 @@ class ToggleView(View):
         # the standard deserialization from datetime
         change_time = datetime.strptime(request.session["change_started"],
                                         "%Y-%m-%d %H:%M:%S.%f")
-        changes = ObjectChange.objects.filter(user=request.user,
+        changes = ChangedField.objects.filter(user=request.user,
                                               time__gt=change_time)
 
         # for now just render the result
