@@ -5,17 +5,19 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 
-IN_REVIEW = 0
-ACCEPTED = 1
-IMPLEMENTED = 2
+DRAFT = 0
+IN_REVIEW = 1
+ACCEPTED = 2
+IMPLEMENTED = 3
 
 
 class ChangeSet(models.Model):
     ticket_id = models.PositiveIntegerField(null=True)
 
     status = models.SmallIntegerField(
-        default=IN_REVIEW,
+        default=DRAFT,
         choices=(
+            (DRAFT, 'Draft'),
             (IN_REVIEW, 'Under Review'),
             (ACCEPTED, 'Accepted'),
             (IMPLEMENTED, 'Implemented'),
