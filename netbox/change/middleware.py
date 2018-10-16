@@ -5,7 +5,7 @@ from extras.models import ObjectChange
 
 from .models import ChangedField, ChangeSet
 
-blacklist = [
+CHANGE_BLACKLIST = [
     ChangedField,
     ObjectChange,
     ChangeSet,
@@ -15,7 +15,7 @@ blacklist = [
 
 def before_save(request):
     def before_save_internal(sender, instance, **kwargs):
-        if sender in blacklist:
+        if sender in CHANGE_BLACKLIST:
             return
         try:
             old_instance = sender.objects.get(id=instance.id)
@@ -34,7 +34,7 @@ def before_save(request):
                 old_value=getattr(old_instance, field.name),
                 new_value=getattr(instance, field.name),
                 user=request.user,
-            )
+            ).save()
 
         # we don't have to call save hooks anymore, since we already treated it
         post_save.disconnect(after_save_internal,
@@ -43,7 +43,7 @@ def before_save(request):
 
 
     def after_save_internal(sender, instance, **kwargs):
-        if sender in blacklist or worked_on:
+        if sender in CHANGE_BLACKLIST:
             return
         for field in sender._meta.fields:
             ChangedField(
