@@ -86,5 +86,7 @@ class ChangedField(models.Model):
                     self.changed_object_type, self.old_value, self.new_value)
 
     def revert(self):
-        setattr(self.changed_object, self.field, self.old_value)
-        self.changed_object.save()
+        # TODO: what happens otherwise?
+        if getattr(self.changed_object, self.field) == self.new_value:
+            setattr(self.changed_object, self.field, self.old_value)
+            self.changed_object.save()

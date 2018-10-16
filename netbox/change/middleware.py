@@ -3,21 +3,18 @@ from django.db.models.signals import pre_save, post_save
 
 from extras.models import ObjectChange
 
-from .models import ChangedField
+from .models import ChangedField, ChangeSet
 
 blacklist = [
     ChangedField,
     ObjectChange,
+    ChangeSet,
     Session
 ]
 
 
 def before_save(request):
-    worked_on = False
-
     def before_save_internal(sender, instance, **kwargs):
-        # TODO: urgh!
-        nonlocal worked_on
         if sender in blacklist:
             return
         try:
@@ -37,8 +34,13 @@ def before_save(request):
                 old_value=getattr(old_instance, field.name),
                 new_value=getattr(instance, field.name),
                 user=request.user,
-            ).save()
-        worked_on = True
+            )
+
+        # we don't have to call save hooks anymore, since we already treated it
+        post_save.disconnect(after_save_internal,
+                             dispatch_uid="chgfield")
+
+
 
     def after_save_internal(sender, instance, **kwargs):
         if sender in blacklist or worked_on:
