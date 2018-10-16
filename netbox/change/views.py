@@ -50,6 +50,10 @@ class AcceptView(View):
 
     def get(self, request, pk=None):
         obj = get_object_or_404(self.model, pk=pk)
+        for change in obj.changedfield_set.all():
+            change.revert()
+
         obj.status = IN_REVIEW
         obj.save()
+
         return redirect('/')

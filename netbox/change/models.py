@@ -5,10 +5,10 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 
-DRAFT = 0
-IN_REVIEW = 1
-ACCEPTED = 2
-IMPLEMENTED = 3
+DRAFT = 1
+IN_REVIEW = 2
+ACCEPTED = 3
+IMPLEMENTED = 4
 
 
 class ChangeSet(models.Model):
@@ -84,3 +84,7 @@ class ChangedField(models.Model):
     def __str__(self):
         return "Field {} of {} was changed from '{}' to '{}'".format(self.field,
                     self.changed_object_type, self.old_value, self.new_value)
+
+    def revert(self):
+        setattr(self.changed_object, self.field, self.old_value)
+        self.changed_object.save()
