@@ -38,6 +38,7 @@ class ToggleView(View):
 
         changeset.save()
         changeset.changedfield_set.add(*change_objs)
+        changeset.save()
 
         # for now just render the result
         return render(request, 'change/list.html', {
