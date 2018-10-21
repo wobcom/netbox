@@ -14,10 +14,12 @@ CHANGE_BLACKLIST = [
 
 
 def before_save(request):
+    old_instance = None
     def before_save_internal(sender, instance, **kwargs):
         if sender in CHANGE_BLACKLIST:
             return
         try:
+            nonlocal old_instance
             old_instance = sender.objects.get(id=instance.id)
         except sender.DoesNotExist:
             return
@@ -54,8 +56,24 @@ def before_save(request):
                 user=request.user,
             ).save()
 
+    def after_save_rollback(sender, instance, **kwargs):
+        if sender in CHANGE_BLACKLIST:
+            return
+        post_save.disconnect(after_save_rollback,
+                             dispatch_uid="chgfield_rollback")
+        if old_instance:
+            instance = sender.objects.get(id=old_instance.id)
+
+            for field in sender._meta.fields:
+                field = field.name
+                setattr(instance, field, getattr(old_instance, field))
+
+            instance.save()
+
     pre_save.connect(before_save_internal, weak=False, dispatch_uid="chgfield")
     post_save.connect(after_save_internal, weak=False, dispatch_uid="chgfield")
+    post_save.connect(after_save_rollback, weak=False,
+                      dispatch_uid="chgfield_rollback")
 
 
 class FieldChangeMiddleware(object):
