@@ -18,7 +18,7 @@ from .models import Circuit, CircuitTermination, CircuitType, Provider
 # Providers
 #
 
-class ProviderForm(BootstrapMixin, CustomFieldForm):
+class ProviderForm(BootstrapMixin, ChangeMixin, CustomFieldForm):
     slug = SlugField()
     comments = CommentField()
     tags = TagField(
@@ -47,7 +47,7 @@ class ProviderForm(BootstrapMixin, CustomFieldForm):
         }
 
 
-class ProviderCSVForm(forms.ModelForm):
+class ProviderCSVForm(ChangeMixin, forms.ModelForm):
     slug = SlugField()
 
     class Meta:
@@ -99,7 +99,7 @@ class ProviderBulkEditForm(BootstrapMixin, AddRemoveTagsForm, CustomFieldBulkEdi
         ]
 
 
-class ProviderFilterForm(BootstrapMixin, CustomFieldFilterForm):
+class ProviderFilterForm(BootstrapMixin, ChangeMixin, CustomFieldFilterForm):
     model = Provider
     q = forms.CharField(
         required=False,
@@ -119,7 +119,7 @@ class ProviderFilterForm(BootstrapMixin, CustomFieldFilterForm):
 # Circuit types
 #
 
-class CircuitTypeForm(BootstrapMixin, forms.ModelForm):
+class CircuitTypeForm(BootstrapMixin, ChangeMixin, forms.ModelForm):
     slug = SlugField()
 
     class Meta:
@@ -129,7 +129,7 @@ class CircuitTypeForm(BootstrapMixin, forms.ModelForm):
         ]
 
 
-class CircuitTypeCSVForm(forms.ModelForm):
+class CircuitTypeCSVForm(ChangeMixin, forms.ModelForm):
     slug = SlugField()
 
     class Meta:
@@ -144,7 +144,7 @@ class CircuitTypeCSVForm(forms.ModelForm):
 # Circuits
 #
 
-class CircuitForm(BootstrapMixin, TenancyForm, CustomFieldForm):
+class CircuitForm(BootstrapMixin, ChangeMixin, TenancyForm, CustomFieldForm):
     comments = CommentField()
     tags = TagField(
         required=False
@@ -163,7 +163,7 @@ class CircuitForm(BootstrapMixin, TenancyForm, CustomFieldForm):
         }
 
 
-class CircuitCSVForm(forms.ModelForm):
+class CircuitCSVForm(ChangeMixin, forms.ModelForm):
     provider = forms.ModelChoiceField(
         queryset=Provider.objects.all(),
         to_field_name='name',
@@ -242,7 +242,7 @@ class CircuitBulkEditForm(BootstrapMixin, AddRemoveTagsForm, CustomFieldBulkEdit
         ]
 
 
-class CircuitFilterForm(BootstrapMixin, CustomFieldFilterForm):
+class CircuitFilterForm(BootstrapMixin, ChangeMixin, CustomFieldFilterForm):
     model = Circuit
     q = forms.CharField(
         required=False,
@@ -291,6 +291,52 @@ class CircuitFilterForm(BootstrapMixin, CustomFieldFilterForm):
 #
 
 class CircuitTerminationForm(BootstrapMixin, forms.ModelForm):
+    site = forms.ModelChoiceField(
+        queryset=Site.objects.all(),
+        widget=forms.Select(
+            attrs={'filter-for': 'rack'}
+        )
+    )
+    rack = ChainedModelChoiceField(
+        queryset=Rack.objects.all(),
+        chains=(
+            ('site', 'site'),
+        ),
+        required=False,
+        label='Rack',
+        widget=APISelect(
+            api_url='/api/dcim/racks/?site_id={{site}}',
+            attrs={'filter-for': 'device', 'nullable': 'true'}
+        )
+    )
+    device = ChainedModelChoiceField(
+        queryset=Device.objects.all(),
+        chains=(
+            ('site', 'site'),
+            ('rack', 'rack'),
+        ),
+        required=False,
+        label='Device',
+        widget=APISelect(
+            api_url='/api/dcim/devices/?site_id={{site}}&rack_id={{rack}}',
+            display_field='display_name',
+            attrs={'filter-for': 'interface'}
+        )
+    )
+    interface = ChainedModelChoiceField(
+        queryset=Interface.objects.connectable().select_related(
+            'circuit_termination', 'connected_as_a', 'connected_as_b'
+        ),
+        chains=(
+            ('device', 'device'),
+        ),
+        required=False,
+        label='Interface',
+        widget=APISelect(
+            api_url='/api/dcim/interfaces/?device_id={{device}}&type=physical',
+            disabled_indicator='is_connected'
+        )
+    )
 
     class Meta:
         model = CircuitTermination
