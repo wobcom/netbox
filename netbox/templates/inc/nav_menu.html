@@ -398,10 +398,12 @@
             <ul class="nav navbar-nav navbar-right">
                 {% if request.user.is_authenticated %}
                     <li>
-                      {% if request.user.is_authenticated %}
-                        <a href="{% url 'change:toggle' %}">
-                        {% if request.session.in_change %}End{% else %}Begin{% endif %} Change
-                        </a>
+                      <form class="navbar-form" action="{% url 'change:toggle' %}">
+                        {% if request.user.is_authenticated %}
+                          <button type="submit" class="btn btn-primary">
+                          {% if request.session.in_change %}End{% else %}Begin{% endif %} Change
+                          </button>
+                      </form>
                       {% endif %}
                     </li>
                     <li class="dropdown">
