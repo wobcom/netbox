@@ -19,8 +19,15 @@
         what we will feed into Ansible should this change be accepted!
       </p>
       <h4>Changelist</h4>
+      <h5>Changed Fields</h5>
       <ol>
         {% for change in changeset.changedfield_set.all %}
+          <li>{{change}}.</li>
+        {% endfor %}
+      </ol>
+      <h5>Changed Objects</h5>
+      <ol>
+        {% for change in changeset.changedobject_set.all %}
           <li>{{change}}.</li>
         {% endfor %}
       </ol>

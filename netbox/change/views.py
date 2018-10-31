@@ -6,7 +6,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 
-from .models import ChangedField, ChangeSet, IN_REVIEW
+from .models import ChangedField, ChangedObject, ChangeSet, IN_REVIEW
 
 @method_decorator(login_required, name='dispatch')
 class ToggleView(View):
@@ -28,16 +28,19 @@ class ToggleView(View):
         # the standard deserialization from datetime
         change_time = datetime.strptime(request.session["change_started"],
                                         "%Y-%m-%d %H:%M:%S.%f")
-        change_objs = ChangedField.objects.filter(user=request.user,
-                                                  time__gt=change_time)
+        change_objs = ChangedObject.objects.filter(user=request.user,
+                                                   time__gt=change_time)
+        change_fields = ChangedField.objects.filter(user=request.user,
+                                                    time__gt=change_time)
 
-        if not change_objs.count():
+        if not change_fields.count() and not change_objs.count():
             return render(request, 'change/list.html', {
                 'changeset': None
             })
 
         changeset.save()
-        changeset.changedfield_set.add(*change_objs)
+        changeset.changedfield_set.add(*change_fields)
+        changeset.changedobject_set.add(*change_objs)
         changeset.save()
 
         # for now just render the result
@@ -52,6 +55,8 @@ class AcceptView(View):
     def get(self, request, pk=None):
         obj = get_object_or_404(self.model, pk=pk)
         for change in obj.changedfield_set.all():
+            change.revert()
+        for change in obj.changedobject_set.all():
             change.revert()
 
         obj.status = IN_REVIEW
