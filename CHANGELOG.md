@@ -1,3 +1,12 @@
+v2.4.7 (FUTURE)
+
+## Bug Fixes
+
+* [#2514](https://github.com/digitalocean/netbox/issues/2514) - Prevent new connections to already connected interfaces
+* [#2515](https://github.com/digitalocean/netbox/issues/2515) - Only use django-rq admin tmeplate if webhooks are enabled
+
+---
+
 v2.4.6 (2018-10-05)
 
 ## Enhancements
