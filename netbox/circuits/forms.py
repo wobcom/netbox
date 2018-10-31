@@ -18,7 +18,7 @@ from .models import Circuit, CircuitTermination, CircuitType, Provider
 # Providers
 #
 
-class ProviderForm(BootstrapMixin, ChangeMixin, CustomFieldForm):
+class ProviderForm(BootstrapMixin, CustomFieldForm):
     slug = SlugField()
     comments = CommentField()
     tags = TagField(
@@ -47,7 +47,7 @@ class ProviderForm(BootstrapMixin, ChangeMixin, CustomFieldForm):
         }
 
 
-class ProviderCSVForm(ChangeMixin, forms.ModelForm):
+class ProviderCSVForm(forms.ModelForm):
     slug = SlugField()
 
     class Meta:
@@ -99,7 +99,7 @@ class ProviderBulkEditForm(BootstrapMixin, AddRemoveTagsForm, CustomFieldBulkEdi
         ]
 
 
-class ProviderFilterForm(BootstrapMixin, ChangeMixin, CustomFieldFilterForm):
+class ProviderFilterForm(BootstrapMixin, CustomFieldFilterForm):
     model = Provider
     q = forms.CharField(
         required=False,
@@ -119,7 +119,7 @@ class ProviderFilterForm(BootstrapMixin, ChangeMixin, CustomFieldFilterForm):
 # Circuit types
 #
 
-class CircuitTypeForm(BootstrapMixin, ChangeMixin, forms.ModelForm):
+class CircuitTypeForm(BootstrapMixin, forms.ModelForm):
     slug = SlugField()
 
     class Meta:
@@ -129,7 +129,7 @@ class CircuitTypeForm(BootstrapMixin, ChangeMixin, forms.ModelForm):
         ]
 
 
-class CircuitTypeCSVForm(ChangeMixin, forms.ModelForm):
+class CircuitTypeCSVForm(forms.ModelForm):
     slug = SlugField()
 
     class Meta:
@@ -144,7 +144,7 @@ class CircuitTypeCSVForm(ChangeMixin, forms.ModelForm):
 # Circuits
 #
 
-class CircuitForm(BootstrapMixin, ChangeMixin, TenancyForm, CustomFieldForm):
+class CircuitForm(BootstrapMixin, TenancyForm, CustomFieldForm):
     comments = CommentField()
     tags = TagField(
         required=False
@@ -163,7 +163,7 @@ class CircuitForm(BootstrapMixin, ChangeMixin, TenancyForm, CustomFieldForm):
         }
 
 
-class CircuitCSVForm(ChangeMixin, forms.ModelForm):
+class CircuitCSVForm(forms.ModelForm):
     provider = forms.ModelChoiceField(
         queryset=Provider.objects.all(),
         to_field_name='name',
@@ -242,7 +242,7 @@ class CircuitBulkEditForm(BootstrapMixin, AddRemoveTagsForm, CustomFieldBulkEdit
         ]
 
 
-class CircuitFilterForm(BootstrapMixin, ChangeMixin, CustomFieldFilterForm):
+class CircuitFilterForm(BootstrapMixin, CustomFieldFilterForm):
     model = Circuit
     q = forms.CharField(
         required=False,
