@@ -1,3 +1,12 @@
+"""
+The changes middleware checks whether we are in a change by checking the user
+cookies. If we are, it adds signal handlers that fire before and after saving
+a model to make sure we insert appropriate changes for them.
+
+Some models are blacklisted to avoid recursion. This should probably be changed
+to be a whitelist instead, since right now all Django models are captured as
+well (TODO).
+"""
 from django.contrib.sessions.models import Session
 from django.db.models.signals import pre_save, post_save
 
@@ -14,27 +23,39 @@ CHANGE_BLACKLIST = [
 ]
 
 
-def before_save(request):
-    old_instance = None
+def install_save_hooks(request):
+    """
+    This function installs the change hooks, on pre- and one post-save.
+    The pre-save hook captures all updated models, the post-save hooks captures
+    all newly-created models.
+    """
     def before_save_internal(sender, instance, **kwargs):
+        """
+        This function only triggers when the instance already exists. Otherwise
+        it will bail. It records all field changes individually.
+        """
         if sender in CHANGE_BLACKLIST:
             return
+
+        # see whether the object already exists; if not, bail
         try:
-            nonlocal old_instance
             old_instance = sender.objects.get(id=instance.id)
         except sender.DoesNotExist:
             return
+
+        # create a new DB row for each updated field
         for field in sender._meta.fields:
             old_value = getattr(old_instance, field.name)
             new_value = getattr(instance, field.name)
 
+            # field was not changed
             if new_value == old_value:
                 continue
 
             ChangedField(
                 changed_object=instance,
                 field=field.name,
-                old_value=getattr(old_instance, field.name),
+                old_value=getattr(instance, field.name),
                 new_value=getattr(instance, field.name),
                 user=request.user,
             ).save()
@@ -43,9 +64,11 @@ def before_save(request):
         post_save.disconnect(after_save_internal,
                              dispatch_uid="chgfield")
 
-
-
     def after_save_internal(sender, instance, **kwargs):
+        """
+        This function only triggers when the instance is new; it will save the
+        whole thing.
+        """
         if sender in CHANGE_BLACKLIST:
             return
         ChangedObject(
@@ -53,16 +76,23 @@ def before_save(request):
             user=request.user,
         ).save()
 
+    # we need to install them strongly, because they are closures;
+    # otherwise django will throw away the weak references at the end of this
+    # function (we need it to be there until the end of this request)
     pre_save.connect(before_save_internal, weak=False, dispatch_uid="chgfield")
     post_save.connect(after_save_internal, weak=False, dispatch_uid="chgfield")
 
 
 class FieldChangeMiddleware(object):
+    """
+    This very simple middleware checks the `in_change` cookie. If the cookie is
+    set, it installs the save hooks.
+    """
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
         if request.session.get("in_change", False):
-            before_save(request)
+            install_save_hooks(request)
 
         return self.get_response(request)

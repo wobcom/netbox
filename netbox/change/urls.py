@@ -6,6 +6,6 @@ from . import views
 
 app_name = 'change'
 urlpatterns = [
-    url(r'^begin/$', views.ToggleView.as_view(), name='toggle'),
+    url(r'^toggle/$', views.ToggleView.as_view(), name='toggle'),
     url(r'^accept/(?P<pk>\d+)/$', views.AcceptView.as_view(), name='accept'),
 ]

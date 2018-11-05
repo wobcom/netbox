@@ -11,6 +11,11 @@ from .models import ChangedField, ChangedObject, ChangeSet, IN_REVIEW
 @method_decorator(login_required, name='dispatch')
 class ToggleView(View):
     def get(self, request):
+        """
+        This view is triggered when we begin or end a change.
+        If we begin the change, we simply toggle the cookie. If we end it, we
+        finalize the change and present it to the user.
+        """
         request.session["in_change"] = not request.session.get("in_change", False)
         # we started the change and are done
         if request.session["in_change"]:
@@ -53,6 +58,12 @@ class AcceptView(View):
     model = ChangeSet
 
     def get(self, request, pk=None):
+        """
+        This view is triggered when the change was accepted by the operator.
+        The changes are reverted, and the status of the object is changed to in
+        review.
+        TODO: sync with TOPdesk
+        """
         obj = get_object_or_404(self.model, pk=pk)
         for change in obj.changedfield_set.all():
             change.revert()
