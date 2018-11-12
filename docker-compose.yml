@@ -18,6 +18,8 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile
+      args:
+        - SSH_PRIVATE_KEY=${SSH_PRIVATE_KEY}
     links:
       - db:db
     ports:

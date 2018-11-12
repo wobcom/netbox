@@ -8,6 +8,7 @@ to be a whitelist instead, since right now all Django models are captured as
 well (TODO).
 """
 from django.contrib.sessions.models import Session
+from django.db import models
 from django.db.models.signals import pre_save, post_save
 
 from extras.models import ObjectChange
@@ -21,6 +22,20 @@ CHANGE_BLACKLIST = [
     ObjectChange,
     Session
 ]
+
+
+def _model_to_dict(obj):
+    """Our version of model_to_dict that doesnt add foreign key relations"""
+    res = {}
+    for field in obj._meta.fields:
+        # we do not go deeply into the object relations. if we find a
+        # foreign key, we only get the ID
+        if field.__class__ == models.ForeignKey:
+            fname = "{}_id".format(field.name)
+        else:
+            fname = field.name
+        res[fname] = str(getattr(obj, fname))
+    return res
 
 
 def install_save_hooks(request):
@@ -73,6 +88,7 @@ def install_save_hooks(request):
             return
         ChangedObject(
             changed_object=instance,
+            changed_object_data=_model_to_dict(instance),
             user=request.user,
         ).save()
 

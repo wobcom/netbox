@@ -1,5 +1,32 @@
 FROM ubuntu:18.04
 
+
+# TODO: this is tempory to work around the topdesk package not being available
+## BEGIN TMP SECTION
+RUN set -ex \
+    && apt update \
+    && DEBIAN_FRONTEND=noninteractive apt install -y openssh-client
+
+# Add credentials on build
+
+ARG SSH_PRIVATE_KEY
+
+RUN mkdir /root/.ssh/
+
+# remember to use a temporary variable for this
+
+# This private key shouldn't be saved in env files
+
+RUN echo "${SSH_PRIVATE_KEY}" >> /root/.ssh/id_rsa && chmod 600 /root/.ssh/id_rsa
+
+# make sure your domain is accepted
+
+RUN touch /root/.ssh/known_hosts
+
+RUN ssh-keyscan gitlab.com >> /root/.ssh/known_hosts
+
+## END TMP SECTION
+
 # Copy in your requirements file
 ADD requirements.txt /requirements.txt
 
@@ -8,8 +35,8 @@ ADD requirements.txt /requirements.txt
 
 # Install build deps, then run `pip install`, then remove unneeded build deps all in a single step. Correct the path to your production requirements file, if needed.
 RUN set -ex \
-    && apt update \
     && DEBIAN_FRONTEND=noninteractive apt install -y \
+            git \
             postgresql \
             python3 \
             python3-dev \

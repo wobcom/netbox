@@ -16,3 +16,5 @@ Pillow==5.3.0
 psycopg2-binary==2.7.6.1
 py-gfm==0.1.4
 pycryptodome==3.7.2
+xmltodict==0.11.0
+-e git+ssh://git@gitlab.com/wobcom/topdesk.git#egg=topdesk

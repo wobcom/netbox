@@ -15,7 +15,7 @@ class Migration(migrations.Migration):
             name='ChangeSet',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('ticket_id', models.PositiveIntegerField(null=True)),
+                ('ticket_id', models.UUIDField(null=True)),
             ],
         ),
         migrations.AddField(

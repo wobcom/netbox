@@ -1,6 +1,7 @@
 import yaml
 
 from django.contrib.auth.models import User
+from django.contrib.postgres import fields
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
@@ -17,7 +18,15 @@ class ChangeSet(models.Model):
     A change set always refers to a ticket, has a set of changes, and can be
     serialized to YAML.
     """
-    ticket_id = models.PositiveIntegerField(null=True)
+    ticket_id = models.UUIDField(null=True)
+
+    user = models.ForeignKey(
+        to=User,
+        on_delete=models.SET_NULL,
+        related_name='+',
+        blank=True,
+        null=True
+    )
 
     status = models.SmallIntegerField(
         default=DRAFT,
@@ -65,22 +74,11 @@ class ChangeSet(models.Model):
         # we go through all our changed objects to append them to the serialized
         # list; it's mostly the same as above.
         for change in self.changedobject_set.all():
-            changed_object = {}
-
-            for field in change.changed_object._meta.fields:
-                # we do not go deeply into the object relations. if we find a
-                # foreign key, we ignore it
-                if field.__class__ == models.ForeignKey:
-                    continue
-
-                fname = field.name
-                changed_object[fname] = getattr(change.changed_object, fname)
-
             # less info, because we do not need to record the previous value;
             # everything has changed!
             changes.append({
                 "type": str(change.changed_object_type),
-                "changed_object": changed_object,
+                "changed_object": change.changed_object_data,
                 "action": "added",
             })
 
@@ -168,6 +166,7 @@ class ChangedObject(models.Model):
         ct_field='changed_object_type',
         fk_field='changed_object_id'
     )
+    changed_object_data = fields.JSONField()
     user = models.ForeignKey(
         to=User,
         on_delete=models.SET_NULL,

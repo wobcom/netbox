@@ -1,12 +1,16 @@
+import io
 from datetime import datetime
 
 from django.contrib.auth.decorators import login_required
 from django.db import models
+from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.decorators import method_decorator
 from django.views.generic import View
+import topdesk
 
-from .models import ChangedField, ChangedObject, ChangeSet, IN_REVIEW
+from netbox import configuration
+from .models import ChangedField, ChangedObject, ChangeSet, DRAFT, IN_REVIEW
 
 @method_decorator(login_required, name='dispatch')
 class ToggleView(View):
@@ -27,6 +31,7 @@ class ToggleView(View):
 
         # we finished our change. we generate the changeset now
         changeset = ChangeSet()
+        changeset.user = request.user
 
         #now we need to gather the changes for our set
 
@@ -53,6 +58,29 @@ class ToggleView(View):
             'changeset': changeset
         })
 
+def trigger_netbox_change(obj):
+    # TODO: verify=False is debug!
+    tp = topdesk.Topdesk(configuration.TOPDESK_URL, verify=False)
+
+    tp.login_operator(configuration.TOPDESK_USERNAME,
+                      configuration.TOPDESK_PASSWORD)
+
+    request_txt = 'Change #{} was created in Netbox by {}.\n\nChanges:\n{}'
+    request_txt = request_txt.format(obj.id, obj.user, obj.to_yaml())
+    data = {
+        'requester': {
+            'id': configuration.TOPDESK_REQ_ID,
+            'name': configuration.TOPDESK_REQ_NAME,
+        },
+        'briefDescription': 'Change #{} was created in Netbox'.format(obj.id),
+        'changeType': 'extensive'
+    }
+    res = tp.create_operator_change(data)
+    res_id = res['id']
+    obj.ticket_id = res_id
+    obj.save()
+    tp.create_operator_change_attachment(res_id, io.StringIO(request_txt))
+
 @method_decorator(login_required, name='dispatch')
 class AcceptView(View):
     model = ChangeSet
@@ -65,6 +93,10 @@ class AcceptView(View):
         TODO: sync with TOPdesk
         """
         obj = get_object_or_404(self.model, pk=pk)
+
+        if obj.status != DRAFT:
+            return HttpResponseForbidden("Change was already accepted!")
+
         for change in obj.changedfield_set.all():
             change.revert()
         for change in obj.changedobject_set.all():
@@ -72,5 +104,7 @@ class AcceptView(View):
 
         obj.status = IN_REVIEW
         obj.save()
+
+        trigger_netbox_change(obj)
 
         return redirect('/')
