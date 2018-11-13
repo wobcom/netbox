@@ -1,0 +1,16 @@
+{% extends 'utilities/obj_edit.html' %}
+{% load form_helpers %}
+
+{% block form %}
+    <div class="panel panel-default">
+      <div class="panel-heading"><strong>Change Request</strong></div>
+      <div class="panel-body">
+        <h5>What are the implications of this change?</h5>
+        {% render_field form.change_implications %}
+        <h5>What are the implications if we ignore this change?</h5>
+        {% render_field form.ignore_implications %}
+        {% render_field form.is_emergency %}
+        {% render_field form.affects_customer %}
+      </div>
+    </div>
+{% endblock %}

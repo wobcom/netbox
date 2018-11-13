@@ -5,6 +5,29 @@ from django.contrib.postgres import fields
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
+from django.shortcuts import redirect
+
+
+class ChangeInformation(models.Model):
+    """Meta information about a change."""
+    is_emergency = models.BooleanField()
+    affects_customer = models.BooleanField()
+    change_implications = models.TextField()
+    ignore_implications = models.TextField()
+
+
+class AffectedCustomer(models.Model):
+    """Customers affected by a change"""
+    information_id = models.ForeignKey(
+        to=ChangeInformation,
+        on_delete=models.CASCADE,
+        related_name="+"
+    )
+
+    name = models.CharField(max_length=128)
+    is_business = models.BooleanField()
+    products_affected = models.CharField(max_length=128)
+
 
 # These are the states that a change set can be in
 DRAFT = 1
@@ -19,6 +42,12 @@ class ChangeSet(models.Model):
     serialized to YAML.
     """
     ticket_id = models.UUIDField(null=True)
+    change_information = models.ForeignKey(
+        to=ChangeInformation,
+        on_delete=models.CASCADE,
+        related_name='information',
+        null=True
+    )
 
     user = models.ForeignKey(
         to=User,

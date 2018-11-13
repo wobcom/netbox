@@ -13,11 +13,14 @@ from django.db.models.signals import pre_save, post_save
 
 from extras.models import ObjectChange
 
-from .models import ChangedField, ChangedObject, ChangeSet
+from .models import ChangedField, ChangedObject, ChangeSet, AffectedCustomer, \
+                    ChangeInformation
 
 CHANGE_BLACKLIST = [
+    AffectedCustomer,
     ChangedField,
     ChangedObject,
+    ChangeInformation,
     ChangeSet,
     ObjectChange,
     Session
