@@ -89,7 +89,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name='affectedcustomer',
-            name='information_id',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+', to='change.ChangeInformation'),
+            name='information',
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='change.ChangeInformation'),
         ),
     ]

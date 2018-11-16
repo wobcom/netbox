@@ -13,6 +13,8 @@ import topdesk
 from netbox import configuration
 from .models import ChangeInformation, ChangedField, ChangedObject, ChangeSet, \
                     DRAFT, IN_REVIEW
+from .forms import AffectedCustomerInlineFormSet
+
 
 
 @method_decorator(login_required, name='dispatch')
@@ -20,6 +22,25 @@ class ChangeFormView(CreateView):
     model = ChangeInformation
     fields = '__all__'
     success_url = '/'
+
+    def form_valid(self, form):
+        result = super(ChangeFormView, self).form_valid(form)
+
+        customers_formset = AffectedCustomerInlineFormSet(form.data,
+                                                          instance=self.object,
+                                                    prefix='affected_customers')
+        if customers_formset.is_valid():
+            customers = customers_formset.save()
+
+        self.request.session['change_information'] = self.object.id
+
+        return result
+
+    def get_context_data(self, **kwargs):
+        ctx = super(ChangeFormView, self).get_context_data(**kwargs)
+        ctx['affected_customers'] = AffectedCustomerInlineFormSet(prefix='affected_customers')
+        ctx['return_url'] = '/change/toggle'
+        return ctx
 
 
 @method_decorator(login_required, name='dispatch')
@@ -39,6 +60,9 @@ class ToggleView(View):
         # we finished our change. we generate the changeset now
         changeset = ChangeSet()
         changeset.user = request.user
+        info_id = request.session.get('change_information')
+        if info_id:
+            changeset.information = ChangeInformation.objects.get(pk=info_id)
 
         #now we need to gather the changes for our set
 
@@ -61,9 +85,23 @@ class ToggleView(View):
         changeset.save()
 
         # for now just render the result
-        return render(request, 'change/list.html', {
+        res = render(request, 'change/list.html', {
             'changeset': changeset
         })
+
+        for change in changeset.changedfield_set.all():
+            change.revert()
+        for change in changeset.changedobject_set.all():
+            change.revert()
+
+        if 'change_information' not in request.session:
+            return HttpResponseForbidden('You need to fill out the change form!')
+
+        del request.session['change_information']
+        del request.session['change_started']
+
+        return res
+
 
 def trigger_netbox_change(obj):
     # TODO: verify=False is debug!
@@ -104,11 +142,6 @@ class AcceptView(View):
 
         if obj.status != DRAFT:
             return HttpResponseForbidden('Change was already accepted!')
-
-        for change in obj.changedfield_set.all():
-            change.revert()
-        for change in obj.changedobject_set.all():
-            change.revert()
 
         obj.status = IN_REVIEW
         obj.save()

@@ -73,7 +73,7 @@ def install_save_hooks(request):
             ChangedField(
                 changed_object=instance,
                 field=field.name,
-                old_value=getattr(instance, field.name),
+                old_value=getattr(old_instance, field.name),
                 new_value=getattr(instance, field.name),
                 user=request.user,
             ).save()

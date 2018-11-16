@@ -11,6 +11,61 @@
         {% render_field form.ignore_implications %}
         {% render_field form.is_emergency %}
         {% render_field form.affects_customer %}
+
+        <div id="customers">
+          {{ affected_customers.management_form }}
+          {% for form in affected_customers %}
+            <fieldset class="customer_form">
+              <legend>Customers</legend>
+              {% render_field form.name %}
+              {% render_field form.products_affected %}
+              {% render_field form.is_business %}
+            </fieldset>
+          {% endfor %}
+        </div>
+        <input type="button" class="btn btn-primary" id="btn_add_customer" value="Add affected customer"/>
       </div>
     </div>
+<script src="https://code.jquery.com/jquery-3.3.1.min.js"
+        integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+        crossorigin="anonymous"></script>
+<script type="text/javascript">
+  $(function () {
+      $('form').delegate('#btn_add_customer', 'click', function () {
+          let total = $(':input[name=affected_customers-TOTAL_FORMS]');
+          let count = parseInt(total.val())
+          total.val(count + 1)
+          let new_customer_form = $(
+              '<fieldset class="customer_form">' +
+              '<div class="form-group">' +
+              '<label class="col-md-3 control-label required" for="id_affected_customers-' + count + '-name">Name:</label>' +
+              '<div class="cold-md-9">' +
+              '<input id="id_affected_customers-' + count + '-name" maxlength="128" name="affected_customers-' + count + '-name" type="text" />' +
+              '</div>' +
+              '</div>' +
+              '<div class="form-group">' +
+              '<label class="col-md-3 control-label required" for="id_affected_customers-' + count + '-products_affected">Products affected:</label>' +
+              '<div class="cold-md-9">' +
+              '<input id="id_affected_customers-' + count + '-products_affected" maxlength="128" name="affected_customers-' + count + '-products_affected" type="text" />' +
+              '</div>' +
+              '</div>' +
+              '<div class="form-group">' +
+              '<div class="cold-md-9 col-md-offset-3">' +
+              '<input id="id_affected_customers-' + count + '-is_business" name="affected_customers-' + count + '-is_business" type="checkbox" /> Is business' +
+              '</div>' +
+              '</div>' +
+              '</fieldset >'
+          )
+
+          $('#customers').append(new_customer_form)
+      })
+      function toggleCustomerForm() {
+        if ($(this).is(':checked')) $('#customers').show();
+        else $('#customers').hide();
+      };
+      $('#id_affects_customer').change(toggleCustomerForm);
+      toggleCustomerForm();
+      $("button[name='_addanother']").hide();
+  })
+</script>
 {% endblock %}

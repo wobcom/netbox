@@ -18,10 +18,9 @@ class ChangeInformation(models.Model):
 
 class AffectedCustomer(models.Model):
     """Customers affected by a change"""
-    information_id = models.ForeignKey(
+    information = models.ForeignKey(
         to=ChangeInformation,
         on_delete=models.CASCADE,
-        related_name="+"
     )
 
     name = models.CharField(max_length=128)
@@ -158,8 +157,9 @@ class ChangedField(models.Model):
     )
 
     def __str__(self):
-        return "Field {} of {} was changed from '{}' to '{}'".format(self.field,
-                    self.changed_object_type, self.old_value, self.new_value)
+        tpl = "Field {} of {} was changed from '{}' to '{}'."
+        return tpl.format(self.field, self.changed_object_type, self.old_value,
+                          self.new_value)
 
     def revert(self):
         # TODO: what happens otherwise?
