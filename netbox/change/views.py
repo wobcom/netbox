@@ -110,8 +110,8 @@ def trigger_netbox_change(obj):
     tp.login_operator(configuration.TOPDESK_USERNAME,
                       configuration.TOPDESK_PASSWORD)
 
-    request_txt = 'Change #{} was created in Netbox by {}.\n\nChanges:\n{}'
-    request_txt = request_txt.format(obj.id, obj.user, obj.to_yaml())
+    request_txt = 'Change #{} was created in Netbox by {}.\n\nSummary: {}'
+    request_txt = request_txt.format(obj.id, obj.user, obj.executive_summary())
     data = {
         'requester': {
             'id': configuration.TOPDESK_REQ_ID,

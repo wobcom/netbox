@@ -15,6 +15,25 @@ class ChangeInformation(models.Model):
     change_implications = models.TextField()
     ignore_implications = models.TextField()
 
+    # TODO: should this be a StringIO object instead?
+    def executive_summary(self):
+        res = ''
+        if self.is_emergency:
+            res += 'This change is an emergency change.\n\n'
+
+        res += 'Implications if this change is accepted:\n{}\n\n'.format(self.change_implications)
+        res += 'Implications if this change is rejected:\n'
+        res += '{}\n\n'.format(self.change_implications)
+
+        if self.affects_customer:
+            res += 'This change affects customers. The following customers are affected:\n'
+            for change in self.affectedcustomer_set.all():
+                res += '- {}'.format(change.name)
+                if change.is_business:
+                    res += ' (Business Customer)'
+                res += ": {}\n".format(change.products_affected)
+        return res
+
 
 class AffectedCustomer(models.Model):
     """Customers affected by a change"""
@@ -111,6 +130,9 @@ class ChangeSet(models.Model):
             })
 
         return yaml.dump(changes,explicit_start=True, default_flow_style=False)
+
+    def executive_summary(self):
+        return self.information.executive_summary()
 
 
 class ChangedField(models.Model):
