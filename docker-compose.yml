@@ -10,6 +10,15 @@ services:
     image: postgres:9.6
     expose:
       - "5432"
+  gitlab:
+    restart: always
+    image: gitlab/gitlab-ce
+    expose:
+      - "80"
+    ports:
+      - "8080:80"
+    ports:
+      - "8022:22"
   app:
     environment:
       DATABASE_URL: postgres://netbox:netbox@db/netbox

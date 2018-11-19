@@ -9,6 +9,7 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 from django.views.generic.edit import CreateView
 import topdesk
+import gitlab
 
 from netbox import configuration
 from .models import ChangeInformation, ChangedField, ChangedObject, ChangeSet, \
@@ -127,6 +128,21 @@ def trigger_netbox_change(obj):
     tp.create_operator_change_attachment(res_id, io.StringIO(request_txt))
     return res_id
 
+
+def open_gitlab_issue(o):
+    gl = gitlab.Gitlab(configuration.GITLAB_URL, configuration.GITLAB_TOKEN)
+    project = gl.projects.get(configuration.GITLAB_PROJECT_ID)
+    issue_txt = 'Change #{} was created in Netbox by {} (TOPdesk ticket {}).\n\nSummary: {}'
+    issue_txt = request_txt.format(o.id, o.user, o.ticket_id, o.to_yaml())
+    emergency_label = ',emergency' if o.information.is_emergency else ''
+    project.issues.create({
+        'title': 'Change #{} was created in Netbox'.format(o.id),
+        'description': issue_txt,
+        'labels': 'netbox,unreviewed{}'.format(emergency_label)
+    })
+
+
+
 @method_decorator(login_required, name='dispatch')
 class AcceptView(View):
     model = ChangeSet
@@ -136,7 +152,6 @@ class AcceptView(View):
         This view is triggered when the change was accepted by the operator.
         The changes are reverted, and the status of the object is changed to in
         review.
-        TODO: sync with TOPdesk
         """
         obj = get_object_or_404(self.model, pk=pk)
 
@@ -147,5 +162,8 @@ class AcceptView(View):
         obj.save()
 
         res_id = trigger_netbox_change(obj)
+        obj.ticket_id = res_id
+        obj.save()
+        open_gitlab_issue(obj)
 
         return redirect('/')

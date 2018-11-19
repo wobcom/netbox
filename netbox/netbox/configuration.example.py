@@ -158,3 +158,13 @@ TIME_FORMAT = 'g:i a'
 SHORT_TIME_FORMAT = 'H:i:s'
 DATETIME_FORMAT = 'N j, Y g:i a'
 SHORT_DATETIME_FORMAT = 'Y-m-d H:i'
+
+# TOPdesk/Gitlab integration
+TOPDESK_URL = 'topdesk.de'
+TOPDESK_USERNAME = 'example'
+TOPDESK_PASSWORD = 'example'
+TOPDESK_REQ_ID = 'uuidv4'
+TOPDESK_REQ_NAME = 'Netbox'
+GITLAB_URL = 'gitlab.com'
+GITLAB_TOKEN = '1234'
+GITLAB_PROJECT_ID = '1'
