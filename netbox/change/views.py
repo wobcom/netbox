@@ -13,9 +13,8 @@ import gitlab
 
 from netbox import configuration
 from .models import ChangeInformation, ChangedField, ChangedObject, ChangeSet, \
-                    DRAFT, IN_REVIEW
+    DRAFT, IN_REVIEW
 from .forms import AffectedCustomerInlineFormSet
-
 
 
 @method_decorator(login_required, name='dispatch')
@@ -27,9 +26,11 @@ class ChangeFormView(CreateView):
     def form_valid(self, form):
         result = super(ChangeFormView, self).form_valid(form)
 
-        customers_formset = AffectedCustomerInlineFormSet(form.data,
-                                                          instance=self.object,
-                                                    prefix='affected_customers')
+        customers_formset = AffectedCustomerInlineFormSet(
+            form.data,
+            instance=self.object,
+            prefix='affected_customers'
+        )
         if customers_formset.is_valid():
             customers = customers_formset.save()
 
@@ -65,7 +66,7 @@ class ToggleView(View):
         if info_id:
             changeset.information = ChangeInformation.objects.get(pk=info_id)
 
-        #now we need to gather the changes for our set
+        # now we need to gather the changes for our set
 
         # the standard deserialization from datetime
         change_time = datetime.strptime(request.session['change_started'],
@@ -140,7 +141,6 @@ def open_gitlab_issue(o):
         'description': issue_txt,
         'labels': 'netbox,unreviewed{}'.format(emergency_label)
     })
-
 
 
 @method_decorator(login_required, name='dispatch')

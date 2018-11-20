@@ -105,7 +105,6 @@ class ChangeSet(models.Model):
                 fname = field.name
                 changed_object[fname] = getattr(change.changed_object, fname)
 
-
             # we add a dict containing the field name, new and old values,
             # type of the changed object, set "updated" as the action, and
             # record what the object looks like
@@ -129,7 +128,7 @@ class ChangeSet(models.Model):
                 "action": "added",
             })
 
-        return yaml.dump(changes,explicit_start=True, default_flow_style=False)
+        return yaml.dump(changes, explicit_start=True, default_flow_style=False)
 
     def executive_summary(self):
         return self.information.executive_summary()
@@ -228,7 +227,7 @@ class ChangedObject(models.Model):
 
     def __str__(self):
         return "{} #{} was added.".format(self.changed_object_type,
-            self.changed_object_id)
+                                          self.changed_object_id)
 
     def revert(self):
         self.changed_object.delete()
