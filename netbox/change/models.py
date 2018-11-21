@@ -54,6 +54,7 @@ DRAFT = 1
 IN_REVIEW = 2
 ACCEPTED = 3
 IMPLEMENTED = 4
+REJECTED = 5
 
 
 class ChangeSet(models.Model):
@@ -84,6 +85,7 @@ class ChangeSet(models.Model):
             (IN_REVIEW, 'Under Review'),
             (ACCEPTED, 'Accepted'),
             (IMPLEMENTED, 'Implemented'),
+            (REJECTED, 'Rejected'),
         )
     )
 

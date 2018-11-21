@@ -13,7 +13,7 @@ import gitlab
 
 from netbox import configuration
 from .models import ChangeInformation, ChangedField, ChangedObject, ChangeSet, \
-    DRAFT, IN_REVIEW
+    DRAFT, IN_REVIEW, REJECTED
 from .forms import AffectedCustomerInlineFormSet
 
 
@@ -105,7 +105,7 @@ class ToggleView(View):
         return res
 
 
-def trigger_netbox_change(obj):
+def trigger_topdesk_change(obj):
     # TODO: verify=False is debug!
     tp = topdesk.Topdesk(configuration.TOPDESK_URL, verify=False)
 
@@ -156,7 +156,7 @@ def open_gitlab_issue(o):
         'ref': 'master'
     })
     project.commits.create({
-        'id': 1,
+        'id': project.id,
         'branch': branch_name,
         'commit_message': 'Autocommit from Netbox (Change #{})'.format(o.id),
         'author_name': 'Netbox',
@@ -182,20 +182,40 @@ class AcceptView(View):
     def get(self, request, pk=None):
         """
         This view is triggered when the change was accepted by the operator.
-        The changes are reverted, and the status of the object is changed to in
-        review.
+        The changes are propagated into TOPdesk and Gitlab, and the status of
+        the object is changed to in review.
         """
         obj = get_object_or_404(self.model, pk=pk)
 
         if obj.status != DRAFT:
             return HttpResponseForbidden('Change was already accepted!')
 
-        #res_id = trigger_netbox_change(obj)
+        #res_id = trigger_topdesk_change(obj)
         #obj.ticket_id = res_id
         #obj.save()
         open_gitlab_issue(obj)
 
         obj.status = IN_REVIEW
+        obj.save()
+
+        return redirect('/')
+
+
+@method_decorator(login_required, name='dispatch')
+class RejectView(View):
+    model = ChangeSet
+
+    def get(self, request, pk=None):
+        """
+        This view is triggered when the change was rejected by the operator.
+        The status of the object is changed to rejected.
+        """
+        obj = get_object_or_404(self.model, pk=pk)
+
+        if obj.status != DRAFT:
+            return HttpResponseForbidden('Change was already accepted!')
+
+        obj.status = REJECTED
         obj.save()
 
         return redirect('/')

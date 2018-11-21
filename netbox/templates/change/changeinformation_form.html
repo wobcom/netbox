@@ -59,9 +59,13 @@
 
           $('#customers').append(new_customer_form)
       })
+      let toToggle = [
+        '#customers',
+        '#btn_add_customer'
+      ]
       function toggleCustomerForm() {
-        if ($(this).is(':checked')) $('#customers').show();
-        else $('#customers').hide();
+        if ($(this).is(':checked')) toToggle.map(x=>$(x).show());
+        else toToggle.map(x=>$(x).hide());
       };
       $('#id_affects_customer').change(toggleCustomerForm);
       toggleCustomerForm();

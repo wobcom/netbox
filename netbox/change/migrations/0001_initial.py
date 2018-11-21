@@ -62,7 +62,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('ticket_id', models.UUIDField(null=True)),
-                ('status', models.SmallIntegerField(choices=[(1, 'Draft'), (2, 'Under Review'), (3, 'Accepted'), (4, 'Implemented')], default=1)),
+                ('status', models.SmallIntegerField(choices=[(1, 'Draft'), (2, 'Under Review'), (3, 'Accepted'), (4, 'Implemented'), (5, 'Rejected')], default=1)),
                 ('change_information', models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, related_name='information', to='change.ChangeInformation')),
                 ('user', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='+', to=settings.AUTH_USER_MODEL)),
             ],
