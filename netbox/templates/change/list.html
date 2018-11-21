@@ -19,18 +19,18 @@
         what we will feed into Ansible should this change be accepted!
       </p>
       <h4>Change Description</h4>
-      {% if changeset.information.is_emergency %}
+      {% if changeset.change_information.is_emergency %}
         <b>Emergency Change</b>
       {% endif %}
       <h6>What changes if the change is accepted?</h6>
-        {{ changeset.information.change_implications }}
+        {{ changeset.change_information.change_implications }}
       <h6>What changes if the change is rejected?</h6>
-        {{ changeset.information.ignore_implications }}
+        {{ changeset.change_information.ignore_implications }}
 
-      {% if changeset.information.affects_customer %}
+      {% if changeset.change_information.affects_customer %}
         <h6>Who is affected?</h6>
         <ul>
-        {% for customer in changeset.information.affectedcustomer_set.all %}
+        {% for customer in changeset.change_information.affectedcustomer_set.all %}
           <li>{{ customer.name }}{% if customer.is_business %} (Business Customer){% endif %}: {{ customer.products_affected }}</li>
         {% endfor %}
         </ul>

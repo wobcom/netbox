@@ -64,7 +64,7 @@ class ToggleView(View):
         changeset.user = request.user
         info_id = request.session.get('change_information')
         if info_id:
-            changeset.information = ChangeInformation.objects.get(pk=info_id)
+            changeset.change_information = ChangeInformation.objects.get(pk=info_id)
 
         # now we need to gather the changes for our set
 
@@ -130,16 +130,33 @@ def trigger_netbox_change(obj):
     return res_id
 
 
+ISSUE_TXT = """Change #{} was created in Netbox by {} (TOPdesk ticket {}).
+
+## Executive Summary
+
+{}
+
+## YAML Summary:
+```yaml
+{}
+```
+"""
+
+
 def open_gitlab_issue(o):
     gl = gitlab.Gitlab(configuration.GITLAB_URL, configuration.GITLAB_TOKEN)
     project = gl.projects.get(configuration.GITLAB_PROJECT_ID)
-    issue_txt = 'Change #{} was created in Netbox by {} (TOPdesk ticket {}).\n\nSummary: {}'
-    issue_txt = request_txt.format(o.id, o.user, o.ticket_id, o.to_yaml())
-    emergency_label = ',emergency' if o.information.is_emergency else ''
+    issue_txt = ISSUE_TXT.format(o.id, o.user, o.ticket_id,
+                                 o.executive_summary(), o.to_yaml())
+    emergency_label = ['emergency'] if o.change_information.is_emergency else []
+    project.branches.create({
+        'branch': 'change_{}'.format(o.id),
+        'ref': 'master'
+    })
     project.issues.create({
         'title': 'Change #{} was created in Netbox'.format(o.id),
         'description': issue_txt,
-        'labels': 'netbox,unreviewed{}'.format(emergency_label)
+        'labels': ['netbox','unreviewed'] + emergency_label
     })
 
 
@@ -158,12 +175,12 @@ class AcceptView(View):
         if obj.status != DRAFT:
             return HttpResponseForbidden('Change was already accepted!')
 
+        #res_id = trigger_netbox_change(obj)
+        #obj.ticket_id = res_id
+        #obj.save()
+        open_gitlab_issue(obj)
+
         obj.status = IN_REVIEW
         obj.save()
-
-        res_id = trigger_netbox_change(obj)
-        obj.ticket_id = res_id
-        obj.save()
-        open_gitlab_issue(obj)
 
         return redirect('/')
