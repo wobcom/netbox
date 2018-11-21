@@ -24,7 +24,7 @@ class ChangeInformation(models.Model):
         res += '### Implications if this change is accepted:\n'
         res += '{}\n\n'.format(self.change_implications)
         res += '### Implications if this change is rejected:\n'
-        res += '{}\n\n'.format(self.change_implications)
+        res += '{}\n\n'.format(self.ignore_implications)
 
         if self.affects_customer:
             res += '### This change affects customers\n\n'
