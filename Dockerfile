@@ -73,5 +73,5 @@ RUN DATABASE_URL=none /venv/bin/python netbox/manage.py collectstatic --noinput
 ENTRYPOINT ["/code/docker-entrypoint.sh"]
 
 # Start uWSGI
-CMD ["/venv/bin/uwsgi", "--http-auto-chunked", "--http-keepalive", "--static-map", "/static=/code/netbox/static"]
+CMD ["/venv/bin/uwsgi", "--http-auto-chunked", "--http-keepalive", "--py-autoreload", "1", "--static-map", "/static=/code/netbox/static"]
 #CMD ["/venv/bin/python", "/code/netbox/manage.py", "runserver", "0.0.0.0:8000"]

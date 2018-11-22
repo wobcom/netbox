@@ -108,10 +108,9 @@ class ToggleView(View):
 
 def trigger_topdesk_change(obj):
     # TODO: verify=False is debug!
-    tp = topdesk.Topdesk(configuration.TOPDESK_URL, verify=False)
-
-    tp.login_operator(configuration.TOPDESK_USERNAME,
-                      configuration.TOPDESK_PASSWORD)
+    tp = topdesk.Topdesk(configuration.TOPDESK_URL, verify=False,
+                         app_creds=(configuration.TOPDESK_USERNAME,
+                                    configuration.TOPDESK_PASSWORD))
 
     request_txt = 'Change #{} was created in Netbox by {}.\n\nSummary: {}'
     request_txt = request_txt.format(obj.id, obj.user, obj.executive_summary())
@@ -120,14 +119,17 @@ def trigger_topdesk_change(obj):
             'id': configuration.TOPDESK_REQ_ID,
             'name': configuration.TOPDESK_REQ_NAME,
         },
+        'template': {
+            'number': configuration.TOPDESK_TEMPLATE
+        },
         'briefDescription': 'Change #{} was created in Netbox'.format(obj.id),
-        'changeType': 'extensive'
+        'changeType': 'extensive',
+        'request': request_txt,
     }
     res = tp.create_operator_change(data)
     res_id = res['id']
     obj.ticket_id = res_id
     obj.save()
-    tp.create_operator_change_attachment(res_id, io.StringIO(request_txt))
     return res_id
 
 
