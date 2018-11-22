@@ -1,4 +1,4 @@
-version: '2'
+version: '3.2'
 
 services:
   db:
@@ -35,5 +35,10 @@ services:
         - SSH_PRIVATE_KEY=${SSH_PRIVATE_KEY}
     links:
       - db:db
+    volumes:
+      - netbox-sync:/code:nocopy
     ports:
       - "8000:8000"
+volumes:
+  netbox-sync:
+    external: true

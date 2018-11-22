@@ -57,9 +57,9 @@ RUN set -ex \
     && /venv/bin/pip install --no-cache-dir -r /requirements.txt
 
 # Copy your application code to the container (make sure you create a .dockerignore file if any large files or directories should be excluded)
-RUN mkdir /code/
+RUN mkdir /code
+ADD . /code
 WORKDIR /code/
-ADD . /code/
 
 # uWSGI will listen on this port
 EXPOSE 8000
@@ -71,6 +71,7 @@ ENV UWSGI_VIRTUALENV=/venv UWSGI_WSGI_FILE=netbox/wsgi.py UWSGI_HTTP=:8000 UWSGI
 RUN DATABASE_URL=none /venv/bin/python netbox/manage.py collectstatic --noinput
 
 ENTRYPOINT ["/code/docker-entrypoint.sh"]
+
 # Start uWSGI
 CMD ["/venv/bin/uwsgi", "--http-auto-chunked", "--http-keepalive", "--static-map", "/static=/code/netbox/static"]
 #CMD ["/venv/bin/python", "/code/netbox/manage.py", "runserver", "0.0.0.0:8000"]
