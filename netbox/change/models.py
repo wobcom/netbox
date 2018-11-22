@@ -10,8 +10,8 @@ from django.shortcuts import redirect
 
 class ChangeInformation(models.Model):
     """Meta information about a change."""
-    is_emergency = models.BooleanField()
-    affects_customer = models.BooleanField()
+    is_emergency = models.BooleanField(verbose_name="Is an emergency change")
+    affects_customer = models.BooleanField(verbose_name="Customers are affected")
     change_implications = models.TextField()
     ignore_implications = models.TextField()
 
@@ -44,9 +44,10 @@ class AffectedCustomer(models.Model):
         on_delete=models.CASCADE,
     )
 
-    name = models.CharField(max_length=128)
-    is_business = models.BooleanField()
-    products_affected = models.CharField(max_length=128)
+    name = models.CharField(max_length=128, verbose_name="Customer Name")
+    is_business = models.BooleanField(verbose_name="Is a business customer")
+    products_affected = models.CharField(max_length=128,
+                                         verbose_name="Affected Products")
 
 
 # These are the states that a change set can be in

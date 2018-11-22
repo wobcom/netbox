@@ -42,6 +42,7 @@ class ChangeFormView(CreateView):
         ctx = super(ChangeFormView, self).get_context_data(**kwargs)
         ctx['affected_customers'] = AffectedCustomerInlineFormSet(prefix='affected_customers')
         ctx['return_url'] = '/change/toggle'
+        ctx['obj_type'] = 'Change Request'
         return ctx
 
 
@@ -190,9 +191,9 @@ class AcceptView(View):
         if obj.status != DRAFT:
             return HttpResponseForbidden('Change was already accepted!')
 
-        #res_id = trigger_topdesk_change(obj)
-        #obj.ticket_id = res_id
-        #obj.save()
+        res_id = trigger_topdesk_change(obj)
+        obj.ticket_id = res_id
+        obj.save()
         open_gitlab_issue(obj)
 
         obj.status = IN_REVIEW
