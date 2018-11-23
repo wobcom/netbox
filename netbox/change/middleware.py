@@ -10,6 +10,7 @@ well (TODO).
 from django.contrib.sessions.models import Session
 from django.db import models
 from django.db.models.signals import pre_save, post_save
+from django.shortcuts import redirect
 
 from extras.models import ObjectChange
 
@@ -34,7 +35,7 @@ def _model_to_dict(obj):
         # we do not go deeply into the object relations. if we find a
         # foreign key, we only get the ID
         if field.__class__ == models.ForeignKey:
-            fname = "{}_id".format(field.name)
+            fname = '{}_id'.format(field.name)
         else:
             fname = field.name
         res[fname] = str(getattr(obj, fname))
@@ -80,7 +81,7 @@ def install_save_hooks(request):
 
         # we don't have to call save hooks anymore, since we already treated it
         post_save.disconnect(after_save_internal,
-                             dispatch_uid="chgfield")
+                             dispatch_uid='chgfield')
 
     def after_save_internal(sender, instance, **kwargs):
         """
@@ -98,8 +99,8 @@ def install_save_hooks(request):
     # we need to install them strongly, because they are closures;
     # otherwise django will throw away the weak references at the end of this
     # function (we need it to be there until the end of this request)
-    pre_save.connect(before_save_internal, weak=False, dispatch_uid="chgfield")
-    post_save.connect(after_save_internal, weak=False, dispatch_uid="chgfield")
+    pre_save.connect(before_save_internal, weak=False, dispatch_uid='chgfield')
+    post_save.connect(after_save_internal, weak=False, dispatch_uid='chgfield')
 
 
 class FieldChangeMiddleware(object):
@@ -111,7 +112,12 @@ class FieldChangeMiddleware(object):
         self.get_response = get_response
 
     def __call__(self, request):
-        if request.session.get("in_change", False):
+        in_change = request.session.get('in_change', False)
+        if in_change:
             install_save_hooks(request)
+            wrong_url = request.path not in ['/change/form/', '/change/toggle/']
+            print(request.path)
+            if not request.session.get('change_information') and wrong_url:
+                return redirect('/change/form')
 
         return self.get_response(request)

@@ -153,7 +153,7 @@ def open_gitlab_issue(o):
     issue_txt = ISSUE_TXT.format(o.id, o.user, o.ticket_id,
                                  o.executive_summary(), yaml)
     emergency_label = ['emergency'] if o.change_information.is_emergency else []
-    branch_name ='change_{}'.format(o.id)
+    branch_name = 'change_{}'.format(o.id)
     project.branches.create({
         'branch': branch_name,
         'ref': 'master'
@@ -174,7 +174,7 @@ def open_gitlab_issue(o):
         'description': issue_txt,
         'source_branch': branch_name,
         'target_branch': 'master',
-        'labels': ['netbox','unreviewed'] + emergency_label
+        'labels': ['netbox', 'unreviewed'] + emergency_label
     })
 
 
