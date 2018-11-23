@@ -64,8 +64,9 @@ class ToggleView(View):
         changeset = ChangeSet()
         changeset.user = request.user
         info_id = request.session.get('change_information')
+        change_information = ChangeInformation.objects.get(pk=info_id)
         if info_id:
-            changeset.change_information = ChangeInformation.objects.get(pk=info_id)
+            changeset.change_information = change_information
 
         # now we need to gather the changes for our set
 
@@ -78,6 +79,7 @@ class ToggleView(View):
                                                     time__gt=change_time)
 
         if not change_fields.count() and not change_objs.count():
+            change_information.delete()
             return render(request, 'change/list.html', {
                 'changeset': None
             })
