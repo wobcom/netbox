@@ -7,6 +7,7 @@ Some models are blacklisted to avoid recursion. This should probably be changed
 to be a whitelist instead, since right now all Django models are captured as
 well (TODO).
 """
+from django.contrib import messages
 from django.contrib.auth.models import User
 from django.contrib.sessions.models import Session
 from django.db import models
@@ -16,7 +17,7 @@ from django.shortcuts import redirect
 from extras.models import ObjectChange
 
 from .models import ChangedField, ChangedObject, ChangeSet, AffectedCustomer, \
-    ChangeInformation
+    ChangeInformation, Change
 
 CHANGE_BLACKLIST = [
     AffectedCustomer,
@@ -123,6 +124,11 @@ class FieldChangeMiddleware(object):
             wrong_url = request.path not in ['/change/form/', '/change/toggle/']
             if not request.session.get('change_information') and wrong_url:
                 return redirect('/change/form')
+        else:
+            change = Change.objects.first()
+            if change:
+                message = "User {} is currently making a change."
+                messages.warning(request, message.format(change.user.username))
 
         response = self.get_response(request)
         for handler in to_uninstall:

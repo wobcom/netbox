@@ -13,7 +13,7 @@ import gitlab
 
 from netbox import configuration
 from .models import ChangeInformation, ChangedField, ChangedObject, ChangeSet, \
-    DRAFT, IN_REVIEW, REJECTED
+    DRAFT, IN_REVIEW, REJECTED, Change
 from .forms import AffectedCustomerInlineFormSet
 
 
@@ -63,7 +63,9 @@ class ToggleView(View):
         # we started the change and need to get info
         if request.session['in_change']:
             request.session['change_started'] = str(timezone.now())
+            Change(user=request.user).save()
             return redirect('/change/form')
+        Change.objects.filter(user=request.user).delete()
 
         # we finished our change. we generate the changeset now
         changeset = ChangeSet()
@@ -71,6 +73,7 @@ class ToggleView(View):
         info_id = request.session.get('change_information')
         change_information = None
         if info_id:
+            # TODO: why are there stale information IDs?
             change_information = ChangeInformation.objects.get(pk=info_id)
             changeset.change_information = change_information
 
@@ -86,6 +89,8 @@ class ToggleView(View):
 
         if not change_fields.count() and not change_objs.count():
             if change_information:
+                del request.session['change_information']
+                del request.session['change_started']
                 change_information.delete()
             return render(request, 'change/list.html', {
                 'changeset': None

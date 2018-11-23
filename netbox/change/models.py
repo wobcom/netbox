@@ -58,6 +58,16 @@ IMPLEMENTED = 4
 REJECTED = 5
 
 
+class Change(models.Model):
+    user = models.ForeignKey(
+        to=User,
+        on_delete=models.SET_NULL,
+        related_name='+',
+        blank=True,
+        null=True
+    )
+
+
 class ChangeSet(models.Model):
     """
     A change set always refers to a ticket, has a set of changes, and can be
