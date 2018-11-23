@@ -1,10 +1,10 @@
 import io
-from datetime import datetime
 
 from django.contrib.auth.decorators import login_required
 from django.db import models
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import dateparse, timezone
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from django.views.generic.edit import CreateView
@@ -57,29 +57,31 @@ class ToggleView(View):
         request.session['in_change'] = not request.session.get('in_change', False)
         # we started the change and need to get info
         if request.session['in_change']:
-            request.session['change_started'] = str(datetime.now())
+            request.session['change_started'] = str(timezone.now())
             return redirect('/change/form')
 
         # we finished our change. we generate the changeset now
         changeset = ChangeSet()
         changeset.user = request.user
         info_id = request.session.get('change_information')
-        change_information = ChangeInformation.objects.get(pk=info_id)
+        change_information = None
         if info_id:
+            change_information = ChangeInformation.objects.get(pk=info_id)
             changeset.change_information = change_information
 
         # now we need to gather the changes for our set
 
-        # the standard deserialization from datetime
-        change_time = datetime.strptime(request.session['change_started'],
-                                        '%Y-%m-%d %H:%M:%S.%f')
+        # the standard deserialization from timezone
+        started_str = request.session['change_started']
+        change_time = dateparse.parse_datetime(started_str)
         change_objs = ChangedObject.objects.filter(user=request.user,
                                                    time__gt=change_time)
         change_fields = ChangedField.objects.filter(user=request.user,
                                                     time__gt=change_time)
 
         if not change_fields.count() and not change_objs.count():
-            change_information.delete()
+            if change_information:
+                change_information.delete()
             return render(request, 'change/list.html', {
                 'changeset': None
             })
@@ -128,6 +130,7 @@ def trigger_topdesk_change(obj):
         'changeType': 'extensive',
         'request': request_txt,
     }
+    # TODO: incidents work, check
     res = tp.create_operator_change(data)
     res_id = res['id']
     obj.ticket_id = res_id

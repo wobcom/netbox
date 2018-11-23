@@ -7,6 +7,7 @@ Some models are blacklisted to avoid recursion. This should probably be changed
 to be a whitelist instead, since right now all Django models are captured as
 well (TODO).
 """
+from django.contrib.auth.models import User
 from django.contrib.sessions.models import Session
 from django.db import models
 from django.db.models.signals import pre_save, post_save
@@ -24,7 +25,8 @@ CHANGE_BLACKLIST = [
     ChangeInformation,
     ChangeSet,
     ObjectChange,
-    Session
+    Session,
+    User,
 ]
 
 
@@ -101,6 +103,8 @@ def install_save_hooks(request):
     # function (we need it to be there until the end of this request)
     pre_save.connect(before_save_internal, weak=False, dispatch_uid='chgfield')
     post_save.connect(after_save_internal, weak=False, dispatch_uid='chgfield')
+    return [{'handler': before_save_internal, 'signal': pre_save},
+            {'handler': after_save_internal, 'signal': post_save}]
 
 
 class FieldChangeMiddleware(object):
@@ -113,11 +117,15 @@ class FieldChangeMiddleware(object):
 
     def __call__(self, request):
         in_change = request.session.get('in_change', False)
+        to_uninstall = []
         if in_change:
-            install_save_hooks(request)
+            to_uninstall = install_save_hooks(request)
             wrong_url = request.path not in ['/change/form/', '/change/toggle/']
-            print(request.path)
             if not request.session.get('change_information') and wrong_url:
                 return redirect('/change/form')
 
-        return self.get_response(request)
+        response = self.get_response(request)
+        for handler in to_uninstall:
+            handler['signal'].disconnect(handler['handler'],
+                                         dispatch_uid='chgfield')
+        return response
