@@ -125,10 +125,17 @@ class FieldChangeMiddleware(object):
             if not request.session.get('change_information') and wrong_url:
                 return redirect('/change/form')
         else:
+            # TODO: this is the simplest solution, albeit incredibly dirty;
+            # needs to be discussed
             change = Change.objects.first()
             if change:
                 message = "User {} is currently making a change."
                 messages.warning(request, message.format(change.user.username))
+                request.session['foreign_change'] = True
+                if request.path.ends_with("edit/") or request.path.ends_with("delete/"):
+                    return redirect(request.META["HTTP_REFERER"])
+            else:
+                request.session['foreign_change'] = False
 
         response = self.get_response(request)
         for handler in to_uninstall:

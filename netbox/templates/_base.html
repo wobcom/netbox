@@ -76,6 +76,14 @@
         loading.hide();
     });
 </script>
+<script type="text/javascript">
+{% if request.session.foreign_change %}
+  $(".btn-warning,.btn-danger").map((_,elem) => {
+    elem.style.pointerEvents = "none";
+    elem.style.opacity = "0.7";
+  });
+{% endif %}
+</script>
 {% block javascript %}{% endblock %}
 </body>
 </html>
