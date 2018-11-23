@@ -23,6 +23,11 @@ class ChangeFormView(CreateView):
     fields = '__all__'
     success_url = '/'
 
+    def get(self, request, *args, **kwargs):
+        if not request.session.get('in_change'):
+            return redirect('/')
+        return super(CreateView, self).get(request, *args, **kwargs)
+
     def form_valid(self, form):
         result = super(ChangeFormView, self).form_valid(form)
 
