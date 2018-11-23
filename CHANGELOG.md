@@ -1,9 +1,36 @@
-v2.4.7 (FUTURE)
+v2.4.8 (2018-11-20)
+
+## Enhancements
+
+* [#2490](https://github.com/digitalocean/netbox/issues/2490) - Added bulk editing for config contexts
+* [#2557](https://github.com/digitalocean/netbox/issues/2557) - Added object view for tags
 
 ## Bug Fixes
 
+* [#2473](https://github.com/digitalocean/netbox/issues/2473) - Fix encoding of long (>127 character) secrets
+* [#2558](https://github.com/digitalocean/netbox/issues/2558) - Filter on all tags when multiple are passed
+* [#2565](https://github.com/digitalocean/netbox/issues/2565) - Improved rendering of Markdown tables
+* [#2575](https://github.com/digitalocean/netbox/issues/2575) - Correct model specified for rack roles table
+* [#2588](https://github.com/digitalocean/netbox/issues/2588) - Catch all exceptions from failed NAPALM API Calls
+* [#2589](https://github.com/digitalocean/netbox/issues/2589) - Virtual machine API serializer should require cluster assignment
+
+---
+
+v2.4.7 (2018-11-06)
+
+## Enhancements
+
+* [#2388](https://github.com/digitalocean/netbox/issues/2388) - Enable filtering of devices/VMs by region
+* [#2427](https://github.com/digitalocean/netbox/issues/2427) - Allow filtering of interfaces by assigned VLAN or VLAN ID
+* [#2512](https://github.com/digitalocean/netbox/issues/2512) - Add device field to inventory item filter form
+
+## Bug Fixes
+
+* [#2502](https://github.com/digitalocean/netbox/issues/2502) - Allow duplicate VIPs inside a uniqueness-enforced VRF
 * [#2514](https://github.com/digitalocean/netbox/issues/2514) - Prevent new connections to already connected interfaces
 * [#2515](https://github.com/digitalocean/netbox/issues/2515) - Only use django-rq admin tmeplate if webhooks are enabled
+* [#2528](https://github.com/digitalocean/netbox/issues/2528) - Enable creating circuit terminations with interface assignment via API
+* [#2549](https://github.com/digitalocean/netbox/issues/2549) - Changed naming of `peer_device` and `peer_interface` on API /dcim/connected-device/ endpoint to use underscores
 
 ---
 

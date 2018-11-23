@@ -263,9 +263,9 @@ class DeviceViewSet(CustomFieldModelViewSet):
         # Check that NAPALM is installed
         try:
             import napalm
+            from napalm.base.exceptions import ModuleImportError
         except ImportError:
             raise ServiceUnavailable("NAPALM is not installed. Please see the documentation for instructions.")
-        from napalm.base.exceptions import ModuleImportError
 
         # Validate the configured driver
         try:
@@ -309,7 +309,9 @@ class DeviceViewSet(CustomFieldModelViewSet):
             try:
                 response[method] = getattr(d, method)()
             except NotImplementedError:
-                response[method] = {'error': 'Method not implemented for NAPALM driver {}'.format(driver)}
+                response[method] = {'error': 'Method {} not implemented for NAPALM driver {}'.format(method, driver)}
+            except Exception as e:
+                response[method] = {'error': 'Method {} failed: {}'.format(method, e)}
         d.close()
 
         return Response(response)
@@ -412,13 +414,13 @@ class ConnectedDeviceViewSet(ViewSet):
     interface. This is useful in a situation where a device boots with no configuration, but can detect its neighbors
     via a protocol such as LLDP. Two query parameters must be included in the request:
 
-    * `peer-device`: The name of the peer device
-    * `peer-interface`: The name of the peer interface
+    * `peer_device`: The name of the peer device
+    * `peer_interface`: The name of the peer interface
     """
     permission_classes = [IsAuthenticatedOrLoginNotRequired]
-    _device_param = Parameter('peer-device', 'query',
+    _device_param = Parameter('peer_device', 'query',
                               description='The name of the peer device', required=True, type=openapi.TYPE_STRING)
-    _interface_param = Parameter('peer-interface', 'query',
+    _interface_param = Parameter('peer_interface', 'query',
                                  description='The name of the peer interface', required=True, type=openapi.TYPE_STRING)
 
     def get_view_name(self):
@@ -429,9 +431,15 @@ class ConnectedDeviceViewSet(ViewSet):
     def list(self, request):
 
         peer_device_name = request.query_params.get(self._device_param.name)
+        if not peer_device_name:
+            # TODO: remove this after 2.4 as the switch to using underscores is a breaking change
+            peer_device_name = request.query_params.get('peer-device')
         peer_interface_name = request.query_params.get(self._interface_param.name)
+        if not peer_interface_name:
+            # TODO: remove this after 2.4 as the switch to using underscores is a breaking change
+            peer_interface_name = request.query_params.get('peer-interface')
         if not peer_device_name or not peer_interface_name:
-            raise MissingFilterException(detail='Request must include "peer-device" and "peer-interface" filters.')
+            raise MissingFilterException(detail='Request must include "peer_device" and "peer_interface" filters.')
 
         # Determine local interface from peer interface's connection
         peer_interface = get_object_or_404(Interface, device__name=peer_device_name, name=peer_interface_name)
