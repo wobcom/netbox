@@ -8,8 +8,8 @@ from django.utils import dateparse, timezone
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from django.views.generic.edit import CreateView
-import topdesk
 import gitlab
+import topdesk
 
 from netbox import configuration
 from .models import ChangeInformation, ChangedField, ChangedObject, ChangeSet, \
@@ -126,18 +126,16 @@ def trigger_topdesk_change(obj):
                          app_creds=(configuration.TOPDESK_USERNAME,
                                     configuration.TOPDESK_PASSWORD))
 
-    request_txt = 'Change #{} was created in Netbox by {}.\n\nSummary: {}'
-    request_txt = request_txt.format(obj.id, obj.user, obj.executive_summary())
+    request_txt = 'Change #{} was created in Netbox by {}.\n\nSummary:\n{}'
+    request_txt = request_txt.format(obj.id, obj.user,
+                                     obj.executive_summary(no_markdown=True))
     data = {
         'requester': {
             'id': configuration.TOPDESK_REQ_ID,
             'name': configuration.TOPDESK_REQ_NAME,
         },
-        'template': {
-            'number': configuration.TOPDESK_TEMPLATE
-        },
         'briefDescription': 'Change #{} was created in Netbox'.format(obj.id),
-        'changeType': 'extensive',
+        'changeType': 'simple',
         'request': request_txt,
     }
     # TODO: incidents work, check

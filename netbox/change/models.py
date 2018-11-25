@@ -7,6 +7,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.shortcuts import redirect
 
+from change.utilities import Markdownify
+
 
 class ChangeInformation(models.Model):
     """Meta information about a change."""
@@ -16,23 +18,25 @@ class ChangeInformation(models.Model):
     ignore_implications = models.TextField()
 
     # TODO: should this be a StringIO object instead?
-    def executive_summary(self):
+    def executive_summary(self, no_markdown=True):
+        md = Markdownify(no_markdown=no_markdown)
         res = ''
         if self.is_emergency:
-            res += '**This change is an emergency change.**\n\n'
+            res += md.bold('This change is an emergency change.')
+            res += '\n\n'
 
-        res += '### Implications if this change is accepted:\n'
-        res += '{}\n\n'.format(self.change_implications)
-        res += '### Implications if this change is rejected:\n'
-        res += '{}\n\n'.format(self.ignore_implications)
+        res += md.h3('Implications if this change is accepted:')
+        res += '\n{}\n\n'.format(self.change_implications)
+        res += md.h3('Implications if this change is rejected:')
+        res += '\n{}\n\n'.format(self.ignore_implications)
 
         if self.affects_customer:
-            res += '### This change affects customers\n\n'
-            res += 'The following customers are affected:\n'
+            res += md.h3('This change affects customers')
+            res += '\nThe following customers are affected:\n'
             for change in self.affectedcustomer_set.all():
                 res += '- {}'.format(change.name)
                 if change.is_business:
-                    res += ' **(Business Customer)**'
+                    res += md.bold(' (Business Customer)')
                 res += ": {}\n".format(change.products_affected)
         return res
 
@@ -145,8 +149,8 @@ class ChangeSet(models.Model):
 
         return yaml.dump(changes, explicit_start=True, default_flow_style=False)
 
-    def executive_summary(self):
-        return self.change_information.executive_summary()
+    def executive_summary(self, no_markdown=False):
+        return self.change_information.executive_summary(no_markdown=no_markdown)
 
 
 class ChangedField(models.Model):
