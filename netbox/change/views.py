@@ -121,8 +121,8 @@ class ToggleView(View):
 
 
 def trigger_topdesk_change(obj):
-    # TODO: verify=False is debug!
-    tp = topdesk.Topdesk(configuration.TOPDESK_URL, verify=False,
+    tp = topdesk.Topdesk(configuration.TOPDESK_URL,
+                         verify=configuration.VERIFY_HTTPS,
                          app_creds=(configuration.TOPDESK_USERNAME,
                                     configuration.TOPDESK_PASSWORD))
 
