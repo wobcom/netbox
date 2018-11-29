@@ -17,7 +17,7 @@ from django.shortcuts import redirect
 from extras.models import ObjectChange
 
 from .models import ChangedField, ChangedObject, ChangeSet, AffectedCustomer, \
-    ChangeInformation, Change
+    ChangeInformation
 
 CHANGE_BLACKLIST = [
     AffectedCustomer,
@@ -51,6 +51,8 @@ def install_save_hooks(request):
     The pre-save hook captures all updated models, the post-save hooks captures
     all newly-created models.
     """
+    changeset = ChangeSet.objects.get(pk=request.session['change_id'])
+
     def before_save_internal(sender, instance, **kwargs):
         """
         This function only triggers when the instance already exists. Otherwise
@@ -74,13 +76,15 @@ def install_save_hooks(request):
             if new_value == old_value:
                 continue
 
-            ChangedField(
+            cf = ChangedField(
                 changed_object=instance,
                 field=field.name,
                 old_value=getattr(old_instance, field.name),
                 new_value=getattr(instance, field.name),
                 user=request.user,
-            ).save()
+            )
+            cf.save()
+            changeset.changedfield_set.add(cf)
 
         # we don't have to call save hooks anymore, since we already treated it
         post_save.disconnect(after_save_internal,
@@ -93,11 +97,13 @@ def install_save_hooks(request):
         """
         if sender in CHANGE_BLACKLIST:
             return
-        ChangedObject(
+        co = ChangedObject(
             changed_object=instance,
             changed_object_data=_model_to_dict(instance),
             user=request.user,
-        ).save()
+        )
+        co.save()
+        changeset.changedobject_set.add(co)
 
     # we need to install them strongly, because they are closures;
     # otherwise django will throw away the weak references at the end of this
@@ -127,13 +133,16 @@ class FieldChangeMiddleware(object):
         else:
             # TODO: this is the simplest solution, albeit incredibly dirty;
             # needs to be discussed
-            change = Change.objects.first()
-            if change:
+            cs = ChangeSet.objects.filter(active=True)
+            if cs.count():
+                if (request.path.endswith("edit/") or
+                   request.path.endswith("delete/") or
+                   request.path.endswith("change/toggle/")):
+                    return redirect(request.META.get("HTTP_REFERER", "/"))
                 message = "User {} is currently making a change."
-                messages.warning(request, message.format(change.user.username))
+                uname = cs.first().user.username
+                messages.warning(request, message.format(uname))
                 request.session['foreign_change'] = True
-                if request.path.ends_with("edit/") or request.path.ends_with("delete/"):
-                    return redirect(request.META["HTTP_REFERER"])
             else:
                 request.session['foreign_change'] = False
 

@@ -1,5 +1,6 @@
 from functools import wraps
 
+
 def if_markdown(fn):
     @wraps(fn)
     def wrapped(self, s, *args, **kwargs):
@@ -18,7 +19,7 @@ class Markdownify():
         return '**{}**'.format(s)
 
     def h(self, s, n):
-        return '{} {}'.format('#'*n, s)
+        return '{} {}'.format('#' * n, s)
 
     @if_markdown
     def h1(self, s):

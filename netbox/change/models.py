@@ -62,22 +62,13 @@ IMPLEMENTED = 4
 REJECTED = 5
 
 
-class Change(models.Model):
-    user = models.ForeignKey(
-        to=User,
-        on_delete=models.SET_NULL,
-        related_name='+',
-        blank=True,
-        null=True
-    )
-
-
 class ChangeSet(models.Model):
     """
     A change set always refers to a ticket, has a set of changes, and can be
     serialized to YAML.
     """
     ticket_id = models.UUIDField(null=True)
+    active = models.BooleanField(default=False)
     change_information = models.ForeignKey(
         to=ChangeInformation,
         on_delete=models.CASCADE,

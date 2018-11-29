@@ -13,7 +13,7 @@ import topdesk
 
 from netbox import configuration
 from .models import ChangeInformation, ChangedField, ChangedObject, ChangeSet, \
-    DRAFT, IN_REVIEW, REJECTED, Change
+    DRAFT, IN_REVIEW, REJECTED
 from .forms import AffectedCustomerInlineFormSet
 
 
@@ -62,14 +62,16 @@ class ToggleView(View):
         request.session['in_change'] = not request.session.get('in_change', False)
         # we started the change and need to get info
         if request.session['in_change']:
-            request.session['change_started'] = str(timezone.now())
-            Change(user=request.user).save()
+            c = ChangeSet(user=request.user, active=True)
+            c.save()
+            request.session['change_id'] = c.id
             return redirect('/change/form')
-        Change.objects.filter(user=request.user).delete()
 
         # we finished our change. we generate the changeset now
-        changeset = ChangeSet()
-        changeset.user = request.user
+        if 'change_id' not in request.session:
+            return HttpResponseForbidden('Invalid session!')
+
+        changeset = ChangeSet.objects.get(pk=request.session['change_id'])
         info_id = request.session.get('change_information')
         change_information = None
         if info_id:
@@ -77,31 +79,19 @@ class ToggleView(View):
             change_information = ChangeInformation.objects.get(pk=info_id)
             changeset.change_information = change_information
 
-        # now we need to gather the changes for our set
+        changeset.active = False
 
-        # the standard deserialization from timezone
-        started_str = request.session['change_started']
-        change_time = dateparse.parse_datetime(started_str)
-        change_objs = ChangedObject.objects.filter(user=request.user,
-                                                   time__gt=change_time)
-        change_fields = ChangedField.objects.filter(user=request.user,
-                                                    time__gt=change_time)
-
-        if not change_fields.count() and not change_objs.count():
+        if (not changeset.changedfield_set.count() and
+           not changeset.changedobject_set.count()):
             if change_information:
                 del request.session['change_information']
-                del request.session['change_started']
                 change_information.delete()
             return render(request, 'change/list.html', {
                 'changeset': None
             })
 
         changeset.save()
-        changeset.changedfield_set.add(*change_fields)
-        changeset.changedobject_set.add(*change_objs)
-        changeset.save()
 
-        # for now just render the result
         res = render(request, 'change/list.html', {
             'changeset': changeset
         })
@@ -115,14 +105,13 @@ class ToggleView(View):
             return HttpResponseForbidden('You need to fill out the change form!')
 
         del request.session['change_information']
-        del request.session['change_started']
 
         return res
 
 
 def trigger_topdesk_change(obj):
     tp = topdesk.Topdesk(configuration.TOPDESK_URL,
-                         verify=configuration.VERIFY_HTTPS,
+                         verify=configuration.TOPDESK_VERIFY_HTTPS,
                          app_creds=(configuration.TOPDESK_USERNAME,
                                     configuration.TOPDESK_PASSWORD))
 
