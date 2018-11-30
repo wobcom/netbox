@@ -75,6 +75,9 @@ class ToggleView(View):
             return HttpResponseForbidden('Invalid session!')
 
         changeset = ChangeSet.objects.get(pk=request.session['change_id'])
+        if not changeset.active:
+            return HttpResponseForbidden('Change timed out!')
+
         info_id = request.session.get('change_information')
         change_information = None
         if info_id:

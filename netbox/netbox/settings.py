@@ -187,11 +187,11 @@ MIDDLEWARE = (
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django.middleware.security.SecurityMiddleware',
-    'change.middleware.FieldChangeMiddleware',
     'utilities.middleware.ExceptionHandlingMiddleware',
     'utilities.middleware.LoginRequiredMiddleware',
     'utilities.middleware.APIVersionMiddleware',
     'extras.middleware.ObjectChangeMiddleware',
+    'change.middleware.FieldChangeMiddleware',
 )
 
 ROOT_URLCONF = 'netbox.urls'

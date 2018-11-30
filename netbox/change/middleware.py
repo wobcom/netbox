@@ -139,14 +139,17 @@ class FieldChangeMiddleware(object):
             # needs to be discussed
             cs = ChangeSet.objects.filter(active=True)
             if cs.count():
-                if any(request.path.endswith(s) for s in SITE_BLACKLIST):
-                    return redirect_to_referer(request)
-                message = "User {} is currently making a change."
-                uname = cs.first().user.username
-                messages.warning(request, message.format(uname))
-                request.session['foreign_change'] = True
-            else:
-                request.session['foreign_change'] = False
+                c = cs.first()
+                # this costs a lot for every request
+                if not c.in_use():
+                    c.active = False
+                    c.save()
+                else:
+                    if any(request.path.endswith(s) for s in SITE_BLACKLIST):
+                        return redirect_to_referer(request)
+                    message = "User {} is currently making a change."
+                    messages.warning(request, message.format(c.user.username))
+            request.session['foreign_change'] = cs.count()
 
         response = self.get_response(request)
         for handler in to_uninstall:
