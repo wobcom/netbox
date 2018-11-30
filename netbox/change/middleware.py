@@ -18,6 +18,7 @@ from extras.models import ObjectChange
 
 from .models import ChangedField, ChangedObject, ChangeSet, AffectedCustomer, \
     ChangeInformation
+from .utilities import redirect_to_referer
 
 CHANGE_BLACKLIST = [
     AffectedCustomer,
@@ -114,6 +115,9 @@ def install_save_hooks(request):
             {'handler': after_save_internal, 'signal': post_save}]
 
 
+SITE_BLACKLIST = ["add/", "edit/", "delete/", "import/", "change/toggle"]
+
+
 class FieldChangeMiddleware(object):
     """
     This very simple middleware checks the `in_change` cookie. If the cookie is
@@ -135,10 +139,8 @@ class FieldChangeMiddleware(object):
             # needs to be discussed
             cs = ChangeSet.objects.filter(active=True)
             if cs.count():
-                if (request.path.endswith("edit/") or
-                   request.path.endswith("delete/") or
-                   request.path.endswith("change/toggle/")):
-                    return redirect(request.META.get("HTTP_REFERER", "/"))
+                if any(request.path.endswith(s) for s in SITE_BLACKLIST):
+                    return redirect_to_referer(request)
                 message = "User {} is currently making a change."
                 uname = cs.first().user.username
                 messages.warning(request, message.format(uname))

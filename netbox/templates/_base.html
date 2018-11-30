@@ -78,7 +78,8 @@
 </script>
 <script type="text/javascript">
 {% if request.session.foreign_change %}
-  $(".btn-warning,.btn-danger").map((_,elem) => {
+  $(".btn-warning,.btn-danger,.btn-info,.btn-primary").map((_,elem) => {
+    if (elem.classList.contains("btn-primary") && (elem.type == "submit" || elem.innerHTML.includes("Refine search"))) return;
     elem.style.pointerEvents = "none";
     elem.style.opacity = "0.7";
   });

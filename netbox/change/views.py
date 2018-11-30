@@ -12,9 +12,10 @@ import gitlab
 import topdesk
 
 from netbox import configuration
+from .forms import AffectedCustomerInlineFormSet
 from .models import ChangeInformation, ChangedField, ChangedObject, ChangeSet, \
     DRAFT, IN_REVIEW, REJECTED
-from .forms import AffectedCustomerInlineFormSet
+from .utilities import redirect_to_referer
 
 
 @method_decorator(login_required, name='dispatch')
@@ -59,6 +60,8 @@ class ToggleView(View):
         If we begin the change, we simply toggle the cookie. If we end it, we
         finalize the change and present it to the user.
         """
+        if request.session['foreign_change']:
+            return redirect_to_referer(request)
         request.session['in_change'] = not request.session.get('in_change', False)
         # we started the change and need to get info
         if request.session['in_change']:
