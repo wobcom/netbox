@@ -45,7 +45,7 @@ class ChangeFormView(CreateView):
         return result
 
     def get_context_data(self, **kwargs):
-        # TODO: add possible parent changes, flag whether change is extensive
+        # TODO: add possible parent changes
         ctx = super(ChangeFormView, self).get_context_data(**kwargs)
         ctx['affected_customers'] = AffectedCustomerInlineFormSet(prefix='affected_customers')
         ctx['return_url'] = '/change/toggle'
@@ -122,6 +122,7 @@ def trigger_topdesk_change(obj):
                          app_creds=(configuration.TOPDESK_USERNAME,
                                     configuration.TOPDESK_PASSWORD))
 
+    type_ = 'extensive' if obj.change_information.is_extensive else 'simple'
     request_txt = 'Change #{} was created in Netbox by {}.\n\nSummary:\n{}'
     request_txt = request_txt.format(obj.id, obj.user,
                                      obj.executive_summary(no_markdown=True))
@@ -131,7 +132,7 @@ def trigger_topdesk_change(obj):
             'name': configuration.TOPDESK_REQ_NAME,
         },
         'briefDescription': 'Change #{} was created in Netbox'.format(obj.id),
-        'changeType': 'simple',
+        'changeType': type_,
         'request': request_txt,
     }
     # TODO: incidents work, check

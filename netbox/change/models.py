@@ -17,6 +17,7 @@ from change.utilities import Markdownify
 class ChangeInformation(models.Model):
     """Meta information about a change."""
     is_emergency = models.BooleanField(verbose_name="Is an emergency change")
+    is_extensive = models.BooleanField(verbose_name="Is an extensive change")
     affects_customer = models.BooleanField(verbose_name="Customers are affected")
     change_implications = models.TextField()
     ignore_implications = models.TextField()
