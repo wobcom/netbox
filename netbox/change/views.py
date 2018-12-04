@@ -45,6 +45,7 @@ class ChangeFormView(CreateView):
         return result
 
     def get_context_data(self, **kwargs):
+        # TODO: add possible parent changes, flag whether change is extensive
         ctx = super(ChangeFormView, self).get_context_data(**kwargs)
         ctx['affected_customers'] = AffectedCustomerInlineFormSet(prefix='affected_customers')
         ctx['return_url'] = '/change/toggle'
