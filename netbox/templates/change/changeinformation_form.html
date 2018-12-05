@@ -13,6 +13,8 @@
         {% render_field form.is_extensive %}
         {% render_field form.affects_customer %}
 
+        {{ change_parents }}
+
         <div id="customers">
           {{ affected_customers.management_form }}
           {% for form in affected_customers %}

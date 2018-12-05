@@ -18,6 +18,14 @@ from .models import ChangeInformation, ChangedField, ChangedObject, ChangeSet, \
 from .utilities import redirect_to_referer
 
 
+
+TP = topdesk.Topdesk(configuration.TOPDESK_URL,
+                     verify=configuration.TOPDESK_VERIFY_HTTPS,
+                     app_creds=(configuration.TOPDESK_USERNAME,
+                                configuration.TOPDESK_PASSWORD))
+
+
+
 @method_decorator(login_required, name='dispatch')
 class ChangeFormView(CreateView):
     model = ChangeInformation
@@ -45,11 +53,14 @@ class ChangeFormView(CreateView):
         return result
 
     def get_context_data(self, **kwargs):
-        # TODO: add possible parent changes
         ctx = super(ChangeFormView, self).get_context_data(**kwargs)
         ctx['affected_customers'] = AffectedCustomerInlineFormSet(prefix='affected_customers')
         ctx['return_url'] = '/change/toggle'
         ctx['obj_type'] = 'Change Request'
+
+        # TODO: add possible parent changes
+        ctx['change_parents'] = TP.operator_change("")
+
         return ctx
 
 
@@ -87,6 +98,7 @@ class ToggleView(View):
             changeset.change_information = change_information
 
         changeset.active = False
+        changeset.save()
 
         if (not changeset.changedfield_set.count() and
            not changeset.changedobject_set.count()):
@@ -96,8 +108,6 @@ class ToggleView(View):
             return render(request, 'change/list.html', {
                 'changeset': None
             })
-
-        changeset.save()
 
         res = render(request, 'change/list.html', {
             'changeset': changeset
@@ -117,11 +127,6 @@ class ToggleView(View):
 
 
 def trigger_topdesk_change(obj):
-    tp = topdesk.Topdesk(configuration.TOPDESK_URL,
-                         verify=configuration.TOPDESK_VERIFY_HTTPS,
-                         app_creds=(configuration.TOPDESK_USERNAME,
-                                    configuration.TOPDESK_PASSWORD))
-
     type_ = 'extensive' if obj.change_information.is_extensive else 'simple'
     request_txt = 'Change #{} was created in Netbox by {}.\n\nSummary:\n{}'
     request_txt = request_txt.format(obj.id, obj.user,
@@ -135,8 +140,7 @@ def trigger_topdesk_change(obj):
         'changeType': type_,
         'request': request_txt,
     }
-    # TODO: incidents work, check
-    res = tp.create_operator_change(data)
+    res = TP.create_operator_change(data)
     res_id = res['id']
     obj.ticket_id = res_id
     obj.save()
