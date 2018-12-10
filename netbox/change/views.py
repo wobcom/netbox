@@ -59,7 +59,7 @@ class ChangeFormView(CreateView):
         ctx['obj_type'] = 'Change Request'
 
         # TODO: add possible parent changes
-        ctx['change_parents'] = TP.operator_change("")
+        #ctx['change_parents'] = TP.operator_change("")
 
         return ctx
 
