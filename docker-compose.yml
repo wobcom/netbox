@@ -18,11 +18,7 @@ services:
         nginx['log_format'] = ''
     ports:
       - '8080:80'
-      - '8022:22'
-    volumes:
-      - '/srv/gitlab/config:/etc/gitlab'
-      - '/srv/gitlab/logs:/var/log/gitlab'
-      - '/srv/gitlab/data:/var/opt/gitlab'
+      - '22:22'
   app:
     environment:
       DATABASE_URL: postgres://netbox:netbox@db/netbox
