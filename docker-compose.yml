@@ -16,6 +16,15 @@ services:
     ports:
       - '8080:80'
       - '22:22'
+    container_name: netbox_gitlab
+  gitlab-runner:
+    depends_on:
+      - gitlab
+    container_name: netbox_gitlab_runner
+    image: "gitlab/gitlab-runner:latest"
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:rw
   app:
     environment:
       DATABASE_URL: postgres://netbox:netbox@db/netbox
