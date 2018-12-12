@@ -93,7 +93,6 @@ class ToggleView(View):
         info_id = request.session.get('change_information')
         change_information = None
         if info_id:
-            # TODO: why are there stale information IDs?
             change_information = ChangeInformation.objects.get(pk=info_id)
             changeset.change_information = change_information
 

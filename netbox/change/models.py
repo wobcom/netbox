@@ -83,6 +83,10 @@ class ChangeSet(models.Model):
         auto_now_add=True,
         editable=False
     )
+    updated = models.DateTimeField(
+        auto_now_add=True,
+        editable=False
+    )
 
     user = models.ForeignKey(
         to=User,
@@ -152,14 +156,10 @@ class ChangeSet(models.Model):
         return self.change_information.executive_summary(no_markdown=no_markdown)
 
     def in_use(self):
-        # TODO: change session duration. where should this be saved?
-        # TODO: this is very costly
         threshold = timedelta(minutes=configuration.CHANGE_SESSION_TIMEOUT)
         before = timezone.now() - threshold
 
-        return bool(self.started > before or
-                    self.changedobject_set.filter(time__gte=before).count() or
-                    self.changedfield_set.filter(time__gte=before).count())
+        return self.updated > before
 
 
 class ChangedField(models.Model):

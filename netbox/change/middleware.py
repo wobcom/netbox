@@ -13,6 +13,7 @@ from django.contrib.sessions.models import Session
 from django.db import models
 from django.db.models.signals import pre_save, post_save
 from django.shortcuts import redirect
+from django.utils import timezone
 
 from extras.models import ObjectChange
 
@@ -86,6 +87,7 @@ def install_save_hooks(request):
             )
             cf.save()
             changeset.changedfield_set.add(cf)
+        changeset.updated = timezone.now()
 
         # we don't have to call save hooks anymore, since we already treated it
         post_save.disconnect(after_save_internal,
@@ -105,6 +107,7 @@ def install_save_hooks(request):
         )
         co.save()
         changeset.changedobject_set.add(co)
+        changeset.updated = timezone.now()
 
     # we need to install them strongly, because they are closures;
     # otherwise django will throw away the weak references at the end of this
@@ -130,10 +133,16 @@ class FieldChangeMiddleware(object):
         in_change = request.session.get('in_change', False)
         to_uninstall = []
         if in_change:
-            to_uninstall = install_save_hooks(request)
-            wrong_url = request.path not in ['/change/form/', '/change/toggle/']
-            if not request.session.get('change_information') and wrong_url:
-                return redirect('/change/form')
+            c = ChangeSet.objects.get(pk=request.session['change_id'])
+            if not c.in_use():
+                messages.warning(request, "Your change session timed out.")
+                request.session['in_change'] = False
+            else:
+                to_uninstall = install_save_hooks(request)
+                wrong_url = request.path not in ['/change/form/',
+                                                 '/change/toggle/']
+                if not request.session.get('change_information') and wrong_url:
+                    return redirect('/change/form')
         else:
             # TODO: this is the simplest solution, albeit incredibly dirty;
             # needs to be discussed
