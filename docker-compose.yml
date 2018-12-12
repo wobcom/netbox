@@ -13,9 +13,6 @@ services:
   gitlab:
     image: 'gitlab/gitlab-ce:latest'
     restart: always
-    environment:
-      GITLAB_OMNIBUS_CONFIG: |
-        nginx['log_format'] = ''
     ports:
       - '8080:80'
       - '22:22'
