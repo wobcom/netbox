@@ -1,3 +1,4 @@
+import io
 import yaml
 from datetime import timedelta
 
@@ -22,28 +23,26 @@ class ChangeInformation(models.Model):
     change_implications = models.TextField()
     ignore_implications = models.TextField()
 
-    # TODO: should this be a StringIO object instead?
     def executive_summary(self, no_markdown=True):
         md = Markdownify(no_markdown=no_markdown)
-        res = ''
+        res = io.StringIO()
         if self.is_emergency:
-            res += md.bold('This change is an emergency change.')
-            res += '\n\n'
+            res.write(md.bold('This change is an emergency change.\n\n'))
 
-        res += md.h3('Implications if this change is accepted:')
-        res += '\n{}\n\n'.format(self.change_implications)
-        res += md.h3('Implications if this change is rejected:')
-        res += '\n{}\n\n'.format(self.ignore_implications)
+        res.write(md.h3('Implications if this change is accepted:'))
+        res.write('\n{}\n\n'.format(self.change_implications))
+        res.write(md.h3('Implications if this change is rejected:'))
+        res.write('\n{}\n\n'.format(self.ignore_implications))
 
         if self.affects_customer:
-            res += md.h3('This change affects customers')
-            res += '\nThe following customers are affected:\n'
+            res.write(md.h3('This change affects customers'))
+            res.write('\nThe following customers are affected:\n')
             for change in self.affectedcustomer_set.all():
-                res += '- {}'.format(change.name)
+                res.write('- {}'.format(change.name))
                 if change.is_business:
-                    res += md.bold(' (Business Customer)')
-                res += ": {}\n".format(change.products_affected)
-        return res
+                    res.write(md.bold(' (Business Customer)'))
+                res.write(": {}\n".format(change.products_affected))
+        return res.getvalue()
 
 
 class AffectedCustomer(models.Model):
