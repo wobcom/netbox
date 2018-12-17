@@ -274,6 +274,7 @@ class APIRootView(APIView):
     def get(self, request, format=None):
 
         return Response(OrderedDict((
+            ('change', reverse('change-api:api-root', request=request, format=format)),
             ('circuits', reverse('circuits-api:api-root', request=request, format=format)),
             ('dcim', reverse('dcim-api:api-root', request=request, format=format)),
             ('extras', reverse('extras-api:api-root', request=request, format=format)),

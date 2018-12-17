@@ -155,6 +155,18 @@ class ChangeSet(models.Model):
     def executive_summary(self, no_markdown=False):
         return self.change_information.executive_summary(no_markdown=no_markdown)
 
+    def apply(self):
+        for change in self.changedfield_set.all():
+            change.apply()
+        for change in self.changedobject_set.all():
+            change.apply()
+
+    def revert(self):
+        for change in self.changedfield_set.all():
+            change.revert()
+        for change in self.changedobject_set.all():
+            change.revert()
+
     def in_use(self):
         threshold = timedelta(minutes=configuration.CHANGE_SESSION_TIMEOUT)
         before = timezone.now() - threshold
@@ -210,6 +222,12 @@ class ChangedField(models.Model):
         return tpl.format(self.field, self.changed_object_type, self.old_value,
                           self.new_value)
 
+    def apply(self):
+        # TODO: what happens otherwise?
+        if getattr(self.changed_object, self.field) == self.old_value:
+            setattr(self.changed_object, self.field, self.new_value)
+            self.changed_object.save()
+
     def revert(self):
         # TODO: what happens otherwise?
         if getattr(self.changed_object, self.field) == self.new_value:
@@ -256,6 +274,15 @@ class ChangedObject(models.Model):
     def __str__(self):
         return "{} #{} was added.".format(self.changed_object_type,
                                           self.changed_object_id)
+
+    def apply(self):
+        # we have to save twice because we don't want to update but need a
+        # specific ID
+        obj = self.changed_object_type(**changed_object_data)
+        obj.id = None
+        obj.save()
+        obj.id = self.change_object_id
+        obj.save()
 
     def revert(self):
         self.changed_object.delete()

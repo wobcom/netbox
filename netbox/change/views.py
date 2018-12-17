@@ -2,19 +2,21 @@ import io
 
 from django.contrib.auth.decorators import login_required
 from django.db import models
-from django.http import HttpResponseForbidden
+from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import dateparse, timezone
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from django.views.generic.edit import CreateView
+from rest_framework.decorators import action
+from rest_framework.viewsets import ViewSet
 import gitlab
 import topdesk
 
 from netbox import configuration
 from .forms import AffectedCustomerInlineFormSet
 from .models import ChangeInformation, ChangedField, ChangedObject, ChangeSet, \
-    DRAFT, IN_REVIEW, REJECTED
+    DRAFT, IN_REVIEW, REJECTED, IMPLEMENTED
 from .utilities import redirect_to_referer
 
 
@@ -112,10 +114,7 @@ class ToggleView(View):
             'changeset': changeset
         })
 
-        for change in changeset.changedfield_set.all():
-            change.revert()
-        for change in changeset.changedobject_set.all():
-            change.revert()
+        changeset.revert()
 
         if 'change_information' not in request.session:
             return HttpResponseForbidden('You need to fill out the change form!')
@@ -215,6 +214,30 @@ class AcceptView(View):
         obj.save()
 
         return redirect('/')
+
+
+
+# needs to be a rest_framework viewset for nextbox... urgh
+@method_decorator(login_required, name='dispatch')
+class ProvisionedView(ViewSet):
+    model = ChangeSet
+    queryset = ChangeSet.objects
+    def retrieve(self, request, pk=None):
+        """
+        This view is triggered when the change was provisioned by Gitlab.
+        The status of the changeset is updated and the changes are re-applied.
+        """
+        obj = get_object_or_404(self.model, pk=pk)
+
+        if obj.status == IMPLEMENTED:
+            return HttpResponseForbidden('Change was already provisioned!')
+
+        obj.status = IMPLEMENTED
+        obj.apply()
+        obj.save()
+
+        # no content
+        return HttpResponse(status=204)
 
 
 @method_decorator(login_required, name='dispatch')

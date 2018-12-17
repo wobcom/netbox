@@ -44,6 +44,7 @@ _patterns = [
 
     # API
     url(r'^api/$', APIRootView.as_view(), name='api-root'),
+    url(r'^api/change/', include('change.api.urls')),
     url(r'^api/circuits/', include('circuits.api.urls')),
     url(r'^api/dcim/', include('dcim.api.urls')),
     url(r'^api/extras/', include('extras.api.urls')),
