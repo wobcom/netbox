@@ -15,6 +15,8 @@ class ChangeRootView(routers.APIRootView):
 
 router = routers.DefaultRouter()
 router.APIRootView = ChangeRootView
+router.register(r'accepted', views.ReviewedView, 'change-accepted')
+router.register(r'rejected', views.RejectedView, 'change-rejected')
 router.register(r'provisioned', views.ProvisionedView, 'change-provisioned')
 
 app_name = 'change-api'

@@ -16,7 +16,7 @@ import topdesk
 from netbox import configuration
 from .forms import AffectedCustomerInlineFormSet
 from .models import ChangeInformation, ChangedField, ChangedObject, ChangeSet, \
-    DRAFT, IN_REVIEW, REJECTED, IMPLEMENTED
+    DRAFT, IN_REVIEW, ACCEPTED, REJECTED, IMPLEMENTED
 from .utilities import redirect_to_referer
 
 
@@ -216,8 +216,28 @@ class AcceptView(View):
         return redirect('/')
 
 
+@method_decorator(login_required, name='dispatch')
+class RejectView(View):
+    model = ChangeSet
+
+    def get(self, request, pk=None):
+        """
+        This view is triggered when the change was rejected by the operator.
+        The status of the object is changed to rejected.
+        """
+        obj = get_object_or_404(self.model, pk=pk)
+
+        if obj.status != DRAFT:
+            return HttpResponseForbidden('Change was already accepted!')
+
+        obj.status = REJECTED
+        obj.save()
+
+        return redirect('/')
+
 
 # needs to be a rest_framework viewset for nextbox... urgh
+# TODO: combine to generic workflow endpoint with ReviewedView and RejectedView?
 @method_decorator(login_required, name='dispatch')
 class ProvisionedView(ViewSet):
     model = ChangeSet
@@ -241,20 +261,42 @@ class ProvisionedView(ViewSet):
 
 
 @method_decorator(login_required, name='dispatch')
-class RejectView(View):
+class ReviewedView(ViewSet):
     model = ChangeSet
-
-    def get(self, request, pk=None):
+    queryset = ChangeSet.objects
+    def retrieve(self, request, pk=None):
         """
-        This view is triggered when the change was rejected by the operator.
-        The status of the object is changed to rejected.
+        This view is triggered when the change was reviewed in TOPdesk.
+        The status of the changeset is updated.
         """
         obj = get_object_or_404(self.model, pk=pk)
 
-        if obj.status != DRAFT:
-            return HttpResponseForbidden('Change was already accepted!')
+        if obj.status != IN_REVIEW:
+            return HttpResponseForbidden('Change is not in review!')
+
+        obj.status = ACCEPTED
+        obj.save()
+
+        # no content
+        return HttpResponse(status=204)
+
+
+@method_decorator(login_required, name='dispatch')
+class RejectedView(ViewSet):
+    model = ChangeSet
+    queryset = ChangeSet.objects
+    def retrieve(self, request, pk=None):
+        """
+        This view is triggered when the change was rejected in TOPdesk.
+        The status of the changeset is updated.
+        """
+        obj = get_object_or_404(self.model, pk=pk)
+
+        if obj.status != IN_REVIEW:
+            return HttpResponseForbidden('Change is not in review!')
 
         obj.status = REJECTED
         obj.save()
 
-        return redirect('/')
+        # no content
+        return HttpResponse(status=204)
