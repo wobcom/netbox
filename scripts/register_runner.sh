@@ -17,4 +17,5 @@ docker exec -it $(docker inspect --format="{{.Id}}" "netbox_gitlab_runner") /usr
       --description "gitlab-runner" \
       --tag-list "docker,changes" \
       --run-untagged \
-      --locked="false"
+      --locked="false" \
+      --docker-network-mode "netbox_gitlab-network"
