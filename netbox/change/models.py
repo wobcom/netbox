@@ -27,7 +27,8 @@ class ChangeInformation(models.Model):
         md = Markdownify(no_markdown=no_markdown)
         res = io.StringIO()
         if self.is_emergency:
-            res.write(md.bold('This change is an emergency change.\n\n'))
+            res.write(md.bold('This change is an emergency change.'))
+            res.write('\n\n')
 
         res.write(md.h3('Implications if this change is accepted:'))
         res.write('\n{}\n\n'.format(self.change_implications))
