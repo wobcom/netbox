@@ -13,7 +13,7 @@ docker exec -it $(docker inspect --format="{{.Id}}" "netbox_gitlab_runner") /usr
       --url "$GITLAB_URL" \
       --registration-token "$GITLAB_SHARED_RUNNER_TOKEN" \
       --executor "docker" \
-      --docker-image "alpine:latest" \
+      --docker-image "williamyeh/ansible:alpine3" \
       --description "gitlab-runner" \
       --tag-list "docker,changes" \
       --run-untagged \
