@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 from django.contrib import messages
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.db import transaction
@@ -371,5 +369,6 @@ class VirtualMachineBulkAddInterfaceView(PermissionRequiredMixin, BulkComponentC
     form = forms.VirtualMachineBulkAddInterfaceForm
     model = Interface
     model_form = forms.InterfaceForm
+    filter = filters.VirtualMachineFilter
     table = tables.VirtualMachineTable
     default_return_url = 'virtualization:virtualmachine_list'

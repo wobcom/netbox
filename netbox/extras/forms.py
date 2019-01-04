@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 from collections import OrderedDict
 
 from django import forms
@@ -13,8 +11,8 @@ from taggit.models import Tag
 from dcim.models import DeviceRole, Platform, Region, Site
 from tenancy.models import Tenant, TenantGroup
 from utilities.forms import (
-    add_blank_choice, BootstrapMixin, BulkEditForm, FilterChoiceField, FilterTreeNodeMultipleChoiceField, LaxURLField,
-    JSONField, SlugField,
+    add_blank_choice, BootstrapMixin, BulkEditForm, BulkEditNullBooleanSelect, ContentTypeSelect, FilterChoiceField,
+    FilterTreeNodeMultipleChoiceField, LaxURLField, JSONField, SlugField,
 )
 from .constants import (
     CF_FILTER_DISABLED, CF_TYPE_BOOLEAN, CF_TYPE_DATE, CF_TYPE_INTEGER, CF_TYPE_SELECT, CF_TYPE_URL,
@@ -104,7 +102,7 @@ class CustomFieldForm(forms.ModelForm):
         self.custom_fields = []
         self.obj_type = ContentType.objects.get_for_model(self._meta.model)
 
-        super(CustomFieldForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # Add all applicable CustomFields to the form
         custom_fields = []
@@ -140,7 +138,7 @@ class CustomFieldForm(forms.ModelForm):
             cfv.save()
 
     def save(self, commit=True):
-        obj = super(CustomFieldForm, self).save(commit)
+        obj = super().save(commit)
 
         # Handle custom fields the same way we do M2M fields
         if commit:
@@ -154,7 +152,7 @@ class CustomFieldForm(forms.ModelForm):
 class CustomFieldBulkEditForm(BulkEditForm):
 
     def __init__(self, *args, **kwargs):
-        super(CustomFieldBulkEditForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.custom_fields = []
         self.obj_type = ContentType.objects.get_for_model(self.model)
@@ -177,7 +175,7 @@ class CustomFieldFilterForm(forms.Form):
 
         self.obj_type = ContentType.objects.get_for_model(self.model)
 
-        super(CustomFieldFilterForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # Add all applicable CustomFields to the form
         custom_fields = get_custom_fields_for_model(self.obj_type, filterable_only=True).items()
@@ -195,17 +193,27 @@ class TagForm(BootstrapMixin, forms.ModelForm):
 
     class Meta:
         model = Tag
-        fields = ['name', 'slug']
+        fields = [
+            'name', 'slug',
+        ]
 
 
 class AddRemoveTagsForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
-        super(AddRemoveTagsForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # Add add/remove tags fields
         self.fields['add_tags'] = TagField(required=False)
         self.fields['remove_tags'] = TagField(required=False)
+
+
+class TagFilterForm(BootstrapMixin, forms.Form):
+    model = Tag
+    q = forms.CharField(
+        required=False,
+        label='Search'
+    )
 
 
 #
@@ -224,6 +232,30 @@ class ConfigContextForm(BootstrapMixin, forms.ModelForm):
         fields = [
             'name', 'weight', 'description', 'is_active', 'regions', 'sites', 'roles', 'platforms', 'tenant_groups',
             'tenants', 'data',
+        ]
+
+
+class ConfigContextBulkEditForm(BootstrapMixin, BulkEditForm):
+    pk = forms.ModelMultipleChoiceField(
+        queryset=ConfigContext.objects.all(),
+        widget=forms.MultipleHiddenInput
+    )
+    weight = forms.IntegerField(
+        required=False,
+        min_value=0
+    )
+    is_active = forms.NullBooleanField(
+        required=False,
+        widget=BulkEditNullBooleanSelect()
+    )
+    description = forms.CharField(
+        required=False,
+        max_length=100
+    )
+
+    class Meta:
+        nullable_fields = [
+            'description',
         ]
 
 
@@ -266,28 +298,29 @@ class ImageAttachmentForm(BootstrapMixin, forms.ModelForm):
 
     class Meta:
         model = ImageAttachment
-        fields = ['name', 'image']
+        fields = [
+            'name', 'image',
+        ]
 
 
 #
 # Change logging
 #
 
-class ObjectChangeFilterForm(BootstrapMixin, CustomFieldFilterForm):
+class ObjectChangeFilterForm(BootstrapMixin, forms.Form):
     model = ObjectChange
     q = forms.CharField(
         required=False,
         label='Search'
     )
-    # TODO: Change time_0 and time_1 to time_after and time_before for django-filter==2.0
-    time_0 = forms.DateTimeField(
+    time_after = forms.DateTimeField(
         label='After',
         required=False,
         widget=forms.TextInput(
             attrs={'placeholder': 'YYYY-MM-DD hh:mm:ss'}
         )
     )
-    time_1 = forms.DateTimeField(
+    time_before = forms.DateTimeField(
         label='Before',
         required=False,
         widget=forms.TextInput(
@@ -301,4 +334,10 @@ class ObjectChangeFilterForm(BootstrapMixin, CustomFieldFilterForm):
     user = forms.ModelChoiceField(
         queryset=User.objects.order_by('username'),
         required=False
+    )
+    changed_object_type = forms.ModelChoiceField(
+        queryset=ContentType.objects.order_by('model'),
+        required=False,
+        widget=ContentTypeSelect(),
+        label='Object Type'
     )

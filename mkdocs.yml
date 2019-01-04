@@ -38,6 +38,7 @@ pages:
         - Change Logging: 'additional-features/change-logging.md'
     - Administration:
         - Replicating NetBox: 'administration/replicating-netbox.md'
+        - NetBox Shell: 'administration/netbox-shell.md'
     - API:
         - Overview: 'api/overview.md'
         - Authentication: 'api/authentication.md'
@@ -45,7 +46,9 @@ pages:
         - Examples: 'api/examples.md'
     - Development:
         - Introduction: 'development/index.md'
+        - Style Guide: 'development/style-guide.md'
         - Utility Views: 'development/utility-views.md'
+        - Extending Models: 'development/extending-models.md'
         - Release Checklist: 'development/release-checklist.md'
 
 markdown_extensions:

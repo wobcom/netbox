@@ -1,15 +1,6 @@
-from __future__ import unicode_literals
-
-import itertools
-
 import django_filters
-from django import forms
-from django.utils.encoding import force_text
+from taggit.models import Tag
 
-
-#
-# Filters
-#
 
 class NumericInFilter(django_filters.BaseInFilter, django_filters.NumberFilter):
     """
@@ -26,45 +17,21 @@ class NullableCharFieldFilter(django_filters.CharFilter):
 
     def filter(self, qs, value):
         if value != self.null_value:
-            return super(NullableCharFieldFilter, self).filter(qs, value)
+            return super().filter(qs, value)
         qs = self.get_method(qs)(**{'{}__isnull'.format(self.name): True})
         return qs.distinct() if self.distinct else qs
 
 
-class NullableModelMultipleChoiceField(forms.ModelMultipleChoiceField):
+class TagFilter(django_filters.ModelMultipleChoiceFilter):
     """
-    This field operates like a normal ModelMultipleChoiceField except that it allows for one additional choice which is
-    used to represent a value of Null. This is accomplished by creating a new iterator which first yields the null
-    choice before entering the queryset iterator, and by ignoring the null choice during cleaning. The effect is similar
-    to defining a MultipleChoiceField with:
-
-        choices = [(0, 'None')] + [(x.id, x) for x in Foo.objects.all()]
-
-    However, the above approach forces immediate evaluation of the queryset, which can cause issues when calculating
-    database migrations.
+    Match on one or more assigned tags. If multiple tags are specified (e.g. ?tag=foo&tag=bar), the queryset is filtered
+    to objects matching all tags.
     """
-    iterator = forms.models.ModelChoiceIterator
+    def __init__(self, *args, **kwargs):
 
-    def __init__(self, null_value=0, null_label='-- None --', *args, **kwargs):
-        self.null_value = null_value
-        self.null_label = null_label
-        super(NullableModelMultipleChoiceField, self).__init__(*args, **kwargs)
+        kwargs.setdefault('field_name', 'tags__slug')
+        kwargs.setdefault('to_field_name', 'slug')
+        kwargs.setdefault('conjoined', True)
+        kwargs.setdefault('queryset', Tag.objects.all())
 
-    def _get_choices(self):
-        if hasattr(self, '_choices'):
-            return self._choices
-        # Prepend the null choice to the queryset iterator
-        return itertools.chain(
-            [(self.null_value, self.null_label)],
-            self.iterator(self),
-        )
-    choices = property(_get_choices, forms.ChoiceField._set_choices)
-
-    def clean(self, value):
-        # Strip all instances of the null value before cleaning
-        if value is not None:
-            stripped_value = [x for x in value if x != force_text(self.null_value)]
-        else:
-            stripped_value = value
-        super(NullableModelMultipleChoiceField, self).clean(stripped_value)
-        return value
+        super().__init__(*args, **kwargs)

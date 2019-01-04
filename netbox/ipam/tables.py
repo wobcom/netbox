@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 import django_tables2 as tables
 from django_tables2.utils import Accessor
 
@@ -432,7 +430,7 @@ class VLANDetailTable(VLANTable):
 
 class VLANMemberTable(BaseTable):
     parent = tables.LinkColumn(order_by=['device', 'virtual_machine'])
-    name = tables.Column(verbose_name='Interface')
+    name = tables.LinkColumn(verbose_name='Interface')
     untagged = tables.TemplateColumn(
         template_code=VLAN_MEMBER_UNTAGGED,
         orderable=False
@@ -466,7 +464,7 @@ class InterfaceVLANTable(BaseTable):
 
     def __init__(self, interface, *args, **kwargs):
         self.interface = interface
-        super(InterfaceVLANTable, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
 
 #

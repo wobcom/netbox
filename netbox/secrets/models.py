@@ -1,6 +1,5 @@
-from __future__ import unicode_literals
-
 import os
+import sys
 
 from Crypto.Cipher import AES, PKCS1_OAEP
 from Crypto.PublicKey import RSA
@@ -12,7 +11,7 @@ from django.contrib.contenttypes.fields import GenericRelation
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.urls import reverse
-from django.utils.encoding import force_bytes, python_2_unicode_compatible
+from django.utils.encoding import force_bytes
 from taggit.managers import TaggableManager
 
 from extras.models import CustomFieldModel
@@ -49,7 +48,6 @@ def decrypt_master_key(master_key_cipher, private_key):
     return cipher.decrypt(master_key_cipher)
 
 
-@python_2_unicode_compatible
 class UserKey(models.Model):
     """
     A UserKey stores a user's personal RSA (public) encryption key, which is used to generate their unique encrypted
@@ -87,7 +85,7 @@ class UserKey(models.Model):
         )
 
     def __init__(self, *args, **kwargs):
-        super(UserKey, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # Store the initial public_key and master_key_cipher to check for changes on save().
         self.__initial_public_key = self.public_key
@@ -127,7 +125,7 @@ class UserKey(models.Model):
                     )
                 })
 
-        super(UserKey, self).clean()
+        super().clean()
 
     def save(self, *args, **kwargs):
 
@@ -140,7 +138,7 @@ class UserKey(models.Model):
             master_key = generate_random_key()
             self.master_key_cipher = encrypt_master_key(master_key, self.public_key)
 
-        super(UserKey, self).save(*args, **kwargs)
+        super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
 
@@ -150,7 +148,7 @@ class UserKey(models.Model):
             raise Exception("Cannot delete the last active UserKey when Secrets exist! This would render all secrets "
                             "inaccessible.")
 
-        super(UserKey, self).delete(*args, **kwargs)
+        super().delete(*args, **kwargs)
 
     def is_filled(self):
         """
@@ -187,7 +185,6 @@ class UserKey(models.Model):
         self.save()
 
 
-@python_2_unicode_compatible
 class SessionKey(models.Model):
     """
     A SessionKey stores a User's temporary key to be used for the encryption and decryption of secrets.
@@ -233,7 +230,7 @@ class SessionKey(models.Model):
         # Encrypt master key using the session key
         self.cipher = strxor.strxor(self.key, master_key)
 
-        super(SessionKey, self).save(*args, **kwargs)
+        super().save(*args, **kwargs)
 
     def get_master_key(self, session_key):
 
@@ -258,7 +255,6 @@ class SessionKey(models.Model):
         return session_key
 
 
-@python_2_unicode_compatible
 class SecretRole(ChangeLoggedModel):
     """
     A SecretRole represents an arbitrary functional classification of Secrets. For example, a user might define roles
@@ -311,7 +307,6 @@ class SecretRole(ChangeLoggedModel):
         return user in self.users.all() or user.groups.filter(pk__in=self.groups.all()).exists()
 
 
-@python_2_unicode_compatible
 class Secret(ChangeLoggedModel, CustomFieldModel):
     """
     A Secret stores an AES256-encrypted copy of sensitive data, such as passwords or secret keys. An irreversible
@@ -361,7 +356,7 @@ class Secret(ChangeLoggedModel, CustomFieldModel):
 
     def __init__(self, *args, **kwargs):
         self.plaintext = kwargs.pop('plaintext', None)
-        super(Secret, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def __str__(self):
         if self.role and self.device and self.name:
@@ -392,6 +387,7 @@ class Secret(ChangeLoggedModel, CustomFieldModel):
         s = s.encode('utf8')
         if len(s) > 65535:
             raise ValueError("Maximum plaintext size is 65535 bytes.")
+
         # Minimum ciphertext size is 64 bytes to conceal the length of short secrets.
         if len(s) <= 62:
             pad_length = 62 - len(s)
@@ -399,12 +395,14 @@ class Secret(ChangeLoggedModel, CustomFieldModel):
             pad_length = 16 - ((len(s) + 2) % 16)
         else:
             pad_length = 0
-        return (
-            chr(len(s) >> 8).encode() +
-            chr(len(s) % 256).encode() +
-            s +
-            os.urandom(pad_length)
-        )
+
+        # Python 2 compatibility
+        if sys.version_info[0] < 3:
+            header = chr(len(s) >> 8) + chr(len(s) % 256)
+        else:
+            header = bytes([len(s) >> 8]) + bytes([len(s) % 256])
+
+        return header + s + os.urandom(pad_length)
 
     def _unpad(self, s):
         """

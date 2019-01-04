@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 
 # Rack types
 RACK_TYPE_2POST = 100
@@ -29,6 +27,20 @@ RACK_FACE_REAR = 1
 RACK_FACE_CHOICES = [
     [RACK_FACE_FRONT, 'Front'],
     [RACK_FACE_REAR, 'Rear'],
+]
+
+# Rack statuses
+RACK_STATUS_RESERVED = 0
+RACK_STATUS_AVAILABLE = 1
+RACK_STATUS_PLANNED = 2
+RACK_STATUS_ACTIVE = 3
+RACK_STATUS_DEPRECATED = 4
+RACK_STATUS_CHOICES = [
+    [RACK_STATUS_ACTIVE, 'Active'],
+    [RACK_STATUS_PLANNED, 'Planned'],
+    [RACK_STATUS_RESERVED, 'Reserved'],
+    [RACK_STATUS_AVAILABLE, 'Available'],
+    [RACK_STATUS_DEPRECATED, 'Deprecated'],
 ]
 
 # Parent/child device roles
@@ -70,18 +82,31 @@ IFACE_FF_100GE_CFP2 = 1510
 IFACE_FF_100GE_CFP4 = 1520
 IFACE_FF_100GE_CPAK = 1550
 IFACE_FF_100GE_QSFP28 = 1600
+IFACE_FF_200GE_CFP2 = 1650
+IFACE_FF_200GE_QSFP56 = 1700
+IFACE_FF_400GE_QSFP_DD = 1750
 # Wireless
 IFACE_FF_80211A = 2600
 IFACE_FF_80211G = 2610
 IFACE_FF_80211N = 2620
 IFACE_FF_80211AC = 2630
 IFACE_FF_80211AD = 2640
+# SONET
+IFACE_FF_SONET_OC3 = 6100
+IFACE_FF_SONET_OC12 = 6200
+IFACE_FF_SONET_OC48 = 6300
+IFACE_FF_SONET_OC192 = 6400
+IFACE_FF_SONET_OC768 = 6500
+IFACE_FF_SONET_OC1920 = 6600
+IFACE_FF_SONET_OC3840 = 6700
 # Fibrechannel
 IFACE_FF_1GFC_SFP = 3010
 IFACE_FF_2GFC_SFP = 3020
 IFACE_FF_4GFC_SFP = 3040
 IFACE_FF_8GFC_SFP_PLUS = 3080
 IFACE_FF_16GFC_SFP_PLUS = 3160
+IFACE_FF_32GFC_SFP28 = 3320
+IFACE_FF_128GFC_QSFP28 = 3400
 # Serial
 IFACE_FF_T1 = 4000
 IFACE_FF_E1 = 4010
@@ -131,9 +156,12 @@ IFACE_FF_CHOICES = [
             [IFACE_FF_40GE_QSFP_PLUS, 'QSFP+ (40GE)'],
             [IFACE_FF_100GE_CFP, 'CFP (100GE)'],
             [IFACE_FF_100GE_CFP2, 'CFP2 (100GE)'],
+            [IFACE_FF_200GE_CFP2, 'CFP2 (200GE)'],
             [IFACE_FF_100GE_CFP4, 'CFP4 (100GE)'],
             [IFACE_FF_100GE_CPAK, 'Cisco CPAK (100GE)'],
             [IFACE_FF_100GE_QSFP28, 'QSFP28 (100GE)'],
+            [IFACE_FF_200GE_QSFP56, 'QSFP56 (200GE)'],
+            [IFACE_FF_400GE_QSFP_DD, 'QSFP-DD (400GE)'],
         ]
     ],
     [
@@ -147,6 +175,18 @@ IFACE_FF_CHOICES = [
         ]
     ],
     [
+        'SONET',
+        [
+            [IFACE_FF_SONET_OC3, 'OC-3/STM-1'],
+            [IFACE_FF_SONET_OC12, 'OC-12/STM-4'],
+            [IFACE_FF_SONET_OC48, 'OC-48/STM-16'],
+            [IFACE_FF_SONET_OC192, 'OC-192/STM-64'],
+            [IFACE_FF_SONET_OC768, 'OC-768/STM-256'],
+            [IFACE_FF_SONET_OC1920, 'OC-1920/STM-640'],
+            [IFACE_FF_SONET_OC3840, 'OC-3840/STM-1234'],
+        ]
+    ],
+    [
         'FibreChannel',
         [
             [IFACE_FF_1GFC_SFP, 'SFP (1GFC)'],
@@ -154,6 +194,8 @@ IFACE_FF_CHOICES = [
             [IFACE_FF_4GFC_SFP, 'SFP (4GFC)'],
             [IFACE_FF_8GFC_SFP_PLUS, 'SFP+ (8GFC)'],
             [IFACE_FF_16GFC_SFP_PLUS, 'SFP+ (16GFC)'],
+            [IFACE_FF_32GFC_SFP28, 'SFP28 (32GFC)'],
+            [IFACE_FF_128GFC_QSFP28, 'QSFP28 (128GFC)'],
         ]
     ],
     [
@@ -211,6 +253,36 @@ IFACE_MODE_CHOICES = [
     [IFACE_MODE_TAGGED_ALL, 'Tagged All'],
 ]
 
+# Pass-through port types
+PORT_TYPE_8P8C = 1000
+PORT_TYPE_ST = 2000
+PORT_TYPE_SC = 2100
+PORT_TYPE_FC = 2200
+PORT_TYPE_LC = 2300
+PORT_TYPE_MTRJ = 2400
+PORT_TYPE_MPO = 2500
+PORT_TYPE_LSH = 2600
+PORT_TYPE_CHOICES = [
+    [
+        'Copper',
+        [
+            [PORT_TYPE_8P8C, '8P8C'],
+        ],
+    ],
+    [
+        'Fiber Optic',
+        [
+            [PORT_TYPE_FC, 'FC'],
+            [PORT_TYPE_LC, 'LC'],
+            [PORT_TYPE_LSH, 'LSH'],
+            [PORT_TYPE_MPO, 'MPO'],
+            [PORT_TYPE_MTRJ, 'MTRJ'],
+            [PORT_TYPE_SC, 'SC'],
+            [PORT_TYPE_ST, 'ST'],
+        ]
+    ]
+]
+
 # Device statuses
 DEVICE_STATUS_OFFLINE = 0
 DEVICE_STATUS_ACTIVE = 1
@@ -237,7 +309,7 @@ SITE_STATUS_CHOICES = [
     [SITE_STATUS_RETIRED, 'Retired'],
 ]
 
-# Bootstrap CSS classes for device statuses
+# Bootstrap CSS classes for device/rack statuses
 STATUS_CLASSES = {
     0: 'warning',
     1: 'success',
@@ -255,12 +327,81 @@ CONNECTION_STATUS_CHOICES = [
     [CONNECTION_STATUS_CONNECTED, 'Connected'],
 ]
 
-# Platform -> RPC client mappings
-RPC_CLIENT_JUNIPER_JUNOS = 'juniper-junos'
-RPC_CLIENT_CISCO_IOS = 'cisco-ios'
-RPC_CLIENT_OPENGEAR = 'opengear'
-RPC_CLIENT_CHOICES = [
-    [RPC_CLIENT_JUNIPER_JUNOS, 'Juniper Junos (NETCONF)'],
-    [RPC_CLIENT_CISCO_IOS, 'Cisco IOS (SSH)'],
-    [RPC_CLIENT_OPENGEAR, 'Opengear (SSH)'],
+# Cable endpoint types
+CABLE_TERMINATION_TYPES = [
+    'consoleport', 'consoleserverport', 'interface', 'poweroutlet', 'powerport', 'frontport', 'rearport',
 ]
+
+# Cable types
+CABLE_TYPE_CAT3 = 1300
+CABLE_TYPE_CAT5 = 1500
+CABLE_TYPE_CAT5E = 1510
+CABLE_TYPE_CAT6 = 1600
+CABLE_TYPE_CAT6A = 1610
+CABLE_TYPE_CAT7 = 1700
+CABLE_TYPE_MMF_OM1 = 3010
+CABLE_TYPE_MMF_OM2 = 3020
+CABLE_TYPE_MMF_OM3 = 3030
+CABLE_TYPE_MMF_OM4 = 3040
+CABLE_TYPE_SMF = 3500
+CABLE_TYPE_POWER = 5000
+CABLE_TYPE_CHOICES = (
+    (
+        'Copper', (
+            (CABLE_TYPE_CAT3, 'CAT3'),
+            (CABLE_TYPE_CAT5, 'CAT5'),
+            (CABLE_TYPE_CAT5E, 'CAT5e'),
+            (CABLE_TYPE_CAT6, 'CAT6'),
+            (CABLE_TYPE_CAT6A, 'CAT6a'),
+            (CABLE_TYPE_CAT7, 'CAT7'),
+        ),
+    ),
+    (
+        'Fiber', (
+            (CABLE_TYPE_MMF_OM1, 'Multimode Fiber (OM1)'),
+            (CABLE_TYPE_MMF_OM2, 'Multimode Fiber (OM2)'),
+            (CABLE_TYPE_MMF_OM3, 'Multimode Fiber (OM3)'),
+            (CABLE_TYPE_MMF_OM4, 'Multimode Fiber (OM4)'),
+            (CABLE_TYPE_SMF, 'Singlemode Fiber'),
+        ),
+    ),
+    (CABLE_TYPE_POWER, 'Power'),
+)
+
+CABLE_TERMINATION_TYPE_CHOICES = {
+    # (API endpoint, human-friendly name)
+    'consoleport': ('console-ports', 'Console port'),
+    'consoleserverport': ('console-server-ports', 'Console server port'),
+    'powerport': ('power-ports', 'Power port'),
+    'poweroutlet': ('power-outlets', 'Power outlet'),
+    'interface': ('interfaces', 'Interface'),
+    'frontport': ('front-ports', 'Front panel port'),
+    'rearport': ('rear-ports', 'Rear panel port'),
+}
+
+COMPATIBLE_TERMINATION_TYPES = {
+    'consoleport': ['consoleserverport', 'frontport', 'rearport'],
+    'consoleserverport': ['consoleport', 'frontport', 'rearport'],
+    'powerport': ['poweroutlet'],
+    'poweroutlet': ['powerport'],
+    'interface': ['interface', 'circuittermination', 'frontport', 'rearport'],
+    'frontport': ['consoleport', 'consoleserverport', 'interface', 'frontport', 'rearport', 'circuittermination'],
+    'rearport': ['consoleport', 'consoleserverport', 'interface', 'frontport', 'rearport', 'circuittermination'],
+    'circuittermination': ['interface', 'frontport', 'rearport'],
+}
+
+LENGTH_UNIT_METER = 1200
+LENGTH_UNIT_CENTIMETER = 1100
+LENGTH_UNIT_MILLIMETER = 1000
+LENGTH_UNIT_FOOT = 2100
+LENGTH_UNIT_INCH = 2000
+CABLE_LENGTH_UNIT_CHOICES = (
+    (LENGTH_UNIT_METER, 'Meters'),
+    (LENGTH_UNIT_CENTIMETER, 'Centimeters'),
+    (LENGTH_UNIT_FOOT, 'Feet'),
+    (LENGTH_UNIT_INCH, 'Inches'),
+)
+RACK_DIMENSION_UNIT_CHOICES = (
+    (LENGTH_UNIT_MILLIMETER, 'Millimeters'),
+    (LENGTH_UNIT_INCH, 'Inches'),
+)

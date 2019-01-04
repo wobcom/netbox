@@ -1,8 +1,6 @@
-from __future__ import unicode_literals
-
 from collections import OrderedDict
-import pytz
 
+import pytz
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
@@ -68,18 +66,38 @@ class ChoiceField(Field):
                     self._choices[k2] = v2
             else:
                 self._choices[k] = v
-        super(ChoiceField, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
     def to_representation(self, obj):
-        return {'value': obj, 'label': self._choices[obj]}
+        if obj is '':
+            return None
+        data = OrderedDict([
+            ('value', obj),
+            ('label', self._choices[obj])
+        ])
+        return data
 
     def to_internal_value(self, data):
-        # Hotwiring boolean values
+
+        # Provide an explicit error message if the request is trying to write a dict
+        if type(data) is dict:
+            raise ValidationError('Value must be passed directly (e.g. "foo": 123); do not use a dictionary.')
+
+        # Check for string representations of boolean/integer values
         if hasattr(data, 'lower'):
             if data.lower() == 'true':
-                return True
-            if data.lower() == 'false':
-                return False
+                data = True
+            elif data.lower() == 'false':
+                data = False
+            else:
+                try:
+                    data = int(data)
+                except ValueError:
+                    pass
+
+        if data not in self._choices:
+            raise ValidationError("{} is not a valid choice.".format(data))
+
         return data
 
 
@@ -121,7 +139,7 @@ class SerializedPKRelatedField(PrimaryKeyRelatedField):
     def __init__(self, serializer, **kwargs):
         self.serializer = serializer
         self.pk_field = kwargs.pop('pk_field', None)
-        super(SerializedPKRelatedField, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
     def to_representation(self, value):
         return self.serializer(value, context={'request': self.context['request']}).data
@@ -165,6 +183,13 @@ class WritableNestedSerializer(ModelSerializer):
     """
     Returns a nested representation of an object on read, but accepts only a primary key on write.
     """
+    def run_validators(self, value):
+        # DRF v3.8.2: Skip running validators on the data, since we only accept an integer PK instead of a dict. For
+        # more context, see:
+        #  https://github.com/encode/django-rest-framework/pull/5922/commits/2227bc47f8b287b66775948ffb60b2d9378ac84f
+        #  https://github.com/encode/django-rest-framework/issues/6053
+        return
+
     def to_internal_value(self, data):
         if data is None:
             return None
@@ -190,7 +215,7 @@ class ModelViewSet(_ModelViewSet):
         if isinstance(kwargs.get('data', {}), list):
             kwargs['many'] = True
 
-        return super(ModelViewSet, self).get_serializer(*args, **kwargs)
+        return super().get_serializer(*args, **kwargs)
 
     def get_serializer_class(self):
 
@@ -214,7 +239,7 @@ class FieldChoicesViewSet(ViewSet):
     fields = []
 
     def __init__(self, *args, **kwargs):
-        super(FieldChoicesViewSet, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # Compile a dict of all fields in this view
         self._fields = OrderedDict()
