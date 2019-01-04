@@ -291,52 +291,6 @@ class CircuitFilterForm(BootstrapMixin, CustomFieldFilterForm):
 #
 
 class CircuitTerminationForm(BootstrapMixin, forms.ModelForm):
-    site = forms.ModelChoiceField(
-        queryset=Site.objects.all(),
-        widget=forms.Select(
-            attrs={'filter-for': 'rack'}
-        )
-    )
-    rack = ChainedModelChoiceField(
-        queryset=Rack.objects.all(),
-        chains=(
-            ('site', 'site'),
-        ),
-        required=False,
-        label='Rack',
-        widget=APISelect(
-            api_url='/api/dcim/racks/?site_id={{site}}',
-            attrs={'filter-for': 'device', 'nullable': 'true'}
-        )
-    )
-    device = ChainedModelChoiceField(
-        queryset=Device.objects.all(),
-        chains=(
-            ('site', 'site'),
-            ('rack', 'rack'),
-        ),
-        required=False,
-        label='Device',
-        widget=APISelect(
-            api_url='/api/dcim/devices/?site_id={{site}}&rack_id={{rack}}',
-            display_field='display_name',
-            attrs={'filter-for': 'interface'}
-        )
-    )
-    interface = ChainedModelChoiceField(
-        queryset=Interface.objects.connectable().select_related(
-            'circuit_termination', 'connected_as_a', 'connected_as_b'
-        ),
-        chains=(
-            ('device', 'device'),
-        ),
-        required=False,
-        label='Interface',
-        widget=APISelect(
-            api_url='/api/dcim/interfaces/?device_id={{device}}&type=physical',
-            disabled_indicator='is_connected'
-        )
-    )
 
     class Meta:
         model = CircuitTermination
