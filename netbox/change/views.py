@@ -212,7 +212,9 @@ class AcceptView(View):
         open_gitlab_issue(obj)
 
         # register in surveyor
-        requests.post('{}/{}/{}'.format(TOPDESK_SURVEYOR_URL, obj.id, res_id))
+        requests.post('{}/{}/{}'.format(configuration.TOPDESK_SURVEYOR_URL,
+                                        obj.id,
+                                        res_id))
 
         obj.status = IN_REVIEW
         obj.save()
@@ -242,7 +244,6 @@ class RejectView(View):
 
 # needs to be a rest_framework viewset for nextbox... urgh
 # TODO: combine to generic workflow endpoint with ReviewedView and RejectedView?
-@method_decorator(login_required, name='dispatch')
 class ProvisionedView(ViewSet):
     model = ChangeSet
     queryset = ChangeSet.objects
@@ -264,7 +265,6 @@ class ProvisionedView(ViewSet):
         return HttpResponse(status=204)
 
 
-@method_decorator(login_required, name='dispatch')
 class ReviewedView(ViewSet):
     model = ChangeSet
     queryset = ChangeSet.objects
@@ -285,7 +285,6 @@ class ReviewedView(ViewSet):
         return HttpResponse(status=204)
 
 
-@method_decorator(login_required, name='dispatch')
 class RejectedView(ViewSet):
     model = ChangeSet
     queryset = ChangeSet.objects
