@@ -11,6 +11,7 @@ from django.views.generic.edit import CreateView
 from rest_framework.decorators import action
 from rest_framework.viewsets import ViewSet
 import gitlab
+import requests
 import topdesk
 
 from netbox import configuration
@@ -209,6 +210,9 @@ class AcceptView(View):
         obj.ticket_id = res_id
         obj.save()
         open_gitlab_issue(obj)
+
+        # register in surveyor
+        requests.post('{}/{}/{}'.format(TOPDESK_SURVEYOR_URL, obj.id, res_id))
 
         obj.status = IN_REVIEW
         obj.save()

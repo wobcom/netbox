@@ -170,3 +170,4 @@ GITLAB_URL = 'gitlab.com'
 GITLAB_TOKEN = '1234'
 GITLAB_PROJECT_ID = '1'
 CHANGE_SESSION_TIMEOUT = 10
+TOPDESK_SURVEYOR_URL = 'http://topdesk-surveyor.com'
