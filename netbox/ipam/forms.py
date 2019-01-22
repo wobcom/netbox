@@ -1021,7 +1021,6 @@ class VLANCSVForm(forms.ModelForm):
     tenant = forms.ModelChoiceField(
         queryset=Tenant.objects.all(),
         to_field_name='name',
-        required=False,
         help_text='Name of assigned tenant',
         error_messages={
             'invalid_choice': 'Tenant not found.',

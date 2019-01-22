@@ -752,8 +752,6 @@ class VLAN(ChangeLoggedModel, CustomFieldModel):
         to='tenancy.Tenant',
         on_delete=models.PROTECT,
         related_name='vlans',
-        blank=True,
-        null=True
     )
     status = models.PositiveSmallIntegerField(
         choices=VLAN_STATUS_CHOICES,

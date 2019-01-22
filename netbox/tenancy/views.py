@@ -125,3 +125,10 @@ class TenantBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
     filter = filters.TenantFilter
     table = tables.TenantTable
     default_return_url = 'tenancy:tenant_list'
+
+
+class VxLANListView(View):
+    def get(self, request):
+        return render(request, 'tenancy/vxlan_list.html', {
+            'tenants': Tenant.objects.prefetch_related('vlans')
+        })

@@ -1,4 +1,5 @@
 from django.contrib.contenttypes.fields import GenericRelation
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.urls import reverse
 from taggit.managers import TaggableManager
@@ -68,6 +69,10 @@ class Tenant(ChangeLoggedModel, CustomFieldModel):
         to='extras.CustomFieldValue',
         content_type_field='obj_type',
         object_id_field='obj_id'
+    )
+    vxlan_prefix = models.PositiveSmallIntegerField(
+        verbose_name='VxLAN ID prefix',
+        validators=[MinValueValidator(1), MaxValueValidator(4094)]
     )
 
     tags = TaggableManager()
