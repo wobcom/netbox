@@ -67,6 +67,17 @@ IMPLEMENTED = 4
 REJECTED = 5
 
 
+# Custom YAML Constructor for transclusions
+class Include(yaml.YAMLObject):
+     yaml_tag = '!include'
+
+     def __init__(self, file_name):
+         self.file_name = file_name
+
+     def __repr__(self):
+         return "{}({})".format(self.__class__.__name__, self.file_name)
+
+
 class ChangeSet(models.Model):
     """
     A change set always refers to a ticket, has a set of changes, and can be
@@ -120,13 +131,15 @@ class ChangeSet(models.Model):
             changed_object = {}
 
             for field in change.changed_object._meta.fields:
-                # we do not go deeply into the object relations. if we find a
-                # foreign key, we ignore it
-                if field.__class__ == models.ForeignKey:
-                    continue
-
+                # if we find a foreign key, we create an include pragma
                 fname = field.name
-                changed_object[fname] = getattr(change.changed_object, fname)
+                val = getattr(change.changed_object, fname)
+                if field.__class__ == models.ForeignKey:
+                    if val:
+                        val = Include('{}_{}.yaml'.format(fname, val))
+                    changed_object[fname] = val
+                else:
+                    changed_object[fname] = str(val)
 
             # we add a dict containing the field name, new and old values,
             # type of the changed object, set "updated" as the action, and
