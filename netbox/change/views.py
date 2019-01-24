@@ -162,7 +162,7 @@ ISSUE_TXT = """Change #{} was created in Netbox by {} (TOPdesk ticket {}).
 def open_gitlab_issue(o):
     gl = gitlab.Gitlab(configuration.GITLAB_URL, configuration.GITLAB_TOKEN)
     project = gl.projects.get(configuration.GITLAB_PROJECT_ID)
-    yaml = o.to_yaml()
+    actions = o.to_actions()
     issue_txt = ISSUE_TXT.format(o.id, o.user, o.ticket_id,
                                  o.executive_summary(), yaml)
     emergency_label = ['emergency'] if o.change_information.is_emergency else []
@@ -176,11 +176,7 @@ def open_gitlab_issue(o):
         'branch': branch_name,
         'commit_message': 'Autocommit from Netbox (Change #{})'.format(o.id),
         'author_name': 'Netbox',
-        'actions': [{
-            'action': 'create',
-            'file_path': 'files/change_{}.yaml'.format(o.id),
-            'content': yaml
-        }]
+        'actions': actions,
     })
     project.mergerequests.create({
         'title': 'Change #{} was created in Netbox'.format(o.id),

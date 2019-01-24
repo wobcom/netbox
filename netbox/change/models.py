@@ -11,6 +11,7 @@ from django.shortcuts import redirect
 from django.utils import timezone
 
 from netbox import configuration
+from dcim.models import Device
 
 from change.utilities import Markdownify
 
@@ -67,17 +68,6 @@ IMPLEMENTED = 4
 REJECTED = 5
 
 
-# Custom YAML Constructor for transclusions
-class Include(yaml.YAMLObject):
-     yaml_tag = '!include'
-
-     def __init__(self, file_name):
-         self.file_name = file_name
-
-     def __repr__(self):
-         return "{}({})".format(self.__class__.__name__, self.file_name)
-
-
 class ChangeSet(models.Model):
     """
     A change set always refers to a ticket, has a set of changes, and can be
@@ -119,52 +109,77 @@ class ChangeSet(models.Model):
         )
     )
 
-    def to_yaml(self):
-        """
-        This function serializes the changeset to yaml. It will serialize all
-        changed fields and object and gather some metadata to dump.
-        """
-        changes = []
-        # we go through all our changed fields to append them to the serialized
-        # list
-        for change in self.changedfield_set.all():
-            changed_object = {}
+    def yamlify_extra_fields(self, instance):
+        res = {}
+        for field in instance.custom_field_values.all():
+            res[field.field.name] = field.value()
+        return res
 
-            for field in change.changed_object._meta.fields:
-                # if we find a foreign key, we create an include pragma
-                fname = field.name
-                val = getattr(change.changed_object, fname)
-                if field.__class__ == models.ForeignKey:
-                    if val:
-                        val = Include('{}_{}.yaml'.format(fname, val))
-                    changed_object[fname] = val
-                else:
-                    changed_object[fname] = str(val)
+    def yamlify_device_type(self, device_type):
+        return {
+            'manufacturer': device_type.manufacturer,
+            'model': device_type.model,
+            'part_number': device_type.part_number,
+            **self.yamlify_extra_fields(self, device_type)
+        }
 
-            # we add a dict containing the field name, new and old values,
-            # type of the changed object, set "updated" as the action, and
-            # record what the object looks like
-            changes.append({
-                "field": change.field,
-                "old_value": change.old_value,
-                "new_value": change.new_value,
-                "type": str(change.changed_object_type),
-                "changed_object": changed_object,
-                "action": "updated",
+    def yamlify_vlan(self, vlan):
+        return {
+            'vlan_id': vlan.vid,
+            'vxlan_prefix': vlan.tenant.vxlan_prefix
+        }
+
+    def yamlify_interface(self, interface):
+        return {
+            'name': interface.name,
+            #TODO 'lag': interface.lag,
+            'enabled': interface.enabled,
+            'mac_address': interface.mac_address,
+            'mtu': interface.mtu,
+            'mgmnt_only': interface.mgmt_only,
+            'mode': interface.get_mode_display(),
+            'untagged_vlan': self.yamlify_vlan(interface.untagged_vlan),
+            'tagged_vlans': [self.yamlify_vlan(v) for v
+                                                  in interface.tagged_vlans]
+        }
+
+    def yamlify_device(self, device):
+        res = {
+            'type': self.yamlify_device_type(device.device_type),
+            'role': device.device_role.name,
+            'platform': device.platform.name,
+            'name': device.name,
+            'serial': device.serial,
+            'asset_tag': device.asset_tag,
+            'status': device.get_status_display(),
+            'management_ip4': {
+                'address': str(device.primary_ip4.address.ip),
+                'prefix_length': str(device.primary_ip6.address.prefixlen),
+            },
+            'management_ip6': {
+                'address': str(device.primary_ip6.address.ip),
+                'prefix_length': str(device.primary_ip6.address.prefixlen),
+            },
+            'tags': device.tags.names(),
+            **self.yamlify_extra_fields(self, device)
+        }
+        interfaces = []
+        for interface in device.interfaces.all():
+            interfaces.append(self.yamlify_interface(interface)
+        res['interfaces'] = interfaces
+        return yaml.dump(res, explicit_start=True, default_flow_style=False)
+
+    def to_action(self):
+        """Creates Gitlab action for all devices"""
+        actions = []
+
+        for device in Device.objects.all():
+            actions.append({
+                'action': 'create',
+                'file_path': 'host_vars/{}/main.yaml'.format(device.name),
+                'content': self.yamlify_device(device)
             })
-
-        # we go through all our changed objects to append them to the serialized
-        # list; it's mostly the same as above.
-        for change in self.changedobject_set.all():
-            # less info, because we do not need to record the previous value;
-            # everything has changed!
-            changes.append({
-                "type": str(change.changed_object_type),
-                "changed_object": change.changed_object_data,
-                "action": "added",
-            })
-
-        return yaml.dump(changes, explicit_start=True, default_flow_style=False)
+        return actions
 
     def executive_summary(self, no_markdown=False):
         return self.change_information.executive_summary(no_markdown=no_markdown)
