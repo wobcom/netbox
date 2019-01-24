@@ -151,11 +151,6 @@ ISSUE_TXT = """Change #{} was created in Netbox by {} (TOPdesk ticket {}).
 ## Executive Summary
 
 {}
-
-## YAML Summary:
-```yaml
-{}
-```
 """
 
 
@@ -164,7 +159,7 @@ def open_gitlab_issue(o):
     project = gl.projects.get(configuration.GITLAB_PROJECT_ID)
     actions = o.to_actions()
     issue_txt = ISSUE_TXT.format(o.id, o.user, o.ticket_id,
-                                 o.executive_summary(), yaml)
+                                 o.executive_summary())
     emergency_label = ['emergency'] if o.change_information.is_emergency else []
     branch_name = 'change_{}'.format(o.id)
     project.branches.create({

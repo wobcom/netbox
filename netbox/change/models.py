@@ -116,38 +116,43 @@ class ChangeSet(models.Model):
         return res
 
     def yamlify_device_type(self, device_type):
-        return {
-            'manufacturer': device_type.manufacturer,
-            'model': device_type.model,
-            'part_number': device_type.part_number,
-            **self.yamlify_extra_fields(self, device_type)
-        }
+        if device_type:
+            return {
+                'manufacturer': device_type.manufacturer.name
+                                if device_type.manufacturer else None,
+                'model': device_type.model,
+                'part_number': device_type.part_number,
+                **self.yamlify_extra_fields(device_type)
+            }
 
     def yamlify_vlan(self, vlan):
-        return {
-            'vlan_id': vlan.vid,
-            'vxlan_prefix': vlan.tenant.vxlan_prefix
-        }
+        if vlan:
+            return {
+                'vlan_id': vlan.vid,
+                'vxlan_prefix': vlan.tenant.vxlan_prefix
+            }
 
     def yamlify_interface(self, interface):
-        return {
-            'name': interface.name,
-            #TODO 'lag': interface.lag,
-            'enabled': interface.enabled,
-            'mac_address': interface.mac_address,
-            'mtu': interface.mtu,
-            'mgmnt_only': interface.mgmt_only,
-            'mode': interface.get_mode_display(),
-            'untagged_vlan': self.yamlify_vlan(interface.untagged_vlan),
-            'tagged_vlans': [self.yamlify_vlan(v) for v
-                                                  in interface.tagged_vlans]
-        }
+        if interface:
+            return {
+                'name': interface.name,
+                #TODO 'lag': interface.lag,
+                'enabled': interface.enabled,
+                'mac_address': interface.mac_address,
+                'mtu': interface.mtu,
+                'mgmnt_only': interface.mgmt_only,
+                'mode': interface.get_mode_display(),
+                'untagged_vlan': self.yamlify_vlan(interface.untagged_vlan),
+                'tagged_vlans': [self.yamlify_vlan(v)
+                                            for v
+                                            in interface.tagged_vlans.all()]
+            }
 
     def yamlify_device(self, device):
         res = {
             'type': self.yamlify_device_type(device.device_type),
-            'role': device.device_role.name,
-            'platform': device.platform.name,
+            'role': device.device_role.name if device.device_role else None,
+            'platform': device.platform.name if device.platform else None,
             'name': device.name,
             'serial': device.serial,
             'asset_tag': device.asset_tag,
@@ -155,22 +160,22 @@ class ChangeSet(models.Model):
             'management_ip4': {
                 'address': str(device.primary_ip4.address.ip),
                 'prefix_length': str(device.primary_ip6.address.prefixlen),
-            },
+            } if device.primary_ip4 else None,
             'management_ip6': {
                 'address': str(device.primary_ip6.address.ip),
                 'prefix_length': str(device.primary_ip6.address.prefixlen),
-            },
-            'tags': device.tags.names(),
-            **self.yamlify_extra_fields(self, device)
+            } if device.primary_ip6 else None,
+            'tags': list(device.tags.names()),
+            **self.yamlify_extra_fields(device)
         }
         interfaces = []
         for interface in device.interfaces.all():
-            interfaces.append(self.yamlify_interface(interface)
+            interfaces.append(self.yamlify_interface(interface))
         res['interfaces'] = interfaces
         return yaml.dump(res, explicit_start=True, default_flow_style=False)
 
-    def to_action(self):
-        """Creates Gitlab action for all devices"""
+    def to_actions(self):
+        """Creates Gitlab actions for all devices"""
         actions = []
 
         for device in Device.objects.all():

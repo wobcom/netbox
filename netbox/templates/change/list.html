@@ -55,10 +55,6 @@
       <a href="/change/reject/{{changeset.pk}}" class="btn btn-default">
         Reject
       </a>
-      <h4>Generated YAML</h4>
-      <pre>
-        {{ changeset.to_yaml }}
-      </pre>
     {% else %}
       <h3>Nothing to do!</h3>
       <p>We didn’t detect any changes in this set.</p>
