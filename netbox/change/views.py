@@ -202,10 +202,11 @@ class AcceptView(View):
         obj.save()
         open_gitlab_issue(obj)
 
-        # register in surveyor
-        requests.post('{}/{}/{}'.format(configuration.TOPDESK_SURVEYOR_URL,
-                                        obj.id,
-                                        res_id))
+        # register in surveyor if its configured
+        if configuration.TOPDESK_SURVEYOR_URL:
+            requests.post('{}/{}/{}'.format(configuration.TOPDESK_SURVEYOR_URL,
+                                            obj.id,
+                                            res_id))
 
         obj.status = IN_REVIEW
         obj.save()
