@@ -136,7 +136,8 @@ class ChangeSet(models.Model):
         if interface:
             return {
                 'name': interface.name,
-                #TODO 'lag': interface.lag,
+                'lag': self.yamlify_interface(interface.lag) if interface.lag
+                                                             else None,
                 'enabled': interface.enabled,
                 'mac_address': interface.mac_address,
                 'mtu': interface.mtu,
