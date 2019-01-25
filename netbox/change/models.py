@@ -12,6 +12,7 @@ from django.utils import timezone
 
 from netbox import configuration
 from dcim.models import Device
+from ipam.models import IPADDRESS_ROLE_LOOPBACK
 
 from change.utilities import Markdownify
 
@@ -158,6 +159,30 @@ class ChangeSet(models.Model):
             res["ip_addresses"] = addresses
             return res
 
+    def vxlan_from_vlan(loopback, vlan):
+        return {
+            'vid': vlan.vid,
+            'prefix': vlan.tenant.vxlan_prefix,
+            'vxlan_local_tunnelip': loopback,
+            'bridge_learning': False,
+        }
+
+    def get_loopback_for_device(device):
+        i = device.interfaces
+        return str(
+            i.filter(ip_adresses__role=IPADDRESS_ROLE_LOOPBACK).first()
+        )
+
+    def get_device_vxlans(device):
+        vxlans = []
+        loopback = self.get_loopback_for_device(device)
+        for interface in device.interfaces.all():
+            vxlans.append(self.vxlan_from_vlan(loopback,
+                                               interface.untagged_vlan))
+            vxlans.extend([self.vxlan_from_vlan(loopback, v)
+                                    for v
+                                    in interface.tagged_vlans.all()])
+
     def yamlify_device(self, device):
         res = {
             'type': self.yamlify_device_type(device.device_type),
@@ -182,6 +207,16 @@ class ChangeSet(models.Model):
         for interface in device.interfaces.all():
             interfaces.append(self.yamlify_interface(interface))
         res['interfaces'] = interfaces
+        res['vteps'] = self.get_device_vxlans(device)
+        # TODO multiple bridges
+        res['bridges'] = [{
+            'vteps': res['vteps'],
+            'devices': Device.objects.values_list('name', flat=True),
+            'vids': [v['vid'] for v in res['vteps']],
+            'bridge_stp': True,
+            # just one per device allowed!
+            'bridge_vlan_aware': True,
+        }]
         return yaml.dump(res, explicit_start=True, default_flow_style=False)
 
     def to_actions(self):
