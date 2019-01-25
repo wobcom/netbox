@@ -112,7 +112,7 @@ class ChangeSet(models.Model):
     def yamlify_extra_fields(self, instance):
         res = {}
         for field in instance.custom_field_values.all():
-            res[field.field.name] = field.value()
+            res[field.field.name] = field.value
         return res
 
     def yamlify_device_type(self, device_type):
@@ -134,7 +134,7 @@ class ChangeSet(models.Model):
 
     def yamlify_interface(self, interface):
         if interface:
-            return {
+            res = {
                 'name': interface.name,
                 'lag': self.yamlify_interface(interface.lag) if interface.lag
                                                              else None,
@@ -144,10 +144,19 @@ class ChangeSet(models.Model):
                 'mgmnt_only': interface.mgmt_only,
                 'mode': interface.get_mode_display(),
                 'untagged_vlan': self.yamlify_vlan(interface.untagged_vlan),
+                'tags': list(interface.tags.names()),
                 'tagged_vlans': [self.yamlify_vlan(v)
                                             for v
                                             in interface.tagged_vlans.all()]
             }
+            addresses = []
+            for ip_addr in interface.ip_addresses.all():
+                addresses.append({
+                    'address': str(ip_addr.address.ip),
+                    'prefix_length': str(ip_addr.address.prefixlen),
+                })
+            res["ip_addresses"] = addresses
+            return res
 
     def yamlify_device(self, device):
         res = {
@@ -181,7 +190,6 @@ class ChangeSet(models.Model):
 
         for device in Device.objects.all():
             actions.append({
-                'action': 'create',
                 'file_path': 'host_vars/{}/main.yaml'.format(device.name),
                 'content': self.yamlify_device(device)
             })
@@ -320,4 +328,5 @@ class ChangedObject(models.Model):
         obj.save()
 
     def revert(self):
-        self.changed_object.delete()
+        if self.changed_object:
+            self.changed_object.delete()

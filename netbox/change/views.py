@@ -154,6 +154,18 @@ ISSUE_TXT = """Change #{} was created in Netbox by {} (TOPdesk ticket {}).
 """
 
 
+def check_actions(project, actions, branch):
+    new_actions = []
+    for action in actions:
+        try:
+            project.files.get(action['file_path'], ref=branch)
+            action['action'] = 'update'
+        except Exception as e:
+            action['action'] = 'create'
+        new_actions.append(action)
+    return new_actions
+
+
 def open_gitlab_issue(o):
     gl = gitlab.Gitlab(configuration.GITLAB_URL, configuration.GITLAB_TOKEN)
     project = gl.projects.get(configuration.GITLAB_PROJECT_ID)
@@ -162,10 +174,12 @@ def open_gitlab_issue(o):
                                  o.executive_summary())
     emergency_label = ['emergency'] if o.change_information.is_emergency else []
     branch_name = 'change_{}'.format(o.id)
+    commit_msg = 'Autocommit from Netbox (Change #{})'.format(o.id)
     project.branches.create({
         'branch': branch_name,
         'ref': 'master'
     })
+    actions = check_actions(project, actions, branch_name)
     project.commits.create({
         'id': project.id,
         'branch': branch_name,
