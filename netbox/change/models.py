@@ -141,6 +141,7 @@ class ChangeSet(models.Model):
                                                              else None,
                 'enabled': interface.enabled,
                 'mac_address': interface.mac_address,
+                'clag_id': interface.clag_id,
                 'mtu': interface.mtu,
                 'mgmnt_only': interface.mgmt_only,
                 'mode': interface.get_mode_display(),

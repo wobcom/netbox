@@ -1820,6 +1820,7 @@ class InterfaceForm(BootstrapMixin, forms.ModelForm):
         fields = [
             'device', 'name', 'form_factor', 'enabled', 'lag', 'mac_address', 'mtu', 'mgmt_only', 'description',
             'mode', 'untagged_vlan', 'tagged_vlans', 'tags',
+            'clag_id'
         ]
         widgets = {
             'device': forms.HiddenInput(),
@@ -1990,6 +1991,9 @@ class InterfaceCreateForm(ComponentForm, forms.Form):
         required=False
     )
     tags = TagField(
+        required=False
+    )
+    clag_id = forms.IntegerField(
         required=False
     )
 

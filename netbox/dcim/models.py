@@ -1981,6 +1981,11 @@ class Interface(CableTermination, ComponentModel):
         blank=True,
         verbose_name='Tagged VLANs'
     )
+    clag_id = models.PositiveIntegerField(
+        blank=True,
+        null=True,
+        verbose_name='CLAG ID',
+    )
 
     objects = InterfaceManager()
     tags = TaggableManager()
