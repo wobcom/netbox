@@ -72,7 +72,7 @@ class Tenant(ChangeLoggedModel, CustomFieldModel):
     )
     vxlan_prefix = models.PositiveSmallIntegerField(
         verbose_name='VxLAN ID prefix',
-        validators=[MinValueValidator(1), MaxValueValidator(4094)]
+        validators=[MinValueValidator(1), MaxValueValidator(16777215)] # 24 bit
     )
 
     tags = TaggableManager()
