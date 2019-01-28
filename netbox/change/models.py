@@ -145,14 +145,22 @@ class ChangeSet(models.Model):
         # in.
         clagged = Interface.objects.filter(clag_id=cid).order_by('id')
 
-        if clagged.count < 2:
+        if clagged.count() < 2:
             raise ValueError(
                 'clag {} is only set on one interface'.format(cid)
             )
 
         # This is the address range specified by Cumulus in:
         # https://support.cumulusnetworks.com/hc/en-us/articles/203837076
-        return '44:38:39:ff:{:02X}:{:02X}'.format(clagged[0], clagged[1])
+        return '44:38:39:ff:{:02X}:{:02X}'.format(clagged[0].id,
+                                                  clagged[1].id)
+
+    def get_clag_info(self, interface):
+        if interface.clag_id:
+            return {
+                'id': interface.clag_id,
+                'mac_address': self.get_clag_mac(interface),
+            }
 
     def yamlify_interface(self, interface):
         if interface:
@@ -162,13 +170,13 @@ class ChangeSet(models.Model):
                                                              else None,
                 'enabled': interface.enabled,
                 'mac_address': interface.mac_address,
-                'clag_id': interface.clag_id,
-                'clag_mac_address': self.get_clag_mac(interface),
+                'clag': self.get_clag_info(interface),
                 'mtu': interface.mtu,
                 'mgmnt_only': interface.mgmt_only,
                 'mode': interface.get_mode_display(),
                 'untagged_vlan': self.yamlify_vlan(interface.untagged_vlan),
                 'tags': list(interface.tags.names()),
+                'description': interface.description,
                 'tagged_vlans': [self.yamlify_vlan(v)
                                             for v
                                             in interface.tagged_vlans.all()]
