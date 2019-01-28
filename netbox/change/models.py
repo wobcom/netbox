@@ -11,7 +11,7 @@ from django.shortcuts import redirect
 from django.utils import timezone
 
 from netbox import configuration
-from dcim.models import Device
+from dcim.models import Device, Interface
 from ipam.models import IPADDRESS_ROLE_LOOPBACK
 
 from change.utilities import Markdownify
@@ -133,6 +133,27 @@ class ChangeSet(models.Model):
                 'vxlan_prefix': vlan.tenant.vxlan_prefix
             }
 
+    def get_clag_mac(self, interface):
+        cid = interface.clag_id
+        if not cid:
+            return None
+
+        # N.B. We assume that we are only wiring up exactly two interfaces at
+        # the moment. There is a small chance of collision, since the mac
+        # address is based on the IDs % 255, so if the modulus value is the same
+        # for BOTH clagged mac addresses, we will collide. Tough world we live
+        # in.
+        clagged = Interface.objects.filter(clag_id=cid).order_by('id')
+
+        if clagged.count < 2:
+            raise ValueError(
+                'clag {} is only set on one interface'.format(cid)
+            )
+
+        # This is the address range specified by Cumulus in:
+        # https://support.cumulusnetworks.com/hc/en-us/articles/203837076
+        return '44:38:39:ff:{:02X}:{:02X}'.format(clagged[0], clagged[1])
+
     def yamlify_interface(self, interface):
         if interface:
             res = {
@@ -142,6 +163,7 @@ class ChangeSet(models.Model):
                 'enabled': interface.enabled,
                 'mac_address': interface.mac_address,
                 'clag_id': interface.clag_id,
+                'clag_mac_address': self.get_clag_mac(interface),
                 'mtu': interface.mtu,
                 'mgmnt_only': interface.mgmt_only,
                 'mode': interface.get_mode_display(),
