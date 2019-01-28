@@ -2,7 +2,8 @@ import io
 
 from django.contrib.auth.decorators import login_required
 from django.db import models
-from django.http import HttpResponse, HttpResponseForbidden
+from django.http import HttpResponse, HttpResponseForbidden, \
+    HttpResponseServerError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import dateparse, timezone
 from django.utils.decorators import method_decorator
@@ -211,16 +212,21 @@ class AcceptView(View):
         if obj.status != DRAFT:
             return HttpResponseForbidden('Change was already accepted!')
 
-        res_id = trigger_topdesk_change(obj)
-        obj.ticket_id = res_id
-        obj.save()
-        open_gitlab_issue(obj)
+        try:
+            res_id = trigger_topdesk_change(obj)
+            obj.ticket_id = res_id
+            obj.save()
+            open_gitlab_issue(obj)
 
-        # register in surveyor if its configured
-        if configuration.TOPDESK_SURVEYOR_URL:
-            requests.post('{}/{}/{}'.format(configuration.TOPDESK_SURVEYOR_URL,
-                                            obj.id,
-                                            res_id))
+            # register in surveyor if its configured
+            if configuration.TOPDESK_SURVEYOR_URL:
+                requests.post('{}/{}/{}'.format(
+                    configuration.TOPDESK_SURVEYOR_URL,
+                    obj.id,
+                    res_id)
+                )
+        except ConnectionError as e:
+            return HttpResponseServerError(str(e))
 
         obj.status = IN_REVIEW
         obj.save()
