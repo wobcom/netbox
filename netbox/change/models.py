@@ -160,7 +160,7 @@ class ChangeSet(models.Model):
             res["ip_addresses"] = addresses
             return res
 
-    def vxlan_from_vlan(loopback, vlan):
+    def vxlan_from_vlan(self, loopback, vlan):
         return {
             'vid': vlan.vid,
             'prefix': vlan.tenant.vxlan_prefix,
@@ -168,18 +168,19 @@ class ChangeSet(models.Model):
             'bridge_learning': False,
         }
 
-    def get_loopback_for_device(device):
+    def get_loopback_for_device(self, device):
         i = device.interfaces
         return str(
-            i.filter(ip_adresses__role=IPADDRESS_ROLE_LOOPBACK).first()
+            i.filter(ip_addresses__role=IPADDRESS_ROLE_LOOPBACK).first()
         )
 
-    def get_device_vxlans(device):
+    def get_device_vxlans(self, device):
         vxlans = []
         loopback = self.get_loopback_for_device(device)
         for interface in device.interfaces.all():
-            vxlans.append(self.vxlan_from_vlan(loopback,
-                                               interface.untagged_vlan))
+            if interface.untagged_vlan:
+                vxlans.append(self.vxlan_from_vlan(loopback,
+                                                   interface.untagged_vlan))
             vxlans.extend([self.vxlan_from_vlan(loopback, v)
                                     for v
                                     in interface.tagged_vlans.all()])
@@ -212,8 +213,8 @@ class ChangeSet(models.Model):
         # TODO multiple bridges
         res['bridges'] = [{
             'vteps': res['vteps'],
-            'devices': Device.objects.values_list('name', flat=True),
-            'vids': [v['vid'] for v in res['vteps']],
+            'devices': list(Device.objects.values_list('name', flat=True)),
+            'vids': [v['vid'] for v in res['vteps']] if res['vteps'] else None,
             'bridge_stp': True,
             # just one per device allowed!
             'bridge_vlan_aware': True,
