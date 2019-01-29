@@ -248,6 +248,8 @@ class ChangeSet(models.Model):
             'bridge_stp': True,
             # just one per device allowed!
             'bridge_vlan_aware': True,
+            # for multiple bridges: counter
+            'name': 'bridge0',
         }]
         return yaml.dump(res, explicit_start=True, default_flow_style=False)
 
