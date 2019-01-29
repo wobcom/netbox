@@ -162,12 +162,17 @@ class ChangeSet(models.Model):
                 'mac_address': self.get_clag_mac(interface),
             }
 
+    def child_interfaces(self, interface):
+        return list(
+            Interface.objects.filter(lag=interface).values_list('name',
+                                                                flat=True)
+        )
+
     def yamlify_interface(self, interface):
         if interface:
             res = {
                 'name': interface.name,
-                'lag': self.yamlify_interface(interface.lag) if interface.lag
-                                                             else None,
+                'child_interfaces': self.child_interfaces(interface)
                 'enabled': interface.enabled,
                 'mac_address': interface.mac_address,
                 'clag': self.get_clag_info(interface),
