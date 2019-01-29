@@ -133,34 +133,65 @@ class ChangeSet(models.Model):
                 'vxlan_prefix': vlan.tenant.vxlan_prefix
             }
 
-    def get_clag_mac(self, interface):
-        cid = interface.clag_id
-        if not cid:
-            return None
-
+    def get_clag_mac(self, primary, secondary):
         # N.B. We assume that we are only wiring up exactly two interfaces at
         # the moment. There is a small chance of collision, since the mac
         # address is based on the IDs % 255, so if the modulus value is the same
         # for BOTH clagged mac addresses, we will collide. Tough world we live
         # in.
-        clagged = Interface.objects.filter(clag_id=cid).order_by('id')
-
-        if clagged.count() < 2:
-            raise ValueError(
-                'clag {} is only set on one interface'.format(cid)
-            )
-
         # This is the address range specified by Cumulus in:
         # https://support.cumulusnetworks.com/hc/en-us/articles/203837076
-        return '44:38:39:ff:{:02X}:{:02X}'.format(clagged[0].id,
-                                                  clagged[1].id)
+        return '44:38:39:ff:{:02X}:{:02X}'.format(primary.id, secondary.id)
 
-    def get_clag_info(self, interface):
-        if interface.clag_id:
-            return {
-                'id': interface.clag_id,
-                'mac_address': self.get_clag_mac(interface),
-            }
+    def get_peerlink(self, interface):
+        children = Interface.objects.filter(lag=interface)
+        peer_lag = None
+        for child in children:
+            if not child.cable:
+                raise ValueError(
+                    'Peerlink child {} has no connection'.format(child.id)
+                )
+            peer_interface = child.trace()[0][2]
+            this_peer_lag = peer_interface.lag
+            if not this_peer_lag:
+                raise ValueError(
+                    'Peerlink child {} does not belong to a LAG'.format(peer_interface.id)
+                )
+            if this_peer_lag.name != 'peerlink':
+                raise ValueError(
+                    'LAG {} was expected to be a peer link'.format(this_peer_lag.id)
+                )
+            if peer_lag and not peer_lag.id == this_peer_lag.id:
+                raise ValueError(
+                    'Not all bond slaves of interface {} belong to the same peer link'.format(interface.id)
+                )
+            peer_lag = this_peer_lag
+        return peer_lag
+
+
+    def yamlify_peerlink(self, interface):
+        peer_interface = self.get_peerlink(interface)
+        if interface.id < peer_interface.id:
+            peer_ip = '169.254.1.1'
+            addr = '169.254.1.2/30'
+            primary = interface
+            secondary = peer_interface
+        else:
+            peer_ip = '169.254.1.2'
+            addr = '169.254.1.1/30'
+            primary = peer_interface
+            secondary = interface
+        return {
+            'clagd_sys_mac': self.get_clag_mac(primary, secondary),
+            'vid': 4094,
+            'clagd_peer_ip': peer_ip,
+            'address': addr,
+            'priority': 1000,
+            'bond_slaves': self.child_interfaces(interface),
+            'clagd_backup_ip': self.get_loopback_for_device(
+                                    peer_interface.device
+                               ),
+        }
 
     def child_interfaces(self, interface):
         return list(
@@ -172,10 +203,9 @@ class ChangeSet(models.Model):
         if interface:
             res = {
                 'name': interface.name,
-                'child_interfaces': self.child_interfaces(interface)
+                'bond_slaves': self.child_interfaces(interface),
                 'enabled': interface.enabled,
                 'mac_address': interface.mac_address,
-                'clag': self.get_clag_info(interface),
                 'mtu': interface.mtu,
                 'mgmnt_only': interface.mgmt_only,
                 'mode': interface.get_mode_display(),
@@ -195,30 +225,40 @@ class ChangeSet(models.Model):
             res["ip_addresses"] = addresses
             return res
 
-    def vxlan_from_vlan(self, loopback, vlan):
+    def vxlan_from_vlan(self, loopback, prefix, vlan):
         return {
+            'name': 'vxlan{}_{}'.format(prefix, vlan.vid),
             'vid': vlan.vid,
-            'prefix': vlan.tenant.vxlan_prefix,
+            'prefix': prefix,
             'vxlan_local_tunnelip': loopback,
             'bridge_learning': False,
         }
 
     def get_loopback_for_device(self, device):
-        i = device.interfaces
+        ins = device.interfaces
+        i = ins.filter(ip_addresses__role=IPADDRESS_ROLE_LOOPBACK).first()
         return str(
-            i.filter(ip_addresses__role=IPADDRESS_ROLE_LOOPBACK).first()
+            i.ip_addresses.filter(role=IPADDRESS_ROLE_LOOPBACK)
+                          .first()
+                          .address
+                          .ip
         )
 
     def get_device_vxlans(self, device):
         vxlans = []
         loopback = self.get_loopback_for_device(device)
+        if not device.tenant:
+            return vxlans
+        prefix = device.tenant.vxlan_prefix
         for interface in device.interfaces.all():
             if interface.untagged_vlan:
                 vxlans.append(self.vxlan_from_vlan(loopback,
+                                                   prefix,
                                                    interface.untagged_vlan))
-            vxlans.extend([self.vxlan_from_vlan(loopback, v)
+            vxlans.extend([self.vxlan_from_vlan(loopback, prefix, v)
                                     for v
                                     in interface.tagged_vlans.all()])
+        return vxlans
 
     def yamlify_device(self, device):
         res = {
@@ -231,7 +271,7 @@ class ChangeSet(models.Model):
             'status': device.get_status_display(),
             'management_ip4': {
                 'address': str(device.primary_ip4.address.ip),
-                'prefix_length': str(device.primary_ip6.address.prefixlen),
+                'prefix_length': str(device.primary_ip4.address.prefixlen),
             } if device.primary_ip4 else None,
             'management_ip6': {
                 'address': str(device.primary_ip6.address.ip),
@@ -242,19 +282,28 @@ class ChangeSet(models.Model):
         }
         interfaces = []
         for interface in device.interfaces.all():
-            interfaces.append(self.yamlify_interface(interface))
+            if interface.name == 'peerlink':
+                res['peerlink'] = self.yamlify_peerlink(interface)
+            else:
+                interfaces.append(self.yamlify_interface(interface))
         res['interfaces'] = interfaces
         res['vteps'] = self.get_device_vxlans(device)
         # TODO multiple bridges
         res['bridges'] = [{
-            'vteps': res['vteps'],
-            'devices': list(Device.objects.values_list('name', flat=True)),
             'vids': [v['vid'] for v in res['vteps']] if res['vteps'] else None,
             'bridge_stp': True,
             # just one per device allowed!
             'bridge_vlan_aware': True,
             # for multiple bridges: counter
             'name': 'bridge0',
+            'child_interfaces': [v['name'] for v in res['vteps']] +
+                list(
+                    device.interfaces.exclude(mgmt_only=True)
+                                 .exclude(lag__isnull=False)
+                                 .exclude(tags__name__in=['evpn'])
+                                 .exclude(name="lo")
+                                 .values_list("name", flat=True)
+                )
         }]
         return yaml.dump(res, explicit_start=True, default_flow_style=False)
 
