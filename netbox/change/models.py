@@ -187,7 +187,7 @@ class ChangeSet(models.Model):
             'clagd_peer_ip': peer_ip,
             'address': addr,
             'priority': 1000,
-            'bond_slaves': self.child_interfaces(interface),
+            'child_interfaces': self.child_interfaces(interface),
             'clagd_backup_ip': self.get_loopback_for_device(
                                     peer_interface.device
                                ),
@@ -203,7 +203,7 @@ class ChangeSet(models.Model):
         if interface:
             res = {
                 'name': interface.name,
-                'bond_slaves': self.child_interfaces(interface),
+                'child_interfaces': self.child_interfaces(interface),
                 'enabled': interface.enabled,
                 'mac_address': interface.mac_address,
                 'mtu': interface.mtu,
@@ -261,6 +261,9 @@ class ChangeSet(models.Model):
                                     in interface.tagged_vlans.all()])
         return vxlans
 
+    def is_leaf(self, device):
+        return device.device_role.name == "leaf"
+
     def yamlify_device(self, device):
         res = {
             'type': self.yamlify_device_type(device.device_type),
@@ -270,6 +273,7 @@ class ChangeSet(models.Model):
             'serial': device.serial,
             'asset_tag': device.asset_tag,
             'status': device.get_status_display(),
+            'loopback': self.get_loopback_for_device(device),
             'management_ip4': {
                 'address': str(device.primary_ip4.address.ip),
                 'prefix_length': str(device.primary_ip4.address.prefixlen),
@@ -290,22 +294,24 @@ class ChangeSet(models.Model):
         res['interfaces'] = interfaces
         res['vteps'] = self.get_device_vxlans(device)
         # TODO multiple bridges
-        res['bridges'] = [{
-            'vids': [v['vid'] for v in res['vteps']] if res['vteps'] else None,
-            'bridge_stp': True,
-            # just one per device allowed!
-            'bridge_vlan_aware': True,
-            # for multiple bridges: counter
-            'name': 'bridge0',
-            'child_interfaces': [v['name'] for v in res['vteps']] +
-                list(
-                    device.interfaces.exclude(mgmt_only=True)
-                                 .exclude(lag__isnull=False)
-                                 .exclude(tags__name__in=['evpn'])
-                                 .exclude(name="lo")
-                                 .values_list("name", flat=True)
-                )
-        }]
+        res['bridges'] = []
+        if self.is_leaf(device):
+            res['bridges'].append({
+                'vids': [v['vid'] for v in res['vteps']] if res['vteps'] else None,
+                'bridge_stp': True,
+                # just one per device allowed!
+                'bridge_vlan_aware': True,
+                # for multiple bridges: counter
+                'name': 'bridge0',
+                'child_interfaces': [v['name'] for v in res['vteps']] +
+                    list(
+                        device.interfaces.exclude(mgmt_only=True)
+                                     .exclude(lag__isnull=False)
+                                     .exclude(tags__name__in=['evpn'])
+                                     .exclude(name="lo")
+                                     .values_list("name", flat=True)
+                    )
+            })
         return yaml.dump(res, explicit_start=True, default_flow_style=False)
 
     def to_actions(self):
