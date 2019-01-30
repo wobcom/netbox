@@ -297,7 +297,7 @@ class ChangeSet(models.Model):
         res['bridges'] = []
         if self.is_leaf(device):
             res['bridges'].append({
-                'vids': [v['vid'] for v in res['vteps']] if res['vteps'] else None,
+                'vids': [v['vid'] for v in res['vteps']] if res['vteps'] else [],
                 'bridge_stp': True,
                 # just one per device allowed!
                 'bridge_vlan_aware': True,

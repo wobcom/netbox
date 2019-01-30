@@ -976,6 +976,10 @@ class VLANForm(BootstrapMixin, TenancyForm, CustomFieldForm):
             }
         )
     )
+    tenant = forms.ModelChoiceField(
+        queryset=Tenant.objects.all(),
+        required=True,
+    )
     group = ChainedModelChoiceField(
         queryset=VLANGroup.objects.all(),
         chains=(
@@ -1022,6 +1026,7 @@ class VLANCSVForm(forms.ModelForm):
         queryset=Tenant.objects.all(),
         to_field_name='name',
         help_text='Name of assigned tenant',
+        required=True,
         error_messages={
             'invalid_choice': 'Tenant not found.',
         }
