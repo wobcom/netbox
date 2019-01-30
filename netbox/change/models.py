@@ -129,7 +129,7 @@ class ChangeSet(models.Model):
     def yamlify_vlan(self, vlan):
         if vlan:
             return {
-                'vlan_id': vlan.vid,
+                'vid': vlan.vid,
                 'vxlan_prefix': vlan.tenant.vxlan_prefix
             }
 
