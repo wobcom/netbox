@@ -237,12 +237,13 @@ class ChangeSet(models.Model):
     def get_loopback_for_device(self, device):
         ins = device.interfaces
         i = ins.filter(ip_addresses__role=IPADDRESS_ROLE_LOOPBACK).first()
-        return str(
-            i.ip_addresses.filter(role=IPADDRESS_ROLE_LOOPBACK)
-                          .first()
-                          .address
-                          .ip
-        )
+        if i:
+            return str(
+                i.ip_addresses.filter(role=IPADDRESS_ROLE_LOOPBACK)
+                              .first()
+                              .address
+                              .ip
+            )
 
     def get_device_vxlans(self, device):
         vxlans = []
