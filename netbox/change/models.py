@@ -317,12 +317,14 @@ class ChangeSet(models.Model):
     def to_actions(self):
         """Creates Gitlab actions for all devices"""
         actions = []
+        self.apply()
 
         for device in Device.objects.all():
             actions.append({
                 'file_path': 'host_vars/{}/main.yaml'.format(device.name),
                 'content': self.yamlify_device(device)
             })
+        self.revert()
         return actions
 
     def executive_summary(self, no_markdown=False):
