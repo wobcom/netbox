@@ -125,8 +125,9 @@ SITE_BLACKLIST = ["add/", "edit/", "delete/", "import/", "change/toggle/"]
 
 class FieldChangeMiddleware(object):
     """
-    This very simple middleware checks the `in_change` cookie. If the cookie is
-    set, it installs the save hooks.
+    This  middleware checks whether we or someone else is in change and wires
+    up the world accordingly. Its in-depth documentation can be found in the
+    docs/ directory, because it's pretty gnarly.
     """
     def __init__(self, get_response):
         self.get_response = get_response
@@ -136,10 +137,7 @@ class FieldChangeMiddleware(object):
         to_uninstall = []
         if in_change:
             c = ChangeSet.objects.get(pk=request.session['change_id'])
-            if not c.in_use():
-                messages.warning(request, "Your change session timed out.")
-                request.session['in_change'] = False
-            else:
+            if c.in_use():
                 # we do not install the hooks if we're currently toggling,
                 # because otherwise our reverts would be recorded
                 if request.path != '/change/toggle/':
@@ -148,22 +146,25 @@ class FieldChangeMiddleware(object):
                                                  '/change/toggle/']
                 if not request.session.get('change_information') and wrong_url:
                     return redirect('/change/form')
+            else:
+                messages.warning(request, "Your change session timed out.")
+                request.session['in_change'] = False
         else:
             # TODO: this is the simplest solution, albeit incredibly dirty;
             # needs to be discussed
             cs = ChangeSet.objects.filter(active=True)
-            if cs.count():
+            request.session['foreign_change'] = cs.exists()
+            if cs.exists():
                 c = cs.first()
                 # this costs a lot for every request
-                if not c.in_use():
-                    c.active = False
-                    c.save()
-                else:
-                    if any(request.path.endswith(s) for s in SITE_BLACKLIST):
-                        return redirect_to_referer(request)
+                if c.in_use():
                     message = "User {} is currently making a change."
                     messages.warning(request, message.format(c.user.username))
-            request.session['foreign_change'] = cs.count()
+                    if any(request.path.endswith(s) for s in SITE_BLACKLIST):
+                        return redirect_to_referer(request)
+                else:
+                    c.active = False
+                    c.save()
 
         response = self.get_response(request)
         for handler in to_uninstall:

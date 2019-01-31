@@ -312,6 +312,7 @@ class ChangeSet(models.Model):
                                      .values_list("name", flat=True)
                     )
             })
+        res = {'device': res}
         return yaml.dump(res, explicit_start=True, default_flow_style=False)
 
     def to_actions(self):
