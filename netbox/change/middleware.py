@@ -138,6 +138,8 @@ class FieldChangeMiddleware(object):
                 messages.warning(request, "Your change session timed out.")
                 request.session['in_change'] = False
             else:
+                # we do not install the hooks if we're currently toggling,
+                # because otherwise our reverts would be recorded
                 if request.path != '/change/toggle/':
                     to_uninstall = install_save_hooks(request)
                 wrong_url = request.path not in ['/change/form/',
