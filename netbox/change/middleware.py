@@ -118,7 +118,7 @@ def install_save_hooks(request):
             {'handler': after_save_internal, 'signal': post_save}]
 
 
-SITE_BLACKLIST = ["add/", "edit/", "delete/", "import/", "change/toggle"]
+SITE_BLACKLIST = ["add/", "edit/", "delete/", "import/", "change/toggle/"]
 
 
 class FieldChangeMiddleware(object):
@@ -138,7 +138,8 @@ class FieldChangeMiddleware(object):
                 messages.warning(request, "Your change session timed out.")
                 request.session['in_change'] = False
             else:
-                to_uninstall = install_save_hooks(request)
+                if request.path != '/change/toggle/':
+                    to_uninstall = install_save_hooks(request)
                 wrong_url = request.path not in ['/change/form/',
                                                  '/change/toggle/']
                 if not request.session.get('change_information') and wrong_url:
