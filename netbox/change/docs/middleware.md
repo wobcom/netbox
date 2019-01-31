@@ -10,8 +10,8 @@ Let’s start with a TL;DR bullet point overview:
 - Otherwise we don’t do anything.
 
 Either of the first points is fairly complex on its own and deals with a couple
-of different things at once, so let’s look at each of them individually for a
-bit.
+of different things at once. Let’s go through the source code of the function
+together, and find out what exactly!
 
 ```python
 in_change = request.session.get('in_change', False)
