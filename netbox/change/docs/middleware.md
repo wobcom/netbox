@@ -13,7 +13,7 @@ Either of the first points is fairly complex on its own and deals with a couple
 of different things at once, so let’s look at each of them individually for a
 bit.
 
-````python
+```python
 in_change = request.session.get('in_change', False)
 to_uninstall = []
 if in_change:
