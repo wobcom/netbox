@@ -382,8 +382,8 @@ class ChangedField(models.Model):
     field = models.CharField(
         max_length=40
     )
-    old_value = models.CharField(max_length=150, null=True)
-    new_value = models.CharField(max_length=150, null=True)
+    old_value = models.BinaryField(null=True)
+    new_value = models.BinaryField(null=True)
     user = models.ForeignKey(
         to=User,
         on_delete=models.SET_NULL,
@@ -393,20 +393,25 @@ class ChangedField(models.Model):
     )
 
     def __str__(self):
+        old = pickle.loads(self.old_value)
+        new = pickle.loads(self.new_value)
         tpl = "Field {} of {} was changed from '{}' to '{}'."
-        return tpl.format(self.field, self.changed_object_type, self.old_value,
-                          self.new_value)
+        return tpl.format(self.field, self.changed_object_type, old, new)
 
     def apply(self):
         # TODO: what happens otherwise?
-        if getattr(self.changed_object, self.field) == self.old_value:
-            setattr(self.changed_object, self.field, self.new_value)
+        old = pickle.loads(self.old_value)
+        new = pickle.loads(self.new_value)
+        if getattr(self.changed_object, self.field) == old:
+            setattr(self.changed_object, self.field, new)
             self.changed_object.save()
 
     def revert(self):
         # TODO: what happens otherwise?
-        if getattr(self.changed_object, self.field) == self.new_value:
-            setattr(self.changed_object, self.field, self.old_value)
+        old = pickle.loads(self.old_value)
+        new = pickle.loads(self.new_value)
+        if getattr(self.changed_object, self.field) == new:
+            setattr(self.changed_object, self.field, old)
             self.changed_object.save()
 
 

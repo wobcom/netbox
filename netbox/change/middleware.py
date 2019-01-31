@@ -83,8 +83,8 @@ def install_save_hooks(request):
             cf = ChangedField(
                 changed_object=instance,
                 field=field.name,
-                old_value=getattr(old_instance, field.name),
-                new_value=getattr(instance, field.name),
+                old_value=pickle.dumps(getattr(old_instance, field.name)),
+                new_value=pickle.dumps(getattr(instance, field.name)),
                 user=request.user,
             )
             cf.save()
