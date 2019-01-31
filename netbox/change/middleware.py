@@ -7,6 +7,8 @@ Some models are blacklisted to avoid recursion. This should probably be changed
 to be a whitelist instead, since right now all Django models are captured as
 well (TODO).
 """
+import pickle
+
 from django.contrib import messages
 from django.contrib.auth.models import User
 from django.contrib.sessions.models import Session
@@ -102,7 +104,7 @@ def install_save_hooks(request):
             return
         co = ChangedObject(
             changed_object=instance,
-            changed_object_data=_model_to_dict(instance),
+            changed_object_data=pickle.dumps(instance),
             user=request.user,
         )
         co.save()

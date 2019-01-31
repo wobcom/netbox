@@ -1,9 +1,9 @@
 import io
+import pickle
 import yaml
 from datetime import timedelta
 
 from django.contrib.auth.models import User
-from django.contrib.postgres import fields
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
@@ -437,7 +437,7 @@ class ChangedObject(models.Model):
         ct_field='changed_object_type',
         fk_field='changed_object_id'
     )
-    changed_object_data = fields.JSONField()
+    changed_object_data = models.BinaryField()
     user = models.ForeignKey(
         to=User,
         on_delete=models.SET_NULL,
@@ -453,10 +453,11 @@ class ChangedObject(models.Model):
     def apply(self):
         # we have to save twice because we don't want to update but need a
         # specific ID
-        obj = self.changed_object_type(**changed_object_data)
+        obj = pickle.loads(self.changed_object_data)
+        id_ = obj.id
         obj.id = None
         obj.save()
-        obj.id = self.change_object_id
+        obj.id = id_
         obj.save()
 
     def revert(self):
