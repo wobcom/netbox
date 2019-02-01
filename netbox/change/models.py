@@ -168,7 +168,6 @@ class ChangeSet(models.Model):
             peer_lag = this_peer_lag
         return peer_lag
 
-
     def yamlify_peerlink(self, interface):
         peer_interface = self.get_peerlink(interface)
         if interface.id < peer_interface.id:
