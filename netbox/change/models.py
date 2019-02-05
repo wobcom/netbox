@@ -164,7 +164,7 @@ class ChangeSet(models.Model):
                 addresses.append({
                     'address': str(ip_addr.address.ip),
                     'prefix_length': str(ip_addr.address.prefixlen),
-                    'tags': list(interface.tags.names()),
+                    'tags': list(ip_addr.tags.names()),
                 })
             res["ip_addresses"] = addresses
             return res
