@@ -25,6 +25,5 @@ urlpatterns = [
     url(r'^tenants/(?P<slug>[\w-]+)/edit/$', views.TenantEditView.as_view(), name='tenant_edit'),
     url(r'^tenants/(?P<slug>[\w-]+)/delete/$', views.TenantDeleteView.as_view(), name='tenant_delete'),
     url(r'^tenants/(?P<slug>[\w-]+)/changelog/$', ObjectChangeLogView.as_view(), name='tenant_changelog', kwargs={'model': Tenant}),
-    url(r'^tenants/vxlan$', views.VxLANListView.as_view(), name='vxlan_list'),
 
 ]

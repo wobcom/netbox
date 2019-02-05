@@ -48,7 +48,7 @@ class TenantForm(BootstrapMixin, CustomFieldForm):
     class Meta:
         model = Tenant
         fields = [
-            'name', 'slug', 'group', 'description', 'vxlan_prefix', 'comments',
+            'name', 'slug', 'group', 'description', 'comments',
             'tags',
         ]
 
