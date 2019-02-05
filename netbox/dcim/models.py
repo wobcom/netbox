@@ -2058,7 +2058,7 @@ class Interface(CableTermination, ComponentModel):
             })
 
         # Only a LAG can have LAG members
-        if self.form_factor != IFACE_FF_LAG and self.member_interfaces.exists():
+        if self.form_factor not in [IFACE_FF_LAG, IFACE_FF_BRIDGE] and self.member_interfaces.exists():
             raise ValidationError({
                 'form_factor': "Cannot change interface form factor; it has LAG members ({}).".format(
                     ", ".join([iface.name for iface in self.member_interfaces.all()])
