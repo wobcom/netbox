@@ -59,7 +59,7 @@
     {# Connection or type #}
     {% if iface.is_lag %}
         <td colspan="2" class="text-muted">
-            LAG interface<br />
+            {% if iface.is_bridge %}Bridge{% else %}LAG{% endif %} interface<br />
             <small class="text-muted">
                 {% for member in iface.member_interfaces.all %}
                     <a href="#interface_{{ member.name }}">{{ member }}</a>{% if not forloop.last %}, {% endif %}
