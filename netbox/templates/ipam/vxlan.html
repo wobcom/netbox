@@ -1,0 +1,140 @@
+{% extends '_base.html' %}
+{% load helpers %}
+
+{% block header %}
+    <div class="row">
+        <div class="col-sm-8 col-md-9">
+            <ol class="breadcrumb">
+                <li><a href="{% url 'ipam:vxlan_list' %}">VxLANs</a></li>
+                {% if vxlan.site %}
+                    <li><a href="{% url 'ipam:vxlan_list' %}?site={{ vxlan.site.slug }}">{{ vxlan.site }}</a></li>
+                {% endif %}
+                {% if vxlan.group %}
+                    <li><a href="{% url 'ipam:vxlan_list' %}?group={{ vxlan.group.slug }}">{{ vxlan.group }}</a></li>
+                {% endif %}
+                <li>{{ vxlan }}</li>
+            </ol>
+        </div>
+        <div class="col-sm-4 col-md-3">
+        <form action="{% url 'ipam:vxlan_list' %}" method="get">
+            <div class="input-group">
+                <input type="text" name="q" class="form-control" placeholder="Search VxLANs" />
+                <span class="input-group-btn">
+                    <button type="submit" class="btn btn-primary">
+                        <span class="fa fa-search" aria-hidden="true"></span>
+                    </button>
+                </span>
+            </div>
+        </form>
+        </div>
+    </div>
+    <div class="pull-right">
+        {% if perms.ipam.change_vxlan %}
+            <a href="{% url 'ipam:vxlan_edit' pk=vxlan.pk %}" class="btn btn-warning">
+                <span class="fa fa-pencil" aria-hidden="true"></span>
+                Edit this VxLAN
+            </a>
+        {% endif %}
+        {% if perms.ipam.delete_vxlan %}
+            <a href="{% url 'ipam:vxlan_delete' pk=vxlan.pk %}" class="btn btn-danger">
+                <span class="fa fa-trash" aria-hidden="true"></span>
+                Delete this VxLAN
+            </a>
+        {% endif %}
+    </div>
+    <h1>{% block title %}VxLAN {{ vxlan.display_name }}{% endblock %}</h1>
+    {% include 'inc/created_updated.html' with obj=vxlan %}
+    <ul class="nav nav-tabs" style="margin-bottom: 20px">
+        <li role="presentation"{% if not active_tab %} class="active"{% endif %}>
+            <a href="{% url 'ipam:vxlan' pk=vxlan.pk %}">VxLAN</a>
+        </li>
+        <li role="presentation"{% if active_tab == 'members' %} class="active"{% endif %}>
+            <a href="{% url 'ipam:vxlan_members' pk=vxlan.pk %}">Members <span class="badge">{{ vxlan.get_members.count }}</span></a>
+        </li>
+        <li role="presentation"{% if active_tab == 'changelog' %} class="active"{% endif %}>
+            <a href="{% url 'ipam:vxlan_changelog' pk=vxlan.pk %}">Changelog</a>
+        </li>
+    </ul>
+{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <div class="col-md-6">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <strong>VxLAN</strong>
+                </div>
+                <table class="table table-hover panel-body attr-table">
+                    <tr>
+                        <td>Site</td>
+                        <td>
+                            {% if vxlan.site %}
+                                {% if vxlan.site.region %}
+                                    <a href="{{ vxlan.site.region.get_absolute_url }}">{{ vxlan.site.region }}</a>
+                                    <i class="fa fa-angle-right"></i>
+                                {% endif %}
+                                <a href="{% url 'dcim:site' slug=vxlan.site.slug %}">{{ vxlan.site }}</a>
+                            {% else %}
+                                <span class="text-muted">None</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Group</td>
+                        <td>
+                            {% if vxlan.group %}
+                                <a href="{{ vxlan.group.get_absolute_url }}">{{ vxlan.group }}</a>
+                            {% else %}
+                                <span class="text-muted">None</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>VxLAN ID</td>
+                        <td>{{ vxlan.vid }}</td>
+                    </tr>
+                    <tr>
+                        <td>Name</td>
+                        <td>{{ vxlan.name }}</td>
+                    </tr>
+                    <tr>
+                        <td>Tenant</td>
+                        <td>
+                            {% if vxlan.tenant %}
+                                {% if vxlan.tenant.group %}
+                                    <a href="{{ vxlan.tenant.group.get_absolute_url }}">{{ vxlan.tenant.group }}</a>
+                                    <i class="fa fa-angle-right"></i>
+                                {% endif %}
+                                <a href="{{ vxlan.tenant.get_absolute_url }}">{{ vxlan.tenant }}</a>
+                            {% else %}
+                                <span class="text-muted">None</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Status</td>
+                        <td>
+                            <span class="label label-{{ vxlan.get_status_class }}">{{ vxlan.get_status_display }}</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Role</td>
+                        <td>
+                            {% if vxlan.role %}
+                                <a href="{% url 'ipam:vxlan_list' %}?role={{ vxlan.role.slug }}">{{ vxlan.role }}</a>
+                            {% else %}
+                                <span class="text-muted">None</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Description</td>
+                        <td>{{ vxlan.description|placeholder }}</td>
+                    </tr>
+                </table>
+            </div>
+            {% include 'inc/custom_fields_panel.html' with obj=vxlan %}
+            {% include 'extras/inc/tags_panel.html' with tags=vxlan.tags.all url='ipam:vxlan_list' %}
+        </div>
+    </div>
+{% endblock %}

@@ -667,6 +667,57 @@ class IPAddress(ChangeLoggedModel, CustomFieldModel):
         return ROLE_CHOICE_CLASSES[self.role]
 
 
+class VxLANGroup(ChangeLoggedModel):
+    """
+    A VxLAN group is an arbitrary collection of VxLANs within which VNIs and names must be unique.
+    """
+    name = models.CharField(
+        max_length=50
+    )
+    slug = models.SlugField()
+    site = models.ForeignKey(
+        to='dcim.Site',
+        on_delete=models.PROTECT,
+        related_name='vxlan_groups',
+        blank=True,
+        null=True
+    )
+
+    csv_headers = ['name', 'slug', 'site']
+
+    class Meta:
+        ordering = ['site', 'name']
+        unique_together = [
+            ['site', 'name'],
+            ['site', 'slug'],
+        ]
+        verbose_name = 'VxLAN group'
+        verbose_name_plural = 'VxLAN groups'
+
+    def __str__(self):
+        return self.name
+
+    def get_absolute_url(self):
+        return reverse('ipam:vxlangroup_vlans', args=[self.pk])
+
+    def to_csv(self):
+        return (
+            self.name,
+            self.slug,
+            self.site.name if self.site else None,
+        )
+
+    def get_next_available_vni(self):
+        """
+        Return the first available VNI (1-1677) in the group.
+        """
+        vnis = self.vxlans.values_list('vni', flat=True)
+        for i in range(1, 4095):
+            if i not in vnis:
+                return i
+        return None
+
+
 class VLANGroup(ChangeLoggedModel):
     """
     A VLAN group is an arbitrary collection of VLANs within which VLAN IDs and names must be unique.
@@ -716,6 +767,103 @@ class VLANGroup(ChangeLoggedModel):
             if i not in vids:
                 return i
         return None
+
+
+class VxLAN(ChangeLoggedModel, CustomFieldModel):
+    """
+    """
+    site = models.ForeignKey(
+        to='dcim.Site',
+        on_delete=models.PROTECT,
+        related_name='vxlans',
+        blank=True,
+        null=True
+    )
+    group = models.ForeignKey(
+        to='ipam.VxLANGroup',
+        on_delete=models.PROTECT,
+        related_name='vxlans',
+        blank=True,
+        null=True
+    )
+    vni = models.PositiveSmallIntegerField(
+        verbose_name='VNI',
+        validators=[MinValueValidator(1), MaxValueValidator(1677)]
+    )
+    name = models.CharField(
+        max_length=64
+    )
+    tenant = models.ForeignKey(
+        to='tenancy.Tenant',
+        on_delete=models.PROTECT,
+        related_name='vxlans',
+    )
+    role = models.ForeignKey(
+        to='ipam.Role',
+        on_delete=models.SET_NULL,
+        related_name='vxlans',
+        blank=True,
+        null=True
+    )
+    description = models.CharField(
+        max_length=100,
+        blank=True
+    )
+    custom_field_values = GenericRelation(
+        to='extras.CustomFieldValue',
+        content_type_field='obj_type',
+        object_id_field='obj_id'
+    )
+
+    tags = TaggableManager()
+
+    csv_headers = ['site', 'group_name', 'vni', 'name', 'tenant', 'role', 'description']
+
+    class Meta:
+        ordering = ['site', 'group', 'vni']
+        unique_together = [
+            ['group', 'vni'],
+            ['group', 'name'],
+        ]
+        verbose_name = 'VxLAN'
+        verbose_name_plural = 'VxLANs'
+
+    def __str__(self):
+        return self.display_name or super().__str__()
+
+    def get_absolute_url(self):
+        return reverse('ipam:vxlan', args=[self.pk])
+
+    def clean(self):
+
+        # Validate VxLAN group
+        if self.group and self.group.site != self.site:
+            raise ValidationError({
+                'group': "VxLAN group must belong to the assigned site ({}).".format(self.site)
+            })
+
+    def to_csv(self):
+        return (
+            self.site.name if self.site else None,
+            self.group.name if self.group else None,
+            self.vni,
+            self.name,
+            self.tenant.name if self.tenant else None,
+            self.role.name if self.role else None,
+            self.description,
+        )
+
+    @property
+    def display_name(self):
+        if self.vni and self.name:
+            return "{} ({})".format(self.vni, self.name)
+        return None
+
+    def get_members(self):
+        # Return all interfaces assigned to this VxLAN
+        return Interface.objects.filter(
+            Q(vxlan=self.pk)
+        ).distinct()
 
 
 class VLAN(ChangeLoggedModel, CustomFieldModel):

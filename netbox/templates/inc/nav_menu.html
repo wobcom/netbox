@@ -283,6 +283,26 @@
                             <a href="{% url 'ipam:vlangroup_list' %}">VLAN Groups</a>
                         </li>
                         <li class="divider"></li>
+                        <li class="dropdown-header">VxLANs</li>
+                        <li>
+                            {% if perms.ipam.add_vxlan %}
+                                <div class="buttons pull-right">
+                                    <a href="{% url 'ipam:vxlan_add' %}" class="btn btn-xs btn-success" title="Add"><i class="fa fa-plus"></i></a>
+                                    <a href="{% url 'ipam:vxlan_import' %}" class="btn btn-xs btn-info" title="Import"><i class="fa fa-download"></i></a>
+                                </div>
+                            {% endif %}
+                            <a href="{% url 'ipam:vxlan_list' %}">VxLANs</a>
+                        </li>
+                        <li>
+                            {% if perms.ipam.add_vxlangroup %}
+                                <div class="buttons pull-right">
+                                    <a href="{% url 'ipam:vxlangroup_add' %}" class="btn btn-xs btn-success" title="Add"><i class="fa fa-plus"></i></a>
+                                    <a href="{% url 'ipam:vxlangroup_import' %}" class="btn btn-xs btn-info" title="Import"><i class="fa fa-download"></i></a>
+                                </div>
+                            {% endif %}
+                            <a href="{% url 'ipam:vxlangroup_list' %}">VxLAN Groups</a>
+                        </li>
+                        <li class="divider"></li>
                         <li class="dropdown-header">Services</li>
                         <li>
                             <a href="{% url 'ipam:service_list' %}">Services</a>

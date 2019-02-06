@@ -134,6 +134,14 @@ class ChangeSet(models.Model):
                 'role': vlan.role.name if vlan.role else None
             }
 
+    def yamlify_vxlan(self, vxlan):
+        if vlan:
+            return {
+                'name': vxlan.name,
+                'vni': vlan.vni,
+                'role': vxlan.role.name if vxlan.role else None
+            }
+
     def child_interfaces(self, interface):
         return list(
             Interface.objects.filter(lag=interface).values_list('name',
@@ -152,6 +160,7 @@ class ChangeSet(models.Model):
                 'mgmnt_only': interface.mgmt_only,
                 'mode': interface.get_mode_display(),
                 'untagged_vlan': self.yamlify_vlan(interface.untagged_vlan),
+                'vxlan': self.yamlify_vxlan(interface.vxlan),
                 'tags': list(interface.tags.names()),
                 'description': interface.description,
                 'tagged_vlans': [self.yamlify_vlan(v)

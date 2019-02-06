@@ -17,7 +17,10 @@ from virtualization.models import VirtualMachine
 from .constants import (
     IP_PROTOCOL_CHOICES, IPADDRESS_ROLE_CHOICES, IPADDRESS_STATUS_CHOICES, PREFIX_STATUS_CHOICES, VLAN_STATUS_CHOICES,
 )
-from .models import Aggregate, IPAddress, Prefix, RIR, Role, Service, VLAN, VLANGroup, VRF
+from .models import (
+    Aggregate, IPAddress, Prefix, RIR, Role, Service, VxLAN, VLAN, VxLANGroup,
+    VLANGroup, VRF
+)
 
 IP_FAMILY_CHOICES = [
     ('', 'All'),
@@ -918,6 +921,50 @@ class IPAddressFilterForm(BootstrapMixin, CustomFieldFilterForm):
 
 
 #
+# VxLAN groups
+#
+
+class VxLANGroupForm(BootstrapMixin, forms.ModelForm):
+    slug = SlugField()
+
+    class Meta:
+        model = VxLANGroup
+        fields = [
+            'site', 'name', 'slug',
+        ]
+
+
+class VxLANGroupCSVForm(forms.ModelForm):
+    site = forms.ModelChoiceField(
+        queryset=Site.objects.all(),
+        required=False,
+        to_field_name='name',
+        help_text='Name of parent site',
+        error_messages={
+            'invalid_choice': 'Site not found.',
+        }
+    )
+    slug = SlugField()
+
+    class Meta:
+        model = VxLANGroup
+        fields = VxLANGroup.csv_headers
+        help_texts = {
+            'name': 'Name of VxLAN group',
+        }
+
+
+class VxLANGroupFilterForm(BootstrapMixin, forms.Form):
+    site = FilterChoiceField(
+        queryset=Site.objects.annotate(
+            filter_count=Count('vxlan_groups')
+        ),
+        to_field_name='slug',
+        null_label='-- Global --'
+    )
+
+
+#
 # VLAN groups
 #
 
@@ -958,6 +1005,182 @@ class VLANGroupFilterForm(BootstrapMixin, forms.Form):
         ),
         to_field_name='slug',
         null_label='-- Global --'
+    )
+
+
+#
+# VxLANs
+#
+
+class VxLANForm(BootstrapMixin, TenancyForm, CustomFieldForm):
+    site = forms.ModelChoiceField(
+        queryset=Site.objects.all(),
+        required=False,
+        widget=forms.Select(
+            attrs={
+                'filter-for': 'group',
+                'nullable': 'true',
+            }
+        )
+    )
+    tenant = forms.ModelChoiceField(
+        queryset=Tenant.objects.all(),
+        required=True,
+    )
+    group = ChainedModelChoiceField(
+        queryset=VxLANGroup.objects.all(),
+        chains=(
+            ('site', 'site'),
+        ),
+        required=False,
+        label='Group',
+        widget=APISelect(
+            api_url='/api/ipam/vxlan-groups/?site_id={{site}}',
+        )
+    )
+    tags = TagField(required=False)
+
+    class Meta:
+        model = VxLAN
+        fields = [
+            'site', 'group', 'vni', 'name', 'role', 'description', 'tenant_group', 'tenant', 'tags',
+        ]
+        help_texts = {
+            'site': "Leave blank if this VxLAN spans multiple sites",
+            'group': "VxLAN group (optional)",
+            'vni': "Configured VxLAN ID",
+            'name': "Configured VxLAN name",
+            'role': "The primary function of this VxLAN",
+        }
+
+
+class VxLANCSVForm(forms.ModelForm):
+    site = forms.ModelChoiceField(
+        queryset=Site.objects.all(),
+        required=False,
+        to_field_name='name',
+        help_text='Name of parent site',
+        error_messages={
+            'invalid_choice': 'Site not found.',
+        }
+    )
+    group_name = forms.CharField(
+        help_text='Name of VxLAN group',
+        required=False
+    )
+    tenant = forms.ModelChoiceField(
+        queryset=Tenant.objects.all(),
+        to_field_name='name',
+        help_text='Name of assigned tenant',
+        required=True,
+        error_messages={
+            'invalid_choice': 'Tenant not found.',
+        }
+    )
+    role = forms.ModelChoiceField(
+        queryset=Role.objects.all(),
+        required=False,
+        to_field_name='name',
+        help_text='Functional role',
+        error_messages={
+            'invalid_choice': 'Invalid role.',
+        }
+    )
+
+    class Meta:
+        model = VxLAN
+        fields = VxLAN.csv_headers
+        help_texts = {
+            'vni': 'Numeric VxLAN ID (1-1677)',
+            'name': 'VxLAN name',
+        }
+
+    def clean(self):
+        super().clean()
+
+        site = self.cleaned_data.get('site')
+        group_name = self.cleaned_data.get('group_name')
+
+        # Validate VxLAN group
+        if group_name:
+            try:
+                self.instance.group = VxLANGroup.objects.get(site=site, name=group_name)
+            except VxLANGroup.DoesNotExist:
+                if site:
+                    raise forms.ValidationError(
+                        "VxLAN group {} not found for site {}".format(group_name, site)
+                    )
+                else:
+                    raise forms.ValidationError(
+                        "Global VxLAN group {} not found".format(group_name)
+                    )
+
+
+class VxLANBulkEditForm(BootstrapMixin, AddRemoveTagsForm, CustomFieldBulkEditForm):
+    pk = forms.ModelMultipleChoiceField(
+        queryset=VxLAN.objects.all(),
+        widget=forms.MultipleHiddenInput()
+    )
+    site = forms.ModelChoiceField(
+        queryset=Site.objects.all(),
+        required=False
+    )
+    group = forms.ModelChoiceField(
+        queryset=VxLANGroup.objects.all(),
+        required=False
+    )
+    tenant = forms.ModelChoiceField(
+        queryset=Tenant.objects.all(),
+        required=False
+    )
+    role = forms.ModelChoiceField(
+        queryset=Role.objects.all(),
+        required=False
+    )
+    description = forms.CharField(
+        max_length=100,
+        required=False
+    )
+
+    class Meta:
+        nullable_fields = [
+            'site', 'group', 'tenant', 'role', 'description',
+        ]
+
+
+class VxLANFilterForm(BootstrapMixin, CustomFieldFilterForm):
+    model = VxLAN
+    q = forms.CharField(
+        required=False,
+        label='Search'
+    )
+    site = FilterChoiceField(
+        queryset=Site.objects.annotate(
+            filter_count=Count('vxlans')
+        ),
+        to_field_name='slug',
+        null_label='-- Global --'
+    )
+    group_id = FilterChoiceField(
+        queryset=VxLANGroup.objects.annotate(
+            filter_count=Count('vxlans')
+        ),
+        label='VxLAN group',
+        null_label='-- None --'
+    )
+    tenant = FilterChoiceField(
+        queryset=Tenant.objects.annotate(
+            filter_count=Count('vxlans')
+        ),
+        to_field_name='slug',
+        null_label='-- None --'
+    )
+    role = FilterChoiceField(
+        queryset=Role.objects.annotate(
+            filter_count=Count('vxlans')
+        ),
+        to_field_name='slug',
+        null_label='-- None --'
     )
 
 
