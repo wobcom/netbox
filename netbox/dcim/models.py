@@ -2058,7 +2058,7 @@ class Interface(CableTermination, ComponentModel):
             })
 
         # Only a LAG can have LAG members
-        if self.form_factor != IFACE_FF_LAG and self.member_interfaces.exists():
+        if self.form_factor not in AGGREGATABLE_IFACE_TYPES and self.member_interfaces.exists():
             raise ValidationError({
                 'form_factor': "Cannot change interface form factor; it has LAG members ({}).".format(
                     ", ".join([iface.name for iface in self.member_interfaces.all()])
@@ -2148,7 +2148,11 @@ class Interface(CableTermination, ComponentModel):
 
     @property
     def is_lag(self):
-        return self.form_factor == IFACE_FF_LAG
+        return self.form_factor in AGGREGATABLE_IFACE_TYPES
+
+    @property
+    def is_bridge(self):
+        return self.form_factor == IFACE_FF_BRIDGE
 
     @property
     def count_ipaddresses(self):

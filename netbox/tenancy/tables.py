@@ -49,4 +49,4 @@ class TenantTable(BaseTable):
 
     class Meta(BaseTable.Meta):
         model = Tenant
-        fields = ('pk', 'name', 'group', 'description', 'vxlan_prefix')
+        fields = ('pk', 'name', 'group', 'description')

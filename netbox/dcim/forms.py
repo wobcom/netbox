@@ -1839,12 +1839,12 @@ class InterfaceForm(BootstrapMixin, forms.ModelForm):
         if self.is_bound:
             device = Device.objects.get(pk=self.data['device'])
             self.fields['lag'].queryset = Interface.objects.filter(
-                device__in=[device, device.get_vc_master()], form_factor=IFACE_FF_LAG
+                device__in=[device, device.get_vc_master()], form_factor__in=AGGREGATABLE_IFACE_TYPES
             )
         else:
             device = self.instance.device
             self.fields['lag'].queryset = Interface.objects.filter(
-                device__in=[self.instance.device, self.instance.device.get_vc_master()], form_factor=IFACE_FF_LAG
+                device__in=[self.instance.device, self.instance.device.get_vc_master()], form_factor__in=AGGREGATABLE_IFACE_TYPES
             )
 
     def clean(self):
@@ -2008,7 +2008,7 @@ class InterfaceCreateForm(ComponentForm, forms.Form):
         # Limit LAG choices to interfaces belonging to this device (or its VC master)
         if self.parent is not None:
             self.fields['lag'].queryset = Interface.objects.filter(
-                device__in=[self.parent, self.parent.get_vc_master()], form_factor=IFACE_FF_LAG
+                device__in=[self.parent, self.parent.get_vc_master()], form_factor__in=AGGREGATABLE_IFACE_TYPES
             )
         else:
             self.fields['lag'].queryset = Interface.objects.none()
@@ -2065,7 +2065,7 @@ class InterfaceBulkEditForm(BootstrapMixin, AddRemoveTagsForm, BulkEditForm):
         if device is not None:
             self.fields['lag'].queryset = Interface.objects.filter(
                 device__in=[device, device.get_vc_master()],
-                form_factor=IFACE_FF_LAG
+                form_factor__in=AGGREGATABLE_IFACE_TYPES
             )
         else:
             self.fields['lag'].choices = []
