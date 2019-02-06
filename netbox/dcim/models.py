@@ -2148,7 +2148,7 @@ class Interface(CableTermination, ComponentModel):
 
     @property
     def is_lag(self):
-        return self.form_factor in [IFACE_FF_LAG, IFACE_FF_BRIDGE]
+        return self.form_factor in AGGREGATABLE_IFACE_TYPES
 
     @property
     def is_bridge(self):
