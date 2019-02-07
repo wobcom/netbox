@@ -135,7 +135,7 @@ class ChangeSet(models.Model):
             }
 
     def yamlify_vxlan(self, vxlan):
-        if vlan:
+        if vxlan:
             return {
                 'name': vxlan.name,
                 'vni': vlan.vni,
