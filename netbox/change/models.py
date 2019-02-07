@@ -338,13 +338,7 @@ class ChangedObject(models.Model):
                                           self.changed_object_id)
 
     def apply(self):
-        # we have to save twice because we don't want to update but need a
-        # specific ID
         obj = pickle.loads(self.changed_object_data)
-        id_ = obj.id
-        obj.id = None
-        obj.save()
-        obj.id = id_
         obj.save()
 
     def revert(self):
