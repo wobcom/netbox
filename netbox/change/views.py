@@ -319,3 +319,15 @@ class RejectedView(ViewSet):
 
         # no content
         return HttpResponse(status=204)
+
+
+@method_decorator(login_required, name='dispatch')
+class DetailView(View):
+    def get(self, request, pk=None):
+        """
+        This view renders the details of a change.
+        """
+        changeset = get_object_or_404(ChangeSet, pk=pk)
+        return render(request, 'change/detail.html', {
+            'changeset': changeset
+        })

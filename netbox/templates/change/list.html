@@ -46,7 +46,7 @@
       <h5>Changed Objects</h5>
       <ol>
         {% for change in changeset.changedobject_set.all %}
-          <li>{{change}}.</li>
+          <li>{{change}}</li>
         {% endfor %}
       </ol>
       <a href="/change/accept/{{changeset.pk}}" class="btn btn-primary">
