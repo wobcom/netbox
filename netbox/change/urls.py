@@ -6,9 +6,12 @@ from . import views
 
 app_name = 'change'
 urlpatterns = [
-    url(r'^(?P<pk>\d+)/$', views.DetailView.as_view(), name='changedetail'),
-    url(r'^toggle/$', views.ToggleView.as_view(), name='toggle'),
-    url(r'^form/$', views.ChangeFormView.as_view(), name='changeform'),
-    url(r'^accept/(?P<pk>\d+)/$', views.AcceptView.as_view(), name='accept'),
-    url(r'^reject/(?P<pk>\d+)/$', views.RejectView.as_view(), name='reject'),
+    url(r'^(?P<pk>\d+)/$', views.DetailView.as_view(), name='change_detail'),
+    url(r'^list/$', views.ListView.as_view(), name='change_list'),
+    url(r'^toggle/$', views.ToggleView.as_view(), name='change_toggle'),
+    url(r'^form/$', views.ChangeFormView.as_view(), name='change_form'),
+    url(r'^accept/(?P<pk>\d+)/$', views.AcceptView.as_view(),
+        name='change_accept'),
+    url(r'^reject/(?P<pk>\d+)/$', views.RejectView.as_view(),
+        name='change_reject'),
 ]

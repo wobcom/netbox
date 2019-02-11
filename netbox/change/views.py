@@ -17,6 +17,8 @@ import requests
 import topdesk
 
 from netbox import configuration
+from utilities.views import ObjectListView
+from . import tables
 from .forms import AffectedCustomerInlineFormSet
 from .models import ChangeInformation, ChangedField, ChangedObject, ChangeSet, \
     DRAFT, IN_REVIEW, ACCEPTED, REJECTED, IMPLEMENTED
@@ -328,6 +330,14 @@ class DetailView(View):
         This view renders the details of a change.
         """
         changeset = get_object_or_404(ChangeSet, pk=pk)
-        return render(request, 'change/detail.html', {
-            'changeset': changeset
-        })
+        return render(request, 'change/detail.html', {'changeset': changeset})
+
+
+@method_decorator(login_required, name='dispatch')
+class ListView(ObjectListView):
+    queryset = ChangeSet.objects.annotate(
+        changedfield_count=models.Count('changedfield'),
+        changedobject_count=models.Count('changedobject')
+    )
+    table = tables.ChangeTable
+    template_name = 'change/change_list.html'
