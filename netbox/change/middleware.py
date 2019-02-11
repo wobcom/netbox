@@ -150,8 +150,7 @@ class FieldChangeMiddleware(object):
                 messages.warning(request, "Your change session timed out.")
                 request.session['in_change'] = False
         else:
-            # TODO: this is the simplest solution, albeit incredibly dirty;
-            # needs to be discussed
+            # this is the simplest solution, albeit incredibly dirty
             cs = ChangeSet.objects.filter(active=True)
             request.session['foreign_change'] = cs.exists()
             if cs.exists():

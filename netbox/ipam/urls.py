@@ -2,7 +2,8 @@ from django.conf.urls import url
 
 from extras.views import ObjectChangeLogView
 from . import views
-from .models import Aggregate, IPAddress, Prefix, RIR, Role, Service, VLAN, VLANGroup, VRF
+from .models import Aggregate, IPAddress, Prefix, RIR, Role, Service, VxLAN,\
+            VLAN, VxLANGroup, VLANGroup, VRF
 
 app_name = 'ipam'
 urlpatterns = [
@@ -71,6 +72,15 @@ urlpatterns = [
     url(r'^ip-addresses/(?P<pk>\d+)/edit/$', views.IPAddressEditView.as_view(), name='ipaddress_edit'),
     url(r'^ip-addresses/(?P<pk>\d+)/delete/$', views.IPAddressDeleteView.as_view(), name='ipaddress_delete'),
 
+    # VxLAN groups
+    url(r'^vxlan-groups/$', views.VxLANGroupListView.as_view(), name='vxlangroup_list'),
+    url(r'^vxlan-groups/add/$', views.VxLANGroupCreateView.as_view(), name='vxlangroup_add'),
+    url(r'^vxlan-groups/import/$', views.VxLANGroupBulkImportView.as_view(), name='vxlangroup_import'),
+    url(r'^vxlan-groups/delete/$', views.VxLANGroupBulkDeleteView.as_view(), name='vxlangroup_bulk_delete'),
+    url(r'^vxlan-groups/(?P<pk>\d+)/edit/$', views.VxLANGroupEditView.as_view(), name='vxlangroup_edit'),
+    url(r'^vxlan-groups/(?P<pk>\d+)/vxlans/$', views.VxLANGroupVxLANsView.as_view(), name='vxlangroup_vxlans'),
+    url(r'^vxlan-groups/(?P<pk>\d+)/changelog/$', ObjectChangeLogView.as_view(), name='vxlangroup_changelog', kwargs={'model': VxLANGroup}),
+
     # VLAN groups
     url(r'^vlan-groups/$', views.VLANGroupListView.as_view(), name='vlangroup_list'),
     url(r'^vlan-groups/add/$', views.VLANGroupCreateView.as_view(), name='vlangroup_add'),
@@ -79,6 +89,18 @@ urlpatterns = [
     url(r'^vlan-groups/(?P<pk>\d+)/edit/$', views.VLANGroupEditView.as_view(), name='vlangroup_edit'),
     url(r'^vlan-groups/(?P<pk>\d+)/vlans/$', views.VLANGroupVLANsView.as_view(), name='vlangroup_vlans'),
     url(r'^vlan-groups/(?P<pk>\d+)/changelog/$', ObjectChangeLogView.as_view(), name='vlangroup_changelog', kwargs={'model': VLANGroup}),
+
+    # VxLANs
+    url(r'^vxlans/$', views.VxLANListView.as_view(), name='vxlan_list'),
+    url(r'^vxlans/add/$', views.VxLANCreateView.as_view(), name='vxlan_add'),
+    url(r'^vxlans/import/$', views.VxLANBulkImportView.as_view(), name='vxlan_import'),
+    url(r'^vxlans/edit/$', views.VxLANBulkEditView.as_view(), name='vxlan_bulk_edit'),
+    url(r'^vxlans/delete/$', views.VxLANBulkDeleteView.as_view(), name='vxlan_bulk_delete'),
+    url(r'^vxlans/(?P<pk>\d+)/$', views.VxLANView.as_view(), name='vxlan'),
+    url(r'^vxlans/(?P<pk>\d+)/members/$', views.VxLANMembersView.as_view(), name='vxlan_members'),
+    url(r'^vxlans/(?P<pk>\d+)/edit/$', views.VxLANEditView.as_view(), name='vxlan_edit'),
+    url(r'^vxlans/(?P<pk>\d+)/delete/$', views.VxLANDeleteView.as_view(), name='vxlan_delete'),
+    url(r'^vxlans/(?P<pk>\d+)/changelog/$', ObjectChangeLogView.as_view(), name='vxlan_changelog', kwargs={'model': VxLAN}),
 
     # VLANs
     url(r'^vlans/$', views.VLANListView.as_view(), name='vlan_list'),

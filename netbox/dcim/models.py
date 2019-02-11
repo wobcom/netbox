@@ -1981,6 +1981,14 @@ class Interface(CableTermination, ComponentModel):
         blank=True,
         verbose_name='Tagged VLANs'
     )
+    vxlan = models.OneToOneField(
+        to='ipam.VxLAN',
+        related_name='interface',
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+        verbose_name='VxLAN'
+    )
     clag_id = models.PositiveIntegerField(
         blank=True,
         null=True,
@@ -2153,6 +2161,10 @@ class Interface(CableTermination, ComponentModel):
     @property
     def is_bridge(self):
         return self.form_factor == IFACE_FF_BRIDGE
+
+    @property
+    def is_vtep(self):
+        return self.form_factor == IFACE_FF_VTEP
 
     @property
     def count_ipaddresses(self):

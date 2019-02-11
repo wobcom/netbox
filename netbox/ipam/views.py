@@ -14,7 +14,10 @@ from utilities.views import (
 from virtualization.models import VirtualMachine
 from . import filters, forms, tables
 from .constants import IPADDRESS_ROLE_ANYCAST, PREFIX_STATUS_ACTIVE, PREFIX_STATUS_DEPRECATED, PREFIX_STATUS_RESERVED
-from .models import Aggregate, IPAddress, Prefix, RIR, Role, Service, VLAN, VLANGroup, VRF
+from .models import (
+    Aggregate, IPAddress, Prefix, RIR, Role, Service, VxLAN, VLAN, VxLANGroup,
+    VLANGroup, VRF
+)
 
 
 def add_available_prefixes(parent, prefix_list):
@@ -788,6 +791,79 @@ class IPAddressBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
 
 
 #
+# VxLAN groups
+#
+
+class VxLANGroupListView(ObjectListView):
+    queryset = VxLANGroup.objects.select_related('site').annotate(vxlan_count=Count('vxlans'))
+    filter = filters.VxLANGroupFilter
+    filter_form = forms.VxLANGroupFilterForm
+    table = tables.VxLANGroupTable
+    template_name = 'ipam/vxlangroup_list.html'
+
+
+class VxLANGroupCreateView(PermissionRequiredMixin, ObjectEditView):
+    permission_required = 'ipam.add_vxlangroup'
+    model = VxLANGroup
+    model_form = forms.VxLANGroupForm
+    default_return_url = 'ipam:vxlangroup_list'
+
+
+class VxLANGroupEditView(VxLANGroupCreateView):
+    permission_required = 'ipam.change_vxlangroup'
+
+
+class VxLANGroupBulkImportView(PermissionRequiredMixin, BulkImportView):
+    permission_required = 'ipam.add_vxlangroup'
+    model_form = forms.VxLANGroupCSVForm
+    table = tables.VxLANGroupTable
+    default_return_url = 'ipam:vxlangroup_list'
+
+
+class VxLANGroupBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
+    permission_required = 'ipam.delete_vxlangroup'
+    queryset = VxLANGroup.objects.select_related('site').annotate(vxlan_count=Count('vxlans'))
+    filter = filters.VxLANGroupFilter
+    table = tables.VxLANGroupTable
+    default_return_url = 'ipam:vxlangroup_list'
+
+
+class VxLANGroupVxLANsView(View):
+    def get(self, request, pk):
+
+        vxlan_group = get_object_or_404(VxLANGroup.objects.all(), pk=pk)
+
+        vxlans = VxLAN.objects.filter(group_id=pk)
+        vxlans = add_available_vxlans(vxlan_group, vxlans)
+
+        vxlan_table = tables.VxLANDetailTable(vxlans)
+        if request.user.has_perm('ipam.change_vxlan') or request.user.has_perm('ipam.delete_vxlan'):
+            vxlan_table.columns.show('pk')
+        vxlan_table.columns.hide('site')
+        vxlan_table.columns.hide('group')
+
+        paginate = {
+            'paginator_class': EnhancedPaginator,
+            'per_page': request.GET.get('per_page', settings.PAGINATE_COUNT)
+        }
+        RequestConfig(request, paginate).configure(vxlan_table)
+
+        # Compile permissions list for rendering the object table
+        permissions = {
+            'add': request.user.has_perm('ipam.add_vxlan'),
+            'change': request.user.has_perm('ipam.change_vxlan'),
+            'delete': request.user.has_perm('ipam.delete_vxlan'),
+        }
+
+        return render(request, 'ipam/vxlangroup_vxlans.html', {
+            'vxlan_group': vxlan_group,
+            'first_available_vxlan': vxlan_group.get_next_available_vid(),
+            'vxlan_table': vxlan_table,
+            'permissions': permissions,
+        })
+
+
+#
 # VLAN groups
 #
 
@@ -858,6 +934,95 @@ class VLANGroupVLANsView(View):
             'vlan_table': vlan_table,
             'permissions': permissions,
         })
+
+
+#
+# VxLANs
+#
+
+class VxLANListView(ObjectListView):
+    queryset = VxLAN.objects.select_related('site', 'group', 'tenant', 'role')
+    filter = filters.VxLANFilter
+    filter_form = forms.VxLANFilterForm
+    table = tables.VxLANDetailTable
+    template_name = 'ipam/vxlan_list.html'
+
+
+class VxLANView(View):
+
+    def get(self, request, pk):
+
+        vxlan = get_object_or_404(VxLAN.objects.select_related(
+            'site__region', 'tenant__group', 'role'
+        ), pk=pk)
+
+        return render(request, 'ipam/vxlan.html', {
+            'vxlan': vxlan,
+        })
+
+
+class VxLANMembersView(View):
+
+    def get(self, request, pk):
+
+        vxlan = get_object_or_404(VxLAN.objects.all(), pk=pk)
+        members = vxlan.get_members().select_related('device', 'virtual_machine')
+
+        members_table = tables.VxLANMemberTable(members)
+
+        paginate = {
+            'paginator_class': EnhancedPaginator,
+            'per_page': request.GET.get('per_page', settings.PAGINATE_COUNT)
+        }
+        RequestConfig(request, paginate).configure(members_table)
+
+        return render(request, 'ipam/vxlan_members.html', {
+            'vxlan': vxlan,
+            'members_table': members_table,
+            'active_tab': 'members',
+        })
+
+
+class VxLANCreateView(PermissionRequiredMixin, ObjectEditView):
+    permission_required = 'ipam.add_vxlan'
+    model = VxLAN
+    model_form = forms.VxLANForm
+    template_name = 'ipam/vxlan_edit.html'
+    default_return_url = 'ipam:vxlan_list'
+
+
+class VxLANEditView(VxLANCreateView):
+    permission_required = 'ipam.change_vxlan'
+
+
+class VxLANDeleteView(PermissionRequiredMixin, ObjectDeleteView):
+    permission_required = 'ipam.delete_vxlan'
+    model = VxLAN
+    default_return_url = 'ipam:vxlan_list'
+
+
+class VxLANBulkImportView(PermissionRequiredMixin, BulkImportView):
+    permission_required = 'ipam.add_vxlan'
+    model_form = forms.VxLANCSVForm
+    table = tables.VxLANTable
+    default_return_url = 'ipam:vxlan_list'
+
+
+class VxLANBulkEditView(PermissionRequiredMixin, BulkEditView):
+    permission_required = 'ipam.change_vxlan'
+    queryset = VxLAN.objects.select_related('site', 'group', 'tenant', 'role')
+    filter = filters.VxLANFilter
+    table = tables.VxLANTable
+    form = forms.VxLANBulkEditForm
+    default_return_url = 'ipam:vxlan_list'
+
+
+class VxLANBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
+    permission_required = 'ipam.delete_vxlan'
+    queryset = VxLAN.objects.select_related('site', 'group', 'tenant', 'role')
+    filter = filters.VxLANFilter
+    table = tables.VxLANTable
+    default_return_url = 'ipam:vxlan_list'
 
 
 #

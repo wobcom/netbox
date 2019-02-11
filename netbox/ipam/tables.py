@@ -4,7 +4,8 @@ from django_tables2.utils import Accessor
 from dcim.models import Interface
 from tenancy.tables import COL_TENANT
 from utilities.tables import BaseTable, BooleanColumn, ToggleColumn
-from .models import Aggregate, IPAddress, Prefix, RIR, Role, Service, VLAN, VLANGroup, VRF
+from .models import Aggregate, IPAddress, Prefix, RIR, Role, Service, VxLAN,\
+            VLAN, VxLANGroup, VLANGroup, VRF
 
 RIR_UTILIZATION = """
 <div class="progress">
@@ -111,6 +112,60 @@ STATUS_LABEL = """
     <span class="label label-{{ record.get_status_class }}">{{ record.get_status_display }}</span>
 {% else %}
     <span class="label label-success">Available</span>
+{% endif %}
+"""
+
+VXLAN_LINK = """
+{% if record.pk %}
+    <a href="{{ record.get_absolute_url }}">{{ record.vni }}</a>
+{% elif perms.ipam.add_vxlan %}
+    <a href="{% url 'ipam:vxlan_add' %}?vni={{ record.vni }}&group={{ vxlan_group.pk }}{% if vxlan_group.site %}&site={{ vxlan_group.site.pk }}{% endif %}" class="btn btn-xs btn-success">{{ record.available }} VXLAN{{ record.available|pluralize }} available</a>
+{% else %}
+    {{ record.available }} VXLAN{{ record.available|pluralize }} available
+{% endif %}
+"""
+
+VXLAN_PREFIXES = """
+{% for prefix in record.prefixes.all %}
+    <a href="{% url 'ipam:prefix' pk=prefix.pk %}">{{ prefix }}</a>{% if not forloop.last %}<br />{% endif %}
+{% empty %}
+    &mdash;
+{% endfor %}
+"""
+
+VXLAN_ROLE_LINK = """
+{% if record.role %}
+    <a href="{% url 'ipam:vxlan_list' %}?role={{ record.role.slug }}">{{ record.role }}</a>
+{% else %}
+    &mdash;
+{% endif %}
+"""
+
+VXLANGROUP_ACTIONS = """
+<a href="{% url 'ipam:vxlangroup_changelog' pk=record.pk %}" class="btn btn-default btn-xs" title="Changelog">
+    <i class="fa fa-history"></i>
+</a>
+{% with next_vid=record.get_next_available_vid %}
+    {% if next_vid and perms.ipam.add_vxlan %}
+        <a href="{% url 'ipam:vxlan_add' %}?site={{ record.site_id }}&group={{ record.pk }}&vid={{ next_vid }}" title="Add VXLAN" class="btn btn-xs btn-success">
+            <i class="glyphicon glyphicon-plus" aria-hidden="true"></i>
+        </a>
+    {% endif %}
+{% endwith %}
+{% if perms.ipam.change_vxlangroup %}
+    <a href="{% url 'ipam:vxlangroup_edit' pk=record.pk %}" class="btn btn-xs btn-warning"><i class="glyphicon glyphicon-pencil" aria-hidden="true"></i></a>
+{% endif %}
+"""
+
+VXLAN_MEMBER_UNTAGGED = """
+{% if record.untagged_vxlan_id == vxlan.pk %}
+    <i class="glyphicon glyphicon-ok">
+{% endif %}
+"""
+
+VXLAN_MEMBER_ACTIONS = """
+{% if perms.dcim.change_interface %}
+    <a href="{% if record.device %}{% url 'dcim:interface_edit' pk=record.pk %}{% else %}{% url 'virtualization:interface_edit' pk=record.pk %}{% endif %}" class="btn btn-xs btn-warning"><i class="glyphicon glyphicon-pencil"></i></a>
 {% endif %}
 """
 
@@ -383,6 +438,24 @@ class InterfaceIPAddressTable(BaseTable):
 
 
 #
+# VxLAN groups
+#
+
+class VxLANGroupTable(BaseTable):
+    pk = ToggleColumn()
+    name = tables.LinkColumn(verbose_name='Name')
+    site = tables.LinkColumn('dcim:site', args=[Accessor('site.slug')], verbose_name='Site')
+    vxlan_count = tables.Column(verbose_name='VxLANs')
+    slug = tables.Column(verbose_name='Slug')
+    actions = tables.TemplateColumn(template_code=VXLANGROUP_ACTIONS, attrs={'td': {'class': 'text-right'}},
+                                    verbose_name='')
+
+    class Meta(BaseTable.Meta):
+        model = VxLANGroup
+        fields = ('pk', 'name', 'site', 'vxlan_count', 'slug', 'actions')
+
+
+#
 # VLAN groups
 #
 
@@ -398,6 +471,71 @@ class VLANGroupTable(BaseTable):
     class Meta(BaseTable.Meta):
         model = VLANGroup
         fields = ('pk', 'name', 'site', 'vlan_count', 'slug', 'actions')
+
+
+#
+# VxLANs
+#
+
+class VxLANTable(BaseTable):
+    pk = ToggleColumn()
+    vni = tables.TemplateColumn(VXLAN_LINK, verbose_name='VNI')
+    site = tables.LinkColumn('dcim:site', args=[Accessor('site.slug')])
+    group = tables.LinkColumn('ipam:vxlangroup_vxlans', args=[Accessor('group.pk')], verbose_name='Group')
+    tenant = tables.TemplateColumn(template_code=COL_TENANT)
+    role = tables.TemplateColumn(VXLAN_ROLE_LINK)
+    interface = tables.LinkColumn('dcim:interface', args=[Accessor('interface.id')], verbose_name='Interface')
+
+    class Meta(BaseTable.Meta):
+        model = VxLAN
+        fields = ('pk', 'vni', 'site', 'group', 'name', 'tenant', 'role', 'description', 'interface')
+        row_attrs = {
+            'class': lambda record: 'success' if not isinstance(record, VxLAN) else '',
+        }
+
+
+class VxLANDetailTable(VxLANTable):
+
+    class Meta(VxLANTable.Meta):
+        fields = ('pk', 'vni', 'site', 'group', 'name', 'tenant', 'role', 'description', 'interface')
+
+
+class VxLANMemberTable(BaseTable):
+    parent = tables.LinkColumn(order_by=['device', 'virtual_machine'])
+    name = tables.LinkColumn(verbose_name='Interface')
+    untagged = tables.TemplateColumn(
+        template_code=VXLAN_MEMBER_UNTAGGED,
+        orderable=False
+    )
+    actions = tables.TemplateColumn(
+        template_code=VXLAN_MEMBER_ACTIONS,
+        attrs={'td': {'class': 'text-right'}},
+        verbose_name=''
+    )
+
+    class Meta(BaseTable.Meta):
+        model = Interface
+        fields = ('parent', 'name', 'untagged', 'actions')
+
+
+class InterfaceVxLANTable(BaseTable):
+    """
+    List VxLANs assigned to a specific Interface.
+    """
+    vid = tables.LinkColumn('ipam:vxlan', args=[Accessor('pk')], verbose_name='ID')
+    tagged = BooleanColumn()
+    site = tables.LinkColumn('dcim:site', args=[Accessor('site.slug')])
+    group = tables.Column(accessor=Accessor('group.name'), verbose_name='Group')
+    tenant = tables.TemplateColumn(template_code=COL_TENANT)
+    role = tables.TemplateColumn(VXLAN_ROLE_LINK)
+
+    class Meta(BaseTable.Meta):
+        model = VxLAN
+        fields = ('vid', 'tagged', 'site', 'group', 'name', 'tenant', 'role', 'description')
+
+    def __init__(self, interface, *args, **kwargs):
+        self.interface = interface
+        super().__init__(*args, **kwargs)
 
 
 #

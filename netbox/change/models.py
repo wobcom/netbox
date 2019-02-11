@@ -134,6 +134,14 @@ class ChangeSet(models.Model):
                 'role': vlan.role.name if vlan.role else None
             }
 
+    def yamlify_vxlan(self, vxlan):
+        if vxlan:
+            return {
+                'name': vxlan.name,
+                'vni': vlan.vni,
+                'role': vxlan.role.name if vxlan.role else None
+            }
+
     def child_interfaces(self, interface):
         return list(
             Interface.objects.filter(lag=interface).values_list('name',
@@ -152,6 +160,7 @@ class ChangeSet(models.Model):
                 'mgmnt_only': interface.mgmt_only,
                 'mode': interface.get_mode_display(),
                 'untagged_vlan': self.yamlify_vlan(interface.untagged_vlan),
+                'vxlan': self.yamlify_vxlan(interface.vxlan),
                 'tags': list(interface.tags.names()),
                 'description': interface.description,
                 'tagged_vlans': [self.yamlify_vlan(v)
@@ -204,9 +213,9 @@ class ChangeSet(models.Model):
         return self.change_information.executive_summary(no_markdown=no_markdown)
 
     def apply(self):
-        for change in self.changedfield_set.all():
-            change.apply()
         for change in self.changedobject_set.all():
+            change.apply()
+        for change in self.changedfield_set.all():
             change.apply()
 
     def revert(self):
@@ -329,13 +338,7 @@ class ChangedObject(models.Model):
                                           self.changed_object_id)
 
     def apply(self):
-        # we have to save twice because we don't want to update but need a
-        # specific ID
         obj = pickle.loads(self.changed_object_data)
-        id_ = obj.id
-        obj.id = None
-        obj.save()
-        obj.id = id_
         obj.save()
 
     def revert(self):

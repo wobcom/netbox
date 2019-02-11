@@ -10,7 +10,10 @@ from tenancy.models import Tenant
 from utilities.filters import NumericInFilter, TagFilter
 from virtualization.models import VirtualMachine
 from .constants import IPADDRESS_ROLE_CHOICES, IPADDRESS_STATUS_CHOICES, PREFIX_STATUS_CHOICES, VLAN_STATUS_CHOICES
-from .models import Aggregate, IPAddress, Prefix, RIR, Role, Service, VLAN, VLANGroup, VRF
+from .models import (
+    Aggregate, IPAddress, Prefix, RIR, Role, Service, VxLAN, VLAN, VxLANGroup,
+    VLANGroup, VRF
+)
 
 
 class VRFFilter(CustomFieldFilterSet, django_filters.FilterSet):
@@ -373,6 +376,23 @@ class IPAddressFilter(CustomFieldFilterSet, django_filters.FilterSet):
             return queryset.none()
 
 
+class VxLANGroupFilter(django_filters.FilterSet):
+    site_id = django_filters.ModelMultipleChoiceFilter(
+        queryset=Site.objects.all(),
+        label='Site (ID)',
+    )
+    site = django_filters.ModelMultipleChoiceFilter(
+        field_name='site__slug',
+        queryset=Site.objects.all(),
+        to_field_name='slug',
+        label='Site (slug)',
+    )
+
+    class Meta:
+        model = VxLANGroup
+        fields = ['name', 'slug']
+
+
 class VLANGroupFilter(django_filters.FilterSet):
     site_id = django_filters.ModelMultipleChoiceFilter(
         queryset=Site.objects.all(),
@@ -388,6 +408,72 @@ class VLANGroupFilter(django_filters.FilterSet):
     class Meta:
         model = VLANGroup
         fields = ['name', 'slug']
+
+
+class VxLANFilter(CustomFieldFilterSet, django_filters.FilterSet):
+    id__in = NumericInFilter(
+        field_name='id',
+        lookup_expr='in'
+    )
+    q = django_filters.CharFilter(
+        method='search',
+        label='Search',
+    )
+    site_id = django_filters.ModelMultipleChoiceFilter(
+        queryset=Site.objects.all(),
+        label='Site (ID)',
+    )
+    site = django_filters.ModelMultipleChoiceFilter(
+        field_name='site__slug',
+        queryset=Site.objects.all(),
+        to_field_name='slug',
+        label='Site (slug)',
+    )
+    group_id = django_filters.ModelMultipleChoiceFilter(
+        queryset=VxLANGroup.objects.all(),
+        label='Group (ID)',
+    )
+    group = django_filters.ModelMultipleChoiceFilter(
+        field_name='group__slug',
+        queryset=VxLANGroup.objects.all(),
+        to_field_name='slug',
+        label='Group',
+    )
+    tenant_id = django_filters.ModelMultipleChoiceFilter(
+        queryset=Tenant.objects.all(),
+        label='Tenant (ID)',
+    )
+    tenant = django_filters.ModelMultipleChoiceFilter(
+        field_name='tenant__slug',
+        queryset=Tenant.objects.all(),
+        to_field_name='slug',
+        label='Tenant (slug)',
+    )
+    role_id = django_filters.ModelMultipleChoiceFilter(
+        queryset=Role.objects.all(),
+        label='Role (ID)',
+    )
+    role = django_filters.ModelMultipleChoiceFilter(
+        field_name='role__slug',
+        queryset=Role.objects.all(),
+        to_field_name='slug',
+        label='Role (slug)',
+    )
+    tag = TagFilter()
+
+    class Meta:
+        model = VxLAN
+        fields = ['vni', 'name']
+
+    def search(self, queryset, name, value):
+        if not value.strip():
+            return queryset
+        qs_filter = Q(name__icontains=value) | Q(description__icontains=value)
+        try:
+            qs_filter |= Q(vni=int(value.strip()))
+        except ValueError:
+            pass
+        return queryset.filter(qs_filter)
 
 
 class VLANFilter(CustomFieldFilterSet, django_filters.FilterSet):

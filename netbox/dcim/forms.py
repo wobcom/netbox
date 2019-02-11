@@ -1820,7 +1820,7 @@ class InterfaceForm(BootstrapMixin, forms.ModelForm):
         fields = [
             'device', 'name', 'form_factor', 'enabled', 'lag', 'mac_address', 'mtu', 'mgmt_only', 'description',
             'mode', 'untagged_vlan', 'tagged_vlans', 'tags',
-            'clag_id'
+            'clag_id', 'vxlan',
         ]
         widgets = {
             'device': forms.HiddenInput(),
