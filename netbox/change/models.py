@@ -213,9 +213,9 @@ class ChangeSet(models.Model):
         return self.change_information.executive_summary(no_markdown=no_markdown)
 
     def apply(self):
-        for change in self.changedfield_set.all():
-            change.apply()
         for change in self.changedobject_set.all():
+            change.apply()
+        for change in self.changedfield_set.all():
             change.apply()
 
     def revert(self):
