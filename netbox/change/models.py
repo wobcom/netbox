@@ -138,7 +138,7 @@ class ChangeSet(models.Model):
         if vxlan:
             return {
                 'name': vxlan.name,
-                'vni': vlan.vni,
+                'vni': vxlan.vni,
                 'role': vxlan.role.name if vxlan.role else None
             }
 

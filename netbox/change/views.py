@@ -1,5 +1,6 @@
 import io
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import models
 from django.http import HttpResponse, HttpResponseForbidden, \
@@ -188,13 +189,16 @@ def open_gitlab_issue(o):
         'author_name': 'Netbox',
         'actions': actions,
     })
-    project.mergerequests.create({
+    mr = project.mergerequests.create({
         'title': 'Change #{} was created in Netbox'.format(o.id),
         'description': issue_txt,
         'source_branch': branch_name,
         'target_branch': 'master',
         'labels': ['netbox', 'unreviewed'] + emergency_label
     })
+    msg = "You can review your merge request at {}/{}/merge_requests/{}!"
+    return msg.format(configuration.GITLAB_URL, project.path_with_namespace,
+                      mr.id)
 
 
 @method_decorator(login_required, name='dispatch')
@@ -216,7 +220,7 @@ class AcceptView(View):
             res_id = trigger_topdesk_change(obj)
             obj.ticket_id = res_id
             obj.save()
-            open_gitlab_issue(obj)
+            messages.info(request, open_gitlab_issue(obj))
 
             # register in surveyor if its configured
             if configuration.TOPDESK_SURVEYOR_URL:
