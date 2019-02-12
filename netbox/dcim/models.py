@@ -2585,7 +2585,7 @@ class Cable(ChangeLoggedModel):
         # Check that termination types are compatible
         type_a = self.termination_a_type.model
         type_b = self.termination_b_type.model
-        if type_b not in COMPATIBLE_TERMINATION_TYPES.get(type_a):
+        if type_b not in COMPATIBLE_TERMINATION_TYPES.get(type_a, []):
             raise ValidationError("Incompatible termination types: {} and {}".format(
                 self.termination_a_type, self.termination_b_type
             ))
