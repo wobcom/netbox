@@ -200,7 +200,7 @@ def open_gitlab_issue(o):
     })
     msg = "You can review your merge request at {}/{}/merge_requests/{}!"
     return msg.format(configuration.GITLAB_URL, project.path_with_namespace,
-                      mr.id)
+                      mr.iid)
 
 
 @method_decorator(login_required, name='dispatch')
