@@ -18,7 +18,7 @@ from timezone_field import TimeZoneField
 from extras.models import ConfigContextModel, CustomFieldModel, ObjectChange
 from utilities.fields import ColorField, NullableCharField
 from utilities.managers import NaturalOrderingManager
-from utilities.models import ChangeLoggedModel
+from utilities.models import ChangeLoggedModel, BaseManager
 from utilities.utils import serialize_object, to_meters
 from .constants import *
 from .exceptions import LoopDetected
@@ -46,6 +46,7 @@ class ComponentTemplateModel(models.Model):
 
 
 class ComponentModel(models.Model):
+    objects = BaseManager()
 
     class Meta:
         abstract = True
@@ -66,6 +67,8 @@ class ComponentModel(models.Model):
 
 
 class CableTermination(models.Model):
+    objects = BaseManager()
+
     cable = models.ForeignKey(
         to='dcim.Cable',
         on_delete=models.SET_NULL,

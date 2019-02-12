@@ -1,5 +1,6 @@
 from django.db import models
 
+from .managers import BaseManager
 from extras.models import ObjectChange
 from utilities.utils import serialize_object
 
@@ -9,6 +10,7 @@ class ChangeLoggedModel(models.Model):
     An abstract model which adds fields to store the creation and last-updated times for an object. Both fields can be
     null to facilitate adding these fields to existing instances via a database migration.
     """
+    objects = BaseManager()
     created = models.DateField(
         auto_now_add=True,
         blank=True,

@@ -213,9 +213,9 @@ class ChangeSet(models.Model):
         return self.change_information.executive_summary(no_markdown=no_markdown)
 
     def apply(self):
-        for change in self.changedobject_set.all():
+        for change in self.changedobject_set.order_by("time").all():
             change.apply()
-        for change in self.changedfield_set.all():
+        for change in self.changedfield_set.order_by("time").all():
             change.apply()
 
     def revert(self):
@@ -339,7 +339,7 @@ class ChangedObject(models.Model):
 
     def apply(self):
         obj = pickle.loads(self.changed_object_data)
-        obj.save()
+        obj.save(force_insert=True)
 
     def revert(self):
         if self.changed_object:

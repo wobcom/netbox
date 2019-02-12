@@ -1,7 +1,8 @@
-from django.db.models import Manager, QuerySet
+from django.db.models import QuerySet
 from django.db.models.expressions import RawSQL
 
 from .constants import NONCONNECTABLE_IFACE_TYPES
+from utilities.managers import BaseManager
 
 # Regular expressions for parsing Interface names
 TYPE_RE = r"SUBSTRING({} FROM '^([^0-9\.:]+)')"
@@ -14,7 +15,7 @@ CHANNEL_RE = r"COALESCE(CAST(SUBSTRING({} FROM '^.*:(\d{{1,9}})(\.\d{{1,9}})?$')
 VC_RE = r"COALESCE(CAST(SUBSTRING({} FROM '^.*\.(\d{{1,9}})$') AS integer), 0)"
 
 
-class DeviceComponentManager(Manager):
+class DeviceComponentManager(BaseManager):
 
     def get_queryset(self):
 
@@ -40,7 +41,7 @@ class InterfaceQuerySet(QuerySet):
         return self.exclude(form_factor__in=NONCONNECTABLE_IFACE_TYPES)
 
 
-class InterfaceManager(Manager):
+class InterfaceManager(BaseManager):
 
     def get_queryset(self):
         """

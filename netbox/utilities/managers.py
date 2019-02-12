@@ -1,11 +1,22 @@
 from django.db.models import Manager
+from django.db.models.signals import pre_save, post_save
 
 NAT1 = r"CAST(SUBSTRING({}.{} FROM '^(\d{{1,9}})') AS integer)"
 NAT2 = r"SUBSTRING({}.{} FROM '^\d*(.*?)\d*$')"
 NAT3 = r"CAST(SUBSTRING({}.{} FROM '(\d{{1,9}})$') AS integer)"
 
 
-class NaturalOrderingManager(Manager):
+class BaseManager(Manager):
+    def bulk_create(self, objs, **kwargs):
+        for i in objs:
+            pre_save.send(i.__class__, instance=i, created=True)
+        a = super().bulk_create(objs,**kwargs)
+        for i in objs:
+            post_save.send(i.__class__, instance=i, created=True)
+        return a
+
+
+class NaturalOrderingManager(BaseManager):
     """
     Order objects naturally by a designated field (defaults to 'name'). Leading and/or trailing digits of values within
     this field will be cast as independent integers and sorted accordingly. For example, "Foo2" will be ordered before

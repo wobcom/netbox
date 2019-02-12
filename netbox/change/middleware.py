@@ -56,6 +56,7 @@ def install_save_hooks(request):
     all newly-created models.
     """
     changeset = ChangeSet.objects.get(pk=request.session['change_id'])
+    handled = []
 
     def before_save_internal(sender, instance, **kwargs):
         """
@@ -67,7 +68,7 @@ def install_save_hooks(request):
 
         # see whether the object already exists; if not, bail
         try:
-            old_instance = sender.objects.get(id=instance.id)
+            old_instance = sender.objects.get(pk=instance.pk)
         except sender.DoesNotExist:
             return
 
@@ -90,17 +91,16 @@ def install_save_hooks(request):
             cf.save()
             changeset.changedfield_set.add(cf)
         changeset.updated = timezone.now()
+        changeset.save()
+        handled.append(instance)
 
-        # we don't have to call save hooks anymore, since we already treated it
-        post_save.disconnect(after_save_internal,
-                             dispatch_uid='chgfield')
 
     def after_save_internal(sender, instance, **kwargs):
         """
         This function only triggers when the instance is new; it will save the
         whole thing.
         """
-        if sender in CHANGE_BLACKLIST:
+        if sender in CHANGE_BLACKLIST or instance in handled:
             return
         co = ChangedObject(
             changed_object=instance,
@@ -110,6 +110,8 @@ def install_save_hooks(request):
         co.save()
         changeset.changedobject_set.add(co)
         changeset.updated = timezone.now()
+        changeset.save()
+        handled.append(instance)
 
     # we need to install them strongly, because they are closures;
     # otherwise django will throw away the weak references at the end of this
