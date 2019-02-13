@@ -617,15 +617,6 @@ class IPAddress(ChangeLoggedModel, CustomFieldModel):
         super().save(*args, **kwargs)
 
     def to_csv(self):
-
-        # Determine if this IP is primary for a Device
-        if self.family == 4 and getattr(self, 'primary_ip4_for', False):
-            is_primary = True
-        elif self.family == 6 and getattr(self, 'primary_ip6_for', False):
-            is_primary = True
-        else:
-            is_primary = False
-
         return (
             self.address,
             self.vrf.rd if self.vrf else None,
@@ -635,7 +626,7 @@ class IPAddress(ChangeLoggedModel, CustomFieldModel):
             self.device.identifier if self.device else None,
             self.virtual_machine.name if self.virtual_machine else None,
             self.interface.name if self.interface else None,
-            is_primary,
+            self.is_primary,
             self.description,
         )
 
@@ -653,6 +644,16 @@ class IPAddress(ChangeLoggedModel, CustomFieldModel):
         if self.interface:
             return self.interface.device
         return None
+
+    @property
+    def is_primary(self):
+        # Determine if this IP is primary for a Device
+        if self.family == 4 and getattr(self, 'primary_ip4_for', False):
+            return True
+        elif self.family == 6 and getattr(self, 'primary_ip6_for', False):
+            return True
+        return False
+
 
     @property
     def virtual_machine(self):

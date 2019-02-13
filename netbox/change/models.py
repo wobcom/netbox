@@ -174,6 +174,7 @@ class ChangeSet(models.Model):
                     'address': str(ip_addr.address.ip),
                     'prefix_length': str(ip_addr.address.prefixlen),
                     'tags': list(ip_addr.tags.names()),
+                    'primary': ip_addr.is_primary,
                 })
             res["ip_addresses"] = addresses
             return res
