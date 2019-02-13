@@ -41,7 +41,7 @@ deploy-container-staging:
   only: 
     - changes
   script:
-    - "ssh -t $SSH_USER@$DEPLOY_SERVER_STAGING 'rm -rf /var/tmp/autodeploy'"
+    - "ssh -t -vv $SSH_USER@$DEPLOY_SERVER_STAGING 'rm -rf /var/tmp/autodeploy'"
     - "ssh -t $SSH_USER@$DEPLOY_SERVER_STAGING 'mkdir -p /var/tmp/autodeploy'"
     - "echo \"BIND_HOST=$DEPLOY_SERVER_STAGING\" > .env"
     - "scp .env $SSH_USER@$DEPLOY_SERVER_STAGING:/var/tmp/autodeploy/"
