@@ -488,7 +488,7 @@ class VxLANTable(BaseTable):
 
     class Meta(BaseTable.Meta):
         model = VxLAN
-        fields = ('pk', 'vni', 'site', 'group', 'name', 'tenant', 'role', 'description', 'interface')
+        fields = ('pk', 'vni', 'site', 'group', 'name', 'tenant', 'role', 'description', 'interfaces')
         row_attrs = {
             'class': lambda record: 'success' if not isinstance(record, VxLAN) else '',
         }
@@ -497,7 +497,7 @@ class VxLANTable(BaseTable):
 class VxLANDetailTable(VxLANTable):
 
     class Meta(VxLANTable.Meta):
-        fields = ('pk', 'vni', 'site', 'group', 'name', 'tenant', 'role', 'description', 'interface')
+        fields = ('pk', 'vni', 'site', 'group', 'name', 'tenant', 'role', 'description', 'interfaces')
 
 
 class VxLANMemberTable(BaseTable):
