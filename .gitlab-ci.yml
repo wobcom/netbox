@@ -23,6 +23,7 @@ build-container:
   before_script: 
     - "echo Build Container..."
   script:
+    - "echo Code goes here"
     # login to registry
     # - docker login -u mimir_mvp -p "$REGISTRY_TOKEN" "$REGISTRY"
     # pull from registry, build if not existant
