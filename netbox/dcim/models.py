@@ -1984,9 +1984,9 @@ class Interface(CableTermination, ComponentModel):
         blank=True,
         verbose_name='Tagged VLANs'
     )
-    vxlan = models.OneToOneField(
+    vxlan = models.ForeignKey(
         to='ipam.VxLAN',
-        related_name='interface',
+        related_name='interfaces',
         blank=True,
         null=True,
         on_delete=models.SET_NULL,
