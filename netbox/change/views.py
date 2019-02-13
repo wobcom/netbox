@@ -336,8 +336,8 @@ class DetailView(View):
 @method_decorator(login_required, name='dispatch')
 class ListView(ObjectListView):
     queryset = ChangeSet.objects.annotate(
-        changedfield_count=models.Count('changedfield'),
-        changedobject_count=models.Count('changedobject')
+        changedfield_count=models.Count('changedfield', distinct=True),
+        changedobject_count=models.Count('changedobject', distinct=True)
     )
     table = tables.ChangeTable
     template_name = 'change/change_list.html'
