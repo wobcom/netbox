@@ -40,11 +40,12 @@ deploy-container-staging:
   only: 
     - changes
   script:
-    - "ssh -t $SSH_USER@$DEPLOY_SERVER_STAGING 'rm -rf /var/tmp/*'"
+    - "ssh -t $SSH_USER@$DEPLOY_SERVER_STAGING 'rm -rf /var/tmp/autodeploy'"
+    - "ssh -t $SSH_USER@$DEPLOY_SERVER_STAGING 'mkdir -p /var/tmp/autodeploy'"
     - "echo \"BIND_HOST=$DEPLOY_SERVER_STAGING\" > .env"
-    - "scp .env $SSH_USER@$DEPLOY_SERVER_STAGING:/var/tmp/"
-    - "scp deploy.sh $SSH_USER@$DEPLOY_SERVER_STAGING:/var/tmp/deploy.sh"
-    - "ssh -t $SSH_USER@$DEPLOY_SERVER_STAGING 'cd /var/tmp/ && bash -x ./deploy.sh'"
+    - "scp .env $SSH_USER@$DEPLOY_SERVER_STAGING:/var/tmp/autodeploy/"
+    - "scp deploy.sh $SSH_USER@$DEPLOY_SERVER_STAGING:/var/tmp/autodeploy/deploy.sh"
+    - "ssh -t $SSH_USER@$DEPLOY_SERVER_STAGING 'cd /var/tmp/autodeploy && bash -x ./deploy.sh'"
   tags:
     - docker-test
 
