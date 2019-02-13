@@ -3,7 +3,7 @@ set -e
 
 cd /opt/netbox/netbox
 
-git pull http://gitlab+deploy-token-3:UhhtBKPa9FL-aBKUe-Ax@gitlab.service.wobcom.de/infrastructure/netbox.git
+git pull http://gitlab+deploy-token-3:UhhtBKPa9FL-aBKUe-Ax@gitlab.service.wobcom.de/infrastructure/netbox.git@changes
 #git pull https://gitlab-ci-token:<YOUR_TOKEN>@<GITLAB_INSTANCE_URL>/<USERNAME_OR_GROUPNAME/<REPO_NAME>.git
 #http://gitlab.service.wobcom.de/infrastructure/netbox.git
 
