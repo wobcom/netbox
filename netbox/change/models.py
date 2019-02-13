@@ -198,7 +198,7 @@ class ChangeSet(models.Model):
         res = {'device': res}
         return yaml.dump(res, explicit_start=True, default_flow_style=False)
 
-    def map_platform_to_vagrant_box(platform):
+    def map_platform_to_vagrant_box(self, platform):
         default = "centos/7"
         m = {
             "cumulus" : "CumulusCommunity/cumulus-vx",
