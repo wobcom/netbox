@@ -1,0 +1,68 @@
+before_script:
+  # is only executed for the deploy stages that need to ssh
+  - 'which ssh-agent || ( apt-get update -y && apt-get install openssh-client -y)'
+  - eval $(ssh-agent -s)
+  - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add - > /dev/null
+  - mkdir -p 644 ~/.ssh
+  - touch ~/.ssh/known_hosts
+  - echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+  - chmod 644 ~/.ssh/known_hosts
+  - ssh-add -l
+  # webserver certificates
+  #- echo "$CERTIFICATE_KEY" > ./certs/cert.key
+  #- echo "$CERTIFICATE_CRT" > ./certs/cert.crt
+ 
+variables:
+  REGISTRY: registry.gitlab.com
+
+stages:
+  - build
+  - deploy
+
+build-container:
+  stage: build
+  before_script: 
+    - "echo Build Container..."
+  script:
+    - "echo Code goes here"
+    # login to registry
+    # - docker login -u mimir_mvp -p "$REGISTRY_TOKEN" "$REGISTRY"
+    # pull from registry, build if not existant
+    # - docker-compose build --no-cache --pull
+    # optional: save image to tarball, tag it and push it
+    # - docker save --output images/mimir.img mimir_mimir
+    # - docker tag mimir_mimir "$REGISTRY/wobcom/mimir"
+    # - docker push "$REGISTRY/wobcom/mimir"
+  tags:
+    - docker-test
+
+deploy-container-staging:
+  stage: deploy
+  only: 
+    - changes
+  script:
+    - "ssh -t -vv $SSH_USER@$DEPLOY_SERVER_STAGING 'rm -rf /var/tmp/autodeploy'"
+    - "ssh -t $SSH_USER@$DEPLOY_SERVER_STAGING 'mkdir -p /var/tmp/autodeploy'"
+    - "echo \"BIND_HOST=$DEPLOY_SERVER_STAGING\" > .env"
+    - "scp .env $SSH_USER@$DEPLOY_SERVER_STAGING:/var/tmp/autodeploy/"
+    - "scp deploy.sh $SSH_USER@$DEPLOY_SERVER_STAGING:/var/tmp/autodeploy/deploy.sh"
+    - "ssh -t $SSH_USER@$DEPLOY_SERVER_STAGING 'cd /var/tmp/autodeploy && bash -x ./deploy.sh'"
+  tags:
+    - docker-test
+
+#deploy-container-production:
+#  stage: deploy
+#  only: 
+#    - master
+#  script:
+#    - "echo \"BIND_HOST=$DEPLOY_SERVER_PRODUCTION\" > .env"
+#    - "ssh -t $SSH_USER@$DEPLOY_SERVER_PRODUCTION 'rm -rf /var/tmp/*'"
+#    - "scp Dockerfile $SSH_USER@$DEPLOY_SERVER_PRODUCTION:/var/tmp/"
+#    - "scp .env $SSH_USER@$DEPLOY_SERVER_PRODUCTION:/var/tmp/"
+#    - "scp docker-compose.yml $SSH_USER@$DEPLOY_SERVER_PRODUCTION:/var/tmp/"
+#    - "scp -r certs $SSH_USER@$DEPLOY_SERVER_PRODUCTION:/var/tmp/"
+#    - "scp traefik.toml $SSH_USER@$DEPLOY_SERVER_PRODUCTION:/var/tmp/"
+#    - "scp provisioning/deploy.sh $SSH_USER@$DEPLOY_SERVER_PRODUCTION:/var/tmp/"
+#    - "ssh -t $SSH_USER@$DEPLOY_SERVER_PRODUCTION 'cd /var/tmp/ && bash -x ./deploy.sh'"
+#  tags:
+#    - docker-test
