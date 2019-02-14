@@ -15,7 +15,7 @@ from dcim.models import Device, Interface
 from ipam.models import IPADDRESS_ROLE_LOOPBACK
 
 from change.utilities import Markdownify
-from dcim.constants import IFACE_FF_ONTEP
+from dcim.constants import *
 
 class ChangeInformation(models.Model):
     """Meta information about a change."""
@@ -134,16 +134,15 @@ class ChangeSet(models.Model):
                 'role': vlan.role.name if vlan.role else None
             }
 
-    def yamlify_overlay(self, overlay):
-        if overlay:
-            return {
-                'name': overlay.name,
-                'vxlan_prefix': overlay.vxlan_prefix,
-                'role': overlay.role.name if overlay.role else None,
-                'vlans': [self.yamlify_vlan(v) for v in overlay.vlans.all()]
-            }
+    def convert_form_factor(self, form_factor):
+        m = {
+            IFACE_FF_VIRTUAL: 'virtual',
+            IFACE_FF_BRIDGE: 'bridge',
+            IFACE_FF_LAG: 'lag'
+        }
+        return m.get(form_factor, 'default')
 
-    def concat_vxlan_vlan(vxlan_prefix, vlan_id):
+    def concat_vxlan_vlan(self, vxlan_prefix, vlan_id):
         return str(int(vxlan_prefix) * 4096 + int(vlan_id))
 
     def child_interfaces(self, interface):
@@ -151,7 +150,7 @@ class ChangeSet(models.Model):
         for child_interface in Interface.objects.filter(lag=interface):
             if child_interface.form_factor == IFACE_FF_ONTEP:
                 # expand ONTEP to VTEPs
-                for vlan in child_interface.overlay_network.vlans:
+                for vlan in child_interface.overlay_network.vlans.all():
                     res.append(interface.name + '_' + self.concat_vxlan_vlan(interface.overlay_network.vxlan_prefix, vlan.vid))
             else:
                 res.append(interface.name)
@@ -159,32 +158,32 @@ class ChangeSet(models.Model):
 
     def yamlify_ontep_interface(self, interface):
         res = []
-        for vlan in interface.overlay_network.vlans:
+        for vlan in interface.overlay_network.vlans.all():
             res.append({
                 'name': interface.name + '_' + self.concat_vxlan_vlan(interface.overlay_network.vxlan_prefix, vlan.vid),
                 'enabled': True,
-                'untagged_vlan': self.yamlify_vlan(interface.untagged_vlan),
-                'description': 'VxLAN prefix {} VLAN {}'.format(interface.overlay_network.vxlan_prefix, vlan.vid),
+                'untagged_vlan': self.yamlify_vlan(vlan),
+                'description': 'VTEP (VxLAN prefix="{}" VLAN="{}")'.format(interface.overlay_network.vxlan_prefix, vlan.vid),
                 'form_factor': 'VTEP',
                 'ip_addresses': [self.yamlify_ip_address(address)
                                     for address
                                     in interface.ip_addresses.all()]
             })
         return res
-                
+ 
     def yamlify_ip_address(self, ip_address):
         return {
             'address': str(ip_address.address.ip),
             'prefix_length': str(ip_address.address.prefixlen),
             'tags': list(ip_address.tags.names()),
-            'primary': ip_address.is_primary()
+            'primary': ip_address.is_primary
         }
 
     def yamlify_interface(self, interface):
         if interface.form_factor == IFACE_FF_ONTEP:
             return self.yamlify_ontep_interface(interface)
         elif interface:
-            res = {
+            return [{
                 'name': interface.name,
                 'child_interfaces': self.child_interfaces(interface),
                 'clag_id': interface.clag_id,
@@ -200,13 +199,11 @@ class ChangeSet(models.Model):
                 'tagged_vlans': [self.yamlify_vlan(v)
                                             for v
                                             in interface.tagged_vlans.all()],
-                'form_factor': interface.get_form_factor_display(),
+                'form_factor': self.convert_form_factor(interface.form_factor),
                 'ip_addresses': [self.yamlify_ip_address(address)
                                             for address
                                             in interface.ip_addresses.all()]
-            }
-            return res
-
+            }]
 
     def yamlify_device(self, device):
         res = {
@@ -218,10 +215,11 @@ class ChangeSet(models.Model):
             'asset_tag': device.asset_tag,
             'status': device.get_status_display(),
             'tags': list(device.tags.names()),
-            'interfaces': [self.yamlify_interface(interface) for interface
-                                                             in device.interfaces.all()],
+            'interfaces': [],
             **self.yamlify_extra_fields(device)
         }
+        for interface in device.interfaces.all():
+            res['interfaces'] += self.yamlify_interface(interface)
         res = {'device': res}
         return yaml.dump(res, explicit_start=True, default_flow_style=False)
 
@@ -373,3 +371,4 @@ class ChangedObject(models.Model):
     def revert(self):
         if self.changed_object:
             self.changed_object.delete()
+
