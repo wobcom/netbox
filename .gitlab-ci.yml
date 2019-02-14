@@ -3,11 +3,12 @@ before_script:
   - 'which ssh-agent || ( apt-get update -y && apt-get install openssh-client -y)'
   - eval $(ssh-agent -s)
   - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add - > /dev/null
-  - mkdir -p 644 ~/.ssh
+  - ssh-add -l
+  - mkdir -p ~/.ssh
+  - chmod 644 ~/.ssh
   - touch ~/.ssh/known_hosts
   - echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
   - chmod 644 ~/.ssh/known_hosts
-  - ssh-add -l
   # webserver certificates
   #- echo "$CERTIFICATE_KEY" > ./certs/cert.key
   #- echo "$CERTIFICATE_CRT" > ./certs/cert.crt
@@ -36,16 +37,15 @@ stages:
 #  tags:
 #    - dummy
 
-deploy-container-staging:
+deploy-staging-ssh:
   stage: deploy
   only: 
     - changes
   script:
-    - "ssh -t -vv $SSH_USER@$DEPLOY_SERVER_STAGING 'rm -rf /var/tmp/autodeploy'"
+    - "ssh -t $SSH_USER@$DEPLOY_SERVER_STAGING 'rm -rf /var/tmp/autodeploy'"
     - "ssh -t $SSH_USER@$DEPLOY_SERVER_STAGING 'mkdir -p /var/tmp/autodeploy'"
     - "echo \"BIND_HOST=$DEPLOY_SERVER_STAGING\" > .env"
     - "scp .env $SSH_USER@$DEPLOY_SERVER_STAGING:/var/tmp/autodeploy/"
-    - "scp $GIT_CREDENTIALS_FILE $SSH_USER@$DEPLOY_SERVER_STAGING:/var/tmp/autodeploy/"
     - "scp deploy.sh $SSH_USER@$DEPLOY_SERVER_STAGING:/var/tmp/autodeploy/deploy.sh"
     - "ssh -t $SSH_USER@$DEPLOY_SERVER_STAGING 'cd /var/tmp/autodeploy && bash -x ./deploy.sh'"
   tags:
