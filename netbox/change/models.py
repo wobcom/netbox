@@ -151,7 +151,7 @@ class ChangeSet(models.Model):
             if child_interface.form_factor == IFACE_FF_ONTEP:
                 # expand ONTEP to VTEPs
                 for vlan in child_interface.overlay_network.vlans.all():
-                    res.append(interface.name + '_' + self.concat_vxlan_vlan(interface.overlay_network.vxlan_prefix, vlan.vid))
+                    res.append(interface.name + '_' + self.concat_vxlan_vlan(child_interface.overlay_network.vxlan_prefix, vlan.vid))
             else:
                 res.append(interface.name)
         return res
