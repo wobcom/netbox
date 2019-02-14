@@ -1,6 +1,8 @@
 #! /usr/bin/env bash -x
 set -e
 
+branch=${1}
+
 cd /opt/netbox/netbox
 
 # method proposed by https://stackoverflow.com/a/44702187
@@ -12,7 +14,7 @@ ssh-add ~/.ssh/ci\@gitlab.service.wobcom.de
 # checkout repository
 # @branch not working
 # git pull http://gitlab+deploy-token-3:UhhtBKPa9FL-aBKUe-Ax@gitlab.service.wobcom.de/infrastructure/netbox.git@changes
-git checkout changes
+git checkout ${branch}
 
 git pull
 

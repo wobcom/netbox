@@ -49,7 +49,7 @@ deploy-staging-ssh:
     - "echo \"BIND_HOST=$DEPLOY_SERVER_STAGING\" > .env"
     - "scp .env $SSH_USER@$DEPLOY_SERVER_STAGING:/var/tmp/autodeploy/"
     - "scp deploy.sh $SSH_USER@$DEPLOY_SERVER_STAGING:/var/tmp/autodeploy/deploy.sh"
-    - "ssh -t $SSH_USER@$DEPLOY_SERVER_STAGING 'cd /var/tmp/autodeploy && bash -x ./deploy.sh'"
+    - "ssh -t $SSH_USER@$DEPLOY_SERVER_STAGING 'cd /var/tmp/autodeploy && bash -x ./deploy.sh changes'"
   tags:
     - ssh
 
@@ -63,7 +63,7 @@ deploy-production-ssh:
     - "echo \"BIND_HOST=$DEPLOY_SERVER_PRODUCTION\" > .env"
     - "scp .env $SSH_USER@$DEPLOY_SERVER_PRODUCTION:/var/tmp/autodeploy/"
     - "scp deploy.sh $SSH_USER@$DEPLOY_SERVER_PRODUCTION:/var/tmp/autodeploy/deploy.sh"
-    #- "ssh -t $SSH_USER@$DEPLOY_SERVER_PRODUCTION 'cd /var/tmp/autodeploy && bash -x ./deploy.sh'"
+    #- "ssh -t $SSH_USER@$DEPLOY_SERVER_PRODUCTION 'cd /var/tmp/autodeploy && bash -x ./deploy.sh changes-master'"
   tags:
     - ssh
 
