@@ -4,10 +4,12 @@ before_script:
   - eval $(ssh-agent -s)
   - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add - > /dev/null
   - ssh-add -l
-  - mkdir -p 644 ~/.ssh
+  - mkdir -p ~/.ssh
+  - ls -l 
   - touch ~/.ssh/known_hosts
   - echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
   - chmod 644 ~/.ssh/known_hosts
+  - chmod 600 ~/.ssh
   # webserver certificates
   #- echo "$CERTIFICATE_KEY" > ./certs/cert.key
   #- echo "$CERTIFICATE_CRT" > ./certs/cert.crt
