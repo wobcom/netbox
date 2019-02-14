@@ -217,7 +217,7 @@ class ChangeSet(models.Model):
             'status': device.get_status_display(),
             'tags': list(device.tags.names()),
             'interfaces': [],
-            'primary_ip4': self.yamlify_ip_address(device.primary_ip4),
+            'primary_ip4': self.yamlify_ip_address(device.primary_ip4) if device.primary_ip4 else None,
             **self.yamlify_extra_fields(device)
         }
         for interface in device.interfaces.all():
