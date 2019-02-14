@@ -151,20 +151,20 @@ class ChangeSet(models.Model):
         for child_interface in Interface.objects.filter(lag=interface):
             if child_interface.form_factor == IFACE_FF_ONTEP:
                 # expand ONTEP to VTEPs
-                for vlan in child_interface.overlay.vlans:
-                    res.append(interface.name + '_' + self.concat_vxlan_vlan(interface.overlay.vxlan_prefix, vlan.vid))
+                for vlan in child_interface.overlay_network.vlans:
+                    res.append(interface.name + '_' + self.concat_vxlan_vlan(interface.overlay_network.vxlan_prefix, vlan.vid))
             else:
                 res.append(interface.name)
         return res
 
     def yamlify_ontep_interface(self, interface):
         res = []
-        for vlan in interface.overlay.vlans:
+        for vlan in interface.overlay_network.vlans:
             res.append({
-                'name': interface.name + '_' + self.concat_vxlan_vlan(interface.overlay.vxlan_prefix, vlan.vid),
+                'name': interface.name + '_' + self.concat_vxlan_vlan(interface.overlay_network.vxlan_prefix, vlan.vid),
                 'enabled': True,
                 'untagged_vlan': self.yamlify_vlan(interface.untagged_vlan),
-                'description': 'VxLAN prefix {} VLAN {}'.format(interface.overlay.vxlan_prefix, vlan.vid),
+                'description': 'VxLAN prefix {} VLAN {}'.format(interface.overlay_network.vxlan_prefix, vlan.vid),
                 'form_factor': 'VTEP',
                 'ip_addresses': [self.yamlify_ip_address(address)
                                     for address
@@ -194,7 +194,7 @@ class ChangeSet(models.Model):
                 'mgmnt_only': interface.mgmt_only,
                 'mode': interface.get_mode_display(),
                 'untagged_vlan': self.yamlify_vlan(interface.untagged_vlan),
-                'overlay': self.yamlify_overlay(interface.overlay_network),
+                #'overlay': self.yamlify_overlay(interface.overlay_network),
                 'tags': list(interface.tags.names()),
                 'description': interface.description,
                 'tagged_vlans': [self.yamlify_vlan(v)
