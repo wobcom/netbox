@@ -16,25 +16,25 @@ before_script:
 #  REGISTRY: registry.gitlab.com
 
 stages:
-  - build
+  #- build
   - deploy
 
-build-container:
-  stage: build
-  before_script: 
-    - "echo Build Container..."
-  script:
-    - "echo Code goes here"
-    # login to registry
-    # - docker login -u mimir_mvp -p "$REGISTRY_TOKEN" "$REGISTRY"
-    # pull from registry, build if not existant
-    # - docker-compose build --no-cache --pull
-    # optional: save image to tarball, tag it and push it
-    # - docker save --output images/mimir.img mimir_mimir
-    # - docker tag mimir_mimir "$REGISTRY/wobcom/mimir"
-    # - docker push "$REGISTRY/wobcom/mimir"
-  tags:
-    - dummy
+#build-container:
+#  stage: build
+#  before_script: 
+#    - "echo Build Container..."
+#  script:
+#    - "echo Code goes here"
+#    # login to registry
+#    # - docker login -u mimir_mvp -p "$REGISTRY_TOKEN" "$REGISTRY"
+#    # pull from registry, build if not existant
+#    # - docker-compose build --no-cache --pull
+#    # optional: save image to tarball, tag it and push it
+#    # - docker save --output images/mimir.img mimir_mimir
+#    # - docker tag mimir_mimir "$REGISTRY/wobcom/mimir"
+#    # - docker push "$REGISTRY/wobcom/mimir"
+#  tags:
+#    - dummy
 
 deploy-container-staging:
   stage: deploy
@@ -49,5 +49,5 @@ deploy-container-staging:
     - "scp deploy.sh $SSH_USER@$DEPLOY_SERVER_STAGING:/var/tmp/autodeploy/deploy.sh"
     - "ssh -t $SSH_USER@$DEPLOY_SERVER_STAGING 'cd /var/tmp/autodeploy && bash -x ./deploy.sh'"
   tags:
-    - ssh-deployment
+    - ssh
 
