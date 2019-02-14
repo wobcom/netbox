@@ -604,7 +604,7 @@ class Rack(ChangeLoggedModel, CustomFieldModel):
 
         # Record the original site assignment for this rack.
         _site_id = None
-        if self.pk:
+        if self.pk and not kwargs.get("force_insert", True):
             _site_id = Rack.objects.get(pk=self.pk).site_id
 
         super().save(*args, **kwargs)
