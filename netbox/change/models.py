@@ -143,14 +143,47 @@ class ChangeSet(models.Model):
                 'vlans': [self.yamlify_vlan(v) for v in overlay.vlans.all()]
             }
 
+    def concat_vxlan_vlan(vxlan_prefix, vlan_id):
+        return str(int(vxlan_prefix) * 4096 + int(vlan_id))
+
     def child_interfaces(self, interface):
-        return list(
-            Interface.objects.filter(lag=interface).values_list('name',
-                                                                flat=True)
-        )
+        res = []
+        for child_interface in Interface.objects.filter(lag=interface):
+            if child_interface.form_factor == IFACE_FF_ONTEP:
+                # expand ONTEP to VTEPs
+                for vlan in child_interface.overlay.vlans:
+                    res.append(interface.name + '_' + self.concat_vxlan_vlan(interface.overlay.vxlan_prefix, vlan.vid))
+            else:
+                res.append(interface.name)
+        return res
+
+    def yamlify_ontep_interface(self, interface):
+        res = []
+        for vlan in interface.overlay.vlans:
+            res.append({
+                'name': interface.name + '_' + self.concat_vxlan_vlan(interface.overlay.vxlan_prefix, vlan.vid),
+                'enabled': True,
+                'untagged_vlan': self.yamlify_vlan(interface.untagged_vlan),
+                'description': f"VxLAN prefix {interface.overlay.vxlan_prefix} VLAN {vlan.vid}",
+                'form_factor': 'VTEP',
+                'ip_addresses': [self.yamlify_ip_address(address)
+                                    for address
+                                    in interface.ip_addresses.all()]
+            })
+        return res
+                
+    def yamlify_ip_address(self, ip_address):
+        return {
+            'address': str(ip_address.address.ip),
+            'prefix_length': str(ip_address.address.prefixlen),
+            'tags': list(ip_address.tags.names()),
+            'primary': ip_address.is_primary()
+        }
 
     def yamlify_interface(self, interface):
-        if interface:
+        if interface.form_factor == IFACE_FF_ONTEP:
+            return self.yamlify_ontep_interface(interface)
+        elif interface:
             res = {
                 'name': interface.name,
                 'child_interfaces': self.child_interfaces(interface),
@@ -168,16 +201,10 @@ class ChangeSet(models.Model):
                                             for v
                                             in interface.tagged_vlans.all()],
                 'form_factor': interface.get_form_factor_display(),
+                'ip_addresses': [self.yamlify_ip_address(address)
+                                            for address
+                                            in interface.ip_addresses.all()]
             }
-            addresses = []
-            for ip_addr in interface.ip_addresses.all():
-                addresses.append({
-                    'address': str(ip_addr.address.ip),
-                    'prefix_length': str(ip_addr.address.prefixlen),
-                    'tags': list(ip_addr.tags.names()),
-                    'primary': ip_addr.is_primary,
-                })
-            res["ip_addresses"] = addresses
             return res
 
 
