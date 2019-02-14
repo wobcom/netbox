@@ -139,7 +139,8 @@ class ChangeSet(models.Model):
             return {
                 'name': overlay.name,
                 'vxlan_prefix': overlay.vxlan_prefix,
-                'role': overlay.role.name if overlay.role else None
+                'role': overlay.role.name if overlay.role else None,
+                'vlans': [self.yamlify_vlan(v) for v in overlay.vlans.all()]
             }
 
     def child_interfaces(self, interface):
