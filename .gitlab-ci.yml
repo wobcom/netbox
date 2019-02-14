@@ -8,16 +8,12 @@ before_script:
   - echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
   - chmod 644 ~/.ssh/known_hosts
   - ssh-add -l
-  - echo Storing git credentials to be used by "git clone" commands without username and password ...
-  - GIT_CREDENTIALS_FILE=~/.git-credentials
-  - BASE_URL=`echo $CI_REPOSITORY_URL | sed "s;\/*$CI_PROJECT_PATH.*;;"`
-  - echo $BASE_URL > $GIT_CREDENTIALS_FILE
   # webserver certificates
   #- echo "$CERTIFICATE_KEY" > ./certs/cert.key
   #- echo "$CERTIFICATE_CRT" > ./certs/cert.crt
  
-variables:
-  REGISTRY: registry.gitlab.com
+#variables:
+#  REGISTRY: registry.gitlab.com
 
 stages:
   - build
@@ -38,7 +34,7 @@ build-container:
     # - docker tag mimir_mimir "$REGISTRY/wobcom/mimir"
     # - docker push "$REGISTRY/wobcom/mimir"
   tags:
-    - docker-test
+    - dummy
 
 deploy-container-staging:
   stage: deploy
@@ -53,21 +49,5 @@ deploy-container-staging:
     - "scp deploy.sh $SSH_USER@$DEPLOY_SERVER_STAGING:/var/tmp/autodeploy/deploy.sh"
     - "ssh -t $SSH_USER@$DEPLOY_SERVER_STAGING 'cd /var/tmp/autodeploy && bash -x ./deploy.sh'"
   tags:
-    - docker-test
+    - ssh-deployment
 
-#deploy-container-production:
-#  stage: deploy
-#  only: 
-#    - master
-#  script:
-#    - "echo \"BIND_HOST=$DEPLOY_SERVER_PRODUCTION\" > .env"
-#    - "ssh -t $SSH_USER@$DEPLOY_SERVER_PRODUCTION 'rm -rf /var/tmp/*'"
-#    - "scp Dockerfile $SSH_USER@$DEPLOY_SERVER_PRODUCTION:/var/tmp/"
-#    - "scp .env $SSH_USER@$DEPLOY_SERVER_PRODUCTION:/var/tmp/"
-#    - "scp docker-compose.yml $SSH_USER@$DEPLOY_SERVER_PRODUCTION:/var/tmp/"
-#    - "scp -r certs $SSH_USER@$DEPLOY_SERVER_PRODUCTION:/var/tmp/"
-#    - "scp traefik.toml $SSH_USER@$DEPLOY_SERVER_PRODUCTION:/var/tmp/"
-#    - "scp provisioning/deploy.sh $SSH_USER@$DEPLOY_SERVER_PRODUCTION:/var/tmp/"
-#    - "ssh -t $SSH_USER@$DEPLOY_SERVER_PRODUCTION 'cd /var/tmp/ && bash -x ./deploy.sh'"
-#  tags:
-#    - docker-test
