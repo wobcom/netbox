@@ -151,9 +151,9 @@ class ChangeSet(models.Model):
             if child_interface.form_factor == IFACE_FF_ONTEP:
                 # expand ONTEP to VTEPs
                 for vlan in child_interface.overlay_network.vlans.all():
-                    res.append(interface.name + '_' + self.concat_vxlan_vlan(child_interface.overlay_network.vxlan_prefix, vlan.vid))
+                    res.append(child_interface.name + '_' + self.concat_vxlan_vlan(child_interface.overlay_network.vxlan_prefix, vlan.vid))
             else:
-                res.append(interface.name)
+                res.append(child_interface.name)
         return res
 
     def yamlify_ontep_interface(self, interface):
@@ -217,6 +217,7 @@ class ChangeSet(models.Model):
             'status': device.get_status_display(),
             'tags': list(device.tags.names()),
             'interfaces': [],
+            'primary_ip4': self.yamlify_ip_address(device.primary_ip4),
             **self.yamlify_extra_fields(device)
         }
         for interface in device.interfaces.all():
