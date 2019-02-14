@@ -53,3 +53,17 @@ deploy-staging-ssh:
   tags:
     - ssh
 
+deploy-production-ssh:
+  stage: deploy
+  only: 
+    - changes-master
+  script:
+    - "ssh -t $SSH_USER@$DEPLOY_SERVER_PRODUCTION 'rm -rf /var/tmp/autodeploy'"
+    - "ssh -t $SSH_USER@$DEPLOY_SERVER_PRODUCTION 'mkdir -p /var/tmp/autodeploy'"
+    - "echo \"BIND_HOST=$DEPLOY_SERVER_PRODUCTION\" > .env"
+    - "scp .env $SSH_USER@$DEPLOY_SERVER_PRODUCTION:/var/tmp/autodeploy/"
+    - "scp deploy.sh $SSH_USER@$DEPLOY_SERVER_PRODUCTION:/var/tmp/autodeploy/deploy.sh"
+    #- "ssh -t $SSH_USER@$DEPLOY_SERVER_PRODUCTION 'cd /var/tmp/autodeploy && bash -x ./deploy.sh'"
+  tags:
+    - ssh
+
