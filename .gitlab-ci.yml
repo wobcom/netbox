@@ -4,8 +4,7 @@ before_script:
   - eval $(ssh-agent -s)
   - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add - > /dev/null
   - ssh-add -l
-  - mkdir -p ~/.ssh
-  - chmod 644 ~/.ssh
+  - mkdir -p 644 ~/.ssh
   - touch ~/.ssh/known_hosts
   - echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
   - chmod 644 ~/.ssh/known_hosts
