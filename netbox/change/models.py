@@ -165,6 +165,7 @@ class ChangeSet(models.Model):
                 'untagged_vlan': self.yamlify_vlan(vlan),
                 'description': 'VTEP (VxLAN prefix="{}" VLAN="{}")'.format(interface.overlay_network.vxlan_prefix, vlan.vid),
                 'form_factor': 'VTEP',
+                'vxlan_id': self.concat_vxlan_vlan(interface.overlay_network.vxlan_prefix, vlan.vid),
                 'ip_addresses': [self.yamlify_ip_address(address)
                                     for address
                                     in interface.ip_addresses.all()]
