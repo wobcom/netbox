@@ -3,8 +3,15 @@ set -e
 
 cd /opt/netbox/netbox
 
+# method proposed by https://stackoverflow.com/a/44702187
+git config --global credential.helper store --file=/var/tmp/autodeploy/.git-credentials
+
 # checkout repository
-git pull http://gitlab+deploy-token-3:UhhtBKPa9FL-aBKUe-Ax@gitlab.service.wobcom.de/infrastructure/netbox.git@changes
+# @branch not working
+# git pull http://gitlab+deploy-token-3:UhhtBKPa9FL-aBKUe-Ax@gitlab.service.wobcom.de/infrastructure/netbox.git@changes
+git checkout changes
+
+git pull
 
 ## do DB migrations
 venv/bin/python netbox/manage.py migrate
