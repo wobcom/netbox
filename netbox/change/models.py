@@ -15,7 +15,7 @@ from dcim.models import Device, Interface
 from ipam.models import IPADDRESS_ROLE_LOOPBACK
 
 from change.utilities import Markdownify
-
+from dcim.constants import IFACE_FF_ONTEP
 
 class ChangeInformation(models.Model):
     """Meta information about a change."""
