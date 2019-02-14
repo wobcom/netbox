@@ -16,6 +16,8 @@ git checkout changes
 
 git pull
 
+cd /opt/netbox
+
 ## do DB migrations
 venv/bin/python netbox/manage.py migrate
 
