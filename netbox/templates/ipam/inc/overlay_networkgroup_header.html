@@ -1,0 +1,14 @@
+<div class="pull-right">
+    {% if perms.ipam.add_overlay_network and first_available_overlay_network %}
+        <a href="{% url 'ipam:overlay_network_add' %}?vid={{ first_available_overlay_network }}&group={{ overlay_network_group.pk }}{% if overlay_network_group.site %}&site={{ overlay_network_group.site.pk }}{% endif %}" class="btn btn-success">
+            <i class="fa fa-plus" aria-hidden="true"></i> Add a Overlay Network
+        </a>
+    {% endif %}
+    {% if perms.ipam.change_overlay_networkgroup %}
+               <a href="{% url 'ipam:overlay_networkgroup_edit' pk=overlay_network_group.pk %}" class="btn btn-warning">
+                       <span class="fa fa-pencil" aria-hidden="true"></span>
+                       Edit this Overlay Network Group
+               </a>
+    {% endif %}
+</div>
+<h1>{{ overlay_network_group }}</h1>

@@ -11,7 +11,7 @@ from utilities.filters import NumericInFilter, TagFilter
 from virtualization.models import VirtualMachine
 from .constants import IPADDRESS_ROLE_CHOICES, IPADDRESS_STATUS_CHOICES, PREFIX_STATUS_CHOICES, VLAN_STATUS_CHOICES
 from .models import (
-    Aggregate, IPAddress, Prefix, RIR, Role, Service, VxLAN, VLAN, VxLANGroup,
+    Aggregate, IPAddress, Prefix, RIR, Role, Service, OverlayNetwork, VLAN, OverlayNetworkGroup,
     VLANGroup, VRF
 )
 
@@ -376,7 +376,7 @@ class IPAddressFilter(CustomFieldFilterSet, django_filters.FilterSet):
             return queryset.none()
 
 
-class VxLANGroupFilter(django_filters.FilterSet):
+class OverlayNetworkGroupFilter(django_filters.FilterSet):
     site_id = django_filters.ModelMultipleChoiceFilter(
         queryset=Site.objects.all(),
         label='Site (ID)',
@@ -389,7 +389,7 @@ class VxLANGroupFilter(django_filters.FilterSet):
     )
 
     class Meta:
-        model = VxLANGroup
+        model = OverlayNetworkGroup
         fields = ['name', 'slug']
 
 
@@ -410,7 +410,7 @@ class VLANGroupFilter(django_filters.FilterSet):
         fields = ['name', 'slug']
 
 
-class VxLANFilter(CustomFieldFilterSet, django_filters.FilterSet):
+class OverlayNetworkFilter(CustomFieldFilterSet, django_filters.FilterSet):
     id__in = NumericInFilter(
         field_name='id',
         lookup_expr='in'
@@ -430,12 +430,12 @@ class VxLANFilter(CustomFieldFilterSet, django_filters.FilterSet):
         label='Site (slug)',
     )
     group_id = django_filters.ModelMultipleChoiceFilter(
-        queryset=VxLANGroup.objects.all(),
+        queryset=OverlayNetworkGroup.objects.all(),
         label='Group (ID)',
     )
     group = django_filters.ModelMultipleChoiceFilter(
         field_name='group__slug',
-        queryset=VxLANGroup.objects.all(),
+        queryset=OverlayNetworkGroup.objects.all(),
         to_field_name='slug',
         label='Group',
     )
@@ -462,15 +462,15 @@ class VxLANFilter(CustomFieldFilterSet, django_filters.FilterSet):
     tag = TagFilter()
 
     class Meta:
-        model = VxLAN
-        fields = ['vni', 'name']
+        model = OverlayNetwork
+        fields = ['vxlan_prefix', 'name']
 
     def search(self, queryset, name, value):
         if not value.strip():
             return queryset
         qs_filter = Q(name__icontains=value) | Q(description__icontains=value)
         try:
-            qs_filter |= Q(vni=int(value.strip()))
+            qs_filter |= Q(vxlan_prefix=int(value.strip()))
         except ValueError:
             pass
         return queryset.filter(qs_filter)

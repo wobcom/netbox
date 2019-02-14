@@ -3,9 +3,9 @@
 
 {% block form %}
     <div class="panel panel-default">
-        <div class="panel-heading"><strong>VxLAN</strong></div>
+        <div class="panel-heading"><strong>Overlay Network</strong></div>
         <div class="panel-body">
-            {% render_field form.vni %}
+            {% render_field form.vxlan_prefix %}
             {% render_field form.name %}
             {% render_field form.site %}
             {% render_field form.group %}

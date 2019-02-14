@@ -283,24 +283,24 @@
                             <a href="{% url 'ipam:vlangroup_list' %}">VLAN Groups</a>
                         </li>
                         <li class="divider"></li>
-                        <li class="dropdown-header">VxLANs</li>
+                        <li class="dropdown-header">Overlay Networks</li>
                         <li>
-                            {% if perms.ipam.add_vxlan %}
+                            {% if perms.ipam.add_overlay_network %}
                                 <div class="buttons pull-right">
-                                    <a href="{% url 'ipam:vxlan_add' %}" class="btn btn-xs btn-success" title="Add"><i class="fa fa-plus"></i></a>
-                                    <a href="{% url 'ipam:vxlan_import' %}" class="btn btn-xs btn-info" title="Import"><i class="fa fa-download"></i></a>
+                                    <a href="{% url 'ipam:overlay_network_add' %}" class="btn btn-xs btn-success" title="Add"><i class="fa fa-plus"></i></a>
+                                    <a href="{% url 'ipam:overlay_network_import' %}" class="btn btn-xs btn-info" title="Import"><i class="fa fa-download"></i></a>
                                 </div>
                             {% endif %}
-                            <a href="{% url 'ipam:vxlan_list' %}">VxLANs</a>
+                            <a href="{% url 'ipam:overlay_network_list' %}">Overlay Networks</a>
                         </li>
                         <li>
-                            {% if perms.ipam.add_vxlangroup %}
+                            {% if perms.ipam.add_overlay_networkgroup %}
                                 <div class="buttons pull-right">
-                                    <a href="{% url 'ipam:vxlangroup_add' %}" class="btn btn-xs btn-success" title="Add"><i class="fa fa-plus"></i></a>
-                                    <a href="{% url 'ipam:vxlangroup_import' %}" class="btn btn-xs btn-info" title="Import"><i class="fa fa-download"></i></a>
+                                    <a href="{% url 'ipam:overlay_networkgroup_add' %}" class="btn btn-xs btn-success" title="Add"><i class="fa fa-plus"></i></a>
+                                    <a href="{% url 'ipam:overlay_networkgroup_import' %}" class="btn btn-xs btn-info" title="Import"><i class="fa fa-download"></i></a>
                                 </div>
                             {% endif %}
-                            <a href="{% url 'ipam:vxlangroup_list' %}">VxLAN Groups</a>
+                            <a href="{% url 'ipam:overlay_networkgroup_list' %}">Overlay Network Groups</a>
                         </li>
                         <li class="divider"></li>
                         <li class="dropdown-header">Services</li>

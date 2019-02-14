@@ -16,8 +16,8 @@
             {% render_field form.mode %}
             {% render_field form.tags %}
             {% render_field form.clag_id %}
-            {% if obj.is_vtep %}
-              {% render_field form.vxlan %}
+            {% if obj.is_ontep %}
+              {% render_field form.overlay_network %}
             {% endif %}
         </div>
     </div>
