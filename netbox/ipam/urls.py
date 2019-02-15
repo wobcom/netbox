@@ -2,8 +2,8 @@ from django.conf.urls import url
 
 from extras.views import ObjectChangeLogView
 from . import views
-from .models import Aggregate, IPAddress, Prefix, RIR, Role, Service, VxLAN,\
-            VLAN, VxLANGroup, VLANGroup, VRF
+from .models import Aggregate, IPAddress, Prefix, RIR, Role, Service, OverlayNetwork,\
+            VLAN, OverlayNetworkGroup, VLANGroup, VRF
 
 app_name = 'ipam'
 urlpatterns = [
@@ -72,14 +72,14 @@ urlpatterns = [
     url(r'^ip-addresses/(?P<pk>\d+)/edit/$', views.IPAddressEditView.as_view(), name='ipaddress_edit'),
     url(r'^ip-addresses/(?P<pk>\d+)/delete/$', views.IPAddressDeleteView.as_view(), name='ipaddress_delete'),
 
-    # VxLAN groups
-    url(r'^vxlan-groups/$', views.VxLANGroupListView.as_view(), name='vxlangroup_list'),
-    url(r'^vxlan-groups/add/$', views.VxLANGroupCreateView.as_view(), name='vxlangroup_add'),
-    url(r'^vxlan-groups/import/$', views.VxLANGroupBulkImportView.as_view(), name='vxlangroup_import'),
-    url(r'^vxlan-groups/delete/$', views.VxLANGroupBulkDeleteView.as_view(), name='vxlangroup_bulk_delete'),
-    url(r'^vxlan-groups/(?P<pk>\d+)/edit/$', views.VxLANGroupEditView.as_view(), name='vxlangroup_edit'),
-    url(r'^vxlan-groups/(?P<pk>\d+)/vxlans/$', views.VxLANGroupVxLANsView.as_view(), name='vxlangroup_vxlans'),
-    url(r'^vxlan-groups/(?P<pk>\d+)/changelog/$', ObjectChangeLogView.as_view(), name='vxlangroup_changelog', kwargs={'model': VxLANGroup}),
+    # Overlay Network groups
+    url(r'^overlay-network-groups/$', views.OverlayNetworkGroupListView.as_view(), name='overlay_networkgroup_list'),
+    url(r'^overlay-network-groups/add/$', views.OverlayNetworkGroupCreateView.as_view(), name='overlay_networkgroup_add'),
+    url(r'^overlay-network-groups/import/$', views.OverlayNetworkGroupBulkImportView.as_view(), name='overlay_networkgroup_import'),
+    url(r'^overlay-network-groups/delete/$', views.OverlayNetworkGroupBulkDeleteView.as_view(), name='overlay_networkgroup_bulk_delete'),
+    url(r'^overlay-network-groups/(?P<pk>\d+)/edit/$', views.OverlayNetworkGroupEditView.as_view(), name='overlay_networkgroup_edit'),
+    url(r'^overlay-network-groups/(?P<pk>\d+)/overlay_networks/$', views.OverlayNetworkGroupOverlayNetworksView.as_view(), name='overlay_networkgroup_overlay_networks'),
+    url(r'^overlay-network-groups/(?P<pk>\d+)/changelog/$', ObjectChangeLogView.as_view(), name='overlay_networkgroup_changelog', kwargs={'model': OverlayNetworkGroup}),
 
     # VLAN groups
     url(r'^vlan-groups/$', views.VLANGroupListView.as_view(), name='vlangroup_list'),
@@ -90,17 +90,17 @@ urlpatterns = [
     url(r'^vlan-groups/(?P<pk>\d+)/vlans/$', views.VLANGroupVLANsView.as_view(), name='vlangroup_vlans'),
     url(r'^vlan-groups/(?P<pk>\d+)/changelog/$', ObjectChangeLogView.as_view(), name='vlangroup_changelog', kwargs={'model': VLANGroup}),
 
-    # VxLANs
-    url(r'^vxlans/$', views.VxLANListView.as_view(), name='vxlan_list'),
-    url(r'^vxlans/add/$', views.VxLANCreateView.as_view(), name='vxlan_add'),
-    url(r'^vxlans/import/$', views.VxLANBulkImportView.as_view(), name='vxlan_import'),
-    url(r'^vxlans/edit/$', views.VxLANBulkEditView.as_view(), name='vxlan_bulk_edit'),
-    url(r'^vxlans/delete/$', views.VxLANBulkDeleteView.as_view(), name='vxlan_bulk_delete'),
-    url(r'^vxlans/(?P<pk>\d+)/$', views.VxLANView.as_view(), name='vxlan'),
-    url(r'^vxlans/(?P<pk>\d+)/members/$', views.VxLANMembersView.as_view(), name='vxlan_members'),
-    url(r'^vxlans/(?P<pk>\d+)/edit/$', views.VxLANEditView.as_view(), name='vxlan_edit'),
-    url(r'^vxlans/(?P<pk>\d+)/delete/$', views.VxLANDeleteView.as_view(), name='vxlan_delete'),
-    url(r'^vxlans/(?P<pk>\d+)/changelog/$', ObjectChangeLogView.as_view(), name='vxlan_changelog', kwargs={'model': VxLAN}),
+    # Overlay Networks
+    url(r'^overlay_networks/$', views.OverlayNetworkListView.as_view(), name='overlay_network_list'),
+    url(r'^overlay_networks/add/$', views.OverlayNetworkCreateView.as_view(), name='overlay_network_add'),
+    url(r'^overlay_networks/import/$', views.OverlayNetworkBulkImportView.as_view(), name='overlay_network_import'),
+    url(r'^overlay_networks/edit/$', views.OverlayNetworkBulkEditView.as_view(), name='overlay_network_bulk_edit'),
+    url(r'^overlay_networks/delete/$', views.OverlayNetworkBulkDeleteView.as_view(), name='overlay_network_bulk_delete'),
+    url(r'^overlay_networks/(?P<pk>\d+)/$', views.OverlayNetworkView.as_view(), name='overlay_network'),
+    url(r'^overlay_networks/(?P<pk>\d+)/members/$', views.OverlayNetworkMembersView.as_view(), name='overlay_network_members'),
+    url(r'^overlay_networks/(?P<pk>\d+)/edit/$', views.OverlayNetworkEditView.as_view(), name='overlay_network_edit'),
+    url(r'^overlay_networks/(?P<pk>\d+)/delete/$', views.OverlayNetworkDeleteView.as_view(), name='overlay_network_delete'),
+    url(r'^overlay_networks/(?P<pk>\d+)/changelog/$', ObjectChangeLogView.as_view(), name='overlay_network_changelog', kwargs={'model': OverlayNetwork}),
 
     # VLANs
     url(r'^vlans/$', views.VLANListView.as_view(), name='vlan_list'),

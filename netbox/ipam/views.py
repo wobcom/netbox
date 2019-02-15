@@ -15,7 +15,7 @@ from virtualization.models import VirtualMachine
 from . import filters, forms, tables
 from .constants import IPADDRESS_ROLE_ANYCAST, PREFIX_STATUS_ACTIVE, PREFIX_STATUS_DEPRECATED, PREFIX_STATUS_RESERVED
 from .models import (
-    Aggregate, IPAddress, Prefix, RIR, Role, Service, VxLAN, VLAN, VxLANGroup,
+    Aggregate, IPAddress, Prefix, RIR, Role, Service, OverlayNetwork, VLAN, OverlayNetworkGroup,
     VLANGroup, VRF
 )
 
@@ -791,74 +791,74 @@ class IPAddressBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
 
 
 #
-# VxLAN groups
+# OverlayNetwork groups
 #
 
-class VxLANGroupListView(ObjectListView):
-    queryset = VxLANGroup.objects.select_related('site').annotate(vxlan_count=Count('vxlans'))
-    filter = filters.VxLANGroupFilter
-    filter_form = forms.VxLANGroupFilterForm
-    table = tables.VxLANGroupTable
-    template_name = 'ipam/vxlangroup_list.html'
+class OverlayNetworkGroupListView(ObjectListView):
+    queryset = OverlayNetworkGroup.objects.select_related('site').annotate(overlay_network_count=Count('overlay_networks'))
+    filter = filters.OverlayNetworkGroupFilter
+    filter_form = forms.OverlayNetworkGroupFilterForm
+    table = tables.OverlayNetworkGroupTable
+    template_name = 'ipam/overlay_networkgroup_list.html'
 
 
-class VxLANGroupCreateView(PermissionRequiredMixin, ObjectEditView):
-    permission_required = 'ipam.add_vxlangroup'
-    model = VxLANGroup
-    model_form = forms.VxLANGroupForm
-    default_return_url = 'ipam:vxlangroup_list'
+class OverlayNetworkGroupCreateView(PermissionRequiredMixin, ObjectEditView):
+    permission_required = 'ipam.add_overlay_networkgroup'
+    model = OverlayNetworkGroup
+    model_form = forms.OverlayNetworkGroupForm
+    default_return_url = 'ipam:overlay_networkgroup_list'
 
 
-class VxLANGroupEditView(VxLANGroupCreateView):
-    permission_required = 'ipam.change_vxlangroup'
+class OverlayNetworkGroupEditView(OverlayNetworkGroupCreateView):
+    permission_required = 'ipam.change_overlay_networkgroup'
 
 
-class VxLANGroupBulkImportView(PermissionRequiredMixin, BulkImportView):
-    permission_required = 'ipam.add_vxlangroup'
-    model_form = forms.VxLANGroupCSVForm
-    table = tables.VxLANGroupTable
-    default_return_url = 'ipam:vxlangroup_list'
+class OverlayNetworkGroupBulkImportView(PermissionRequiredMixin, BulkImportView):
+    permission_required = 'ipam.add_overlay_networkgroup'
+    model_form = forms.OverlayNetworkGroupCSVForm
+    table = tables.OverlayNetworkGroupTable
+    default_return_url = 'ipam:overlay_networkgroup_list'
 
 
-class VxLANGroupBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
-    permission_required = 'ipam.delete_vxlangroup'
-    queryset = VxLANGroup.objects.select_related('site').annotate(vxlan_count=Count('vxlans'))
-    filter = filters.VxLANGroupFilter
-    table = tables.VxLANGroupTable
-    default_return_url = 'ipam:vxlangroup_list'
+class OverlayNetworkGroupBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
+    permission_required = 'ipam.delete_overlay_networkgroup'
+    queryset = OverlayNetworkGroup.objects.select_related('site').annotate(overlay_network_count=Count('overlay_networks'))
+    filter = filters.OverlayNetworkGroupFilter
+    table = tables.OverlayNetworkGroupTable
+    default_return_url = 'ipam:overlay_networkgroup_list'
 
 
-class VxLANGroupVxLANsView(View):
+class OverlayNetworkGroupOverlayNetworksView(View):
     def get(self, request, pk):
 
-        vxlan_group = get_object_or_404(VxLANGroup.objects.all(), pk=pk)
+        overlay_network_group = get_object_or_404(OverlayNetworkGroup.objects.all(), pk=pk)
 
-        vxlans = VxLAN.objects.filter(group_id=pk)
-        vxlans = add_available_vxlans(vxlan_group, vxlans)
+        overlay_networks = OverlayNetwork.objects.filter(group_id=pk)
+        #overlay_networks = add_available_overlay_networks(overlay_network_group, overlay_networks)
 
-        vxlan_table = tables.VxLANDetailTable(vxlans)
-        if request.user.has_perm('ipam.change_vxlan') or request.user.has_perm('ipam.delete_vxlan'):
-            vxlan_table.columns.show('pk')
-        vxlan_table.columns.hide('site')
-        vxlan_table.columns.hide('group')
+        overlay_network_table = tables.OverlayNetworkDetailTable(overlay_networks)
+        if request.user.has_perm('ipam.change_overlay_network') or request.user.has_perm('ipam.delete_overlay_network'):
+            overlay_network_table.columns.show('pk')
+        overlay_network_table.columns.hide('site')
+        overlay_network_table.columns.hide('group')
 
         paginate = {
             'paginator_class': EnhancedPaginator,
             'per_page': request.GET.get('per_page', settings.PAGINATE_COUNT)
         }
-        RequestConfig(request, paginate).configure(vxlan_table)
+        RequestConfig(request, paginate).configure(overlay_network_table)
 
         # Compile permissions list for rendering the object table
         permissions = {
-            'add': request.user.has_perm('ipam.add_vxlan'),
-            'change': request.user.has_perm('ipam.change_vxlan'),
-            'delete': request.user.has_perm('ipam.delete_vxlan'),
+            'add': request.user.has_perm('ipam.add_overlay_network'),
+            'change': request.user.has_perm('ipam.change_overlay_network'),
+            'delete': request.user.has_perm('ipam.delete_overlay_network'),
         }
 
-        return render(request, 'ipam/vxlangroup_vxlans.html', {
-            'vxlan_group': vxlan_group,
-            'first_available_vxlan': vxlan_group.get_next_available_vid(),
-            'vxlan_table': vxlan_table,
+        return render(request, 'ipam/overlay_networkgroup_overlay_networks.html', {
+            'overlay_network_group': overlay_network_group,
+            'first_available_overlay_network': overlay_network_group.get_next_available_vxlan_prefix(),
+            'overlay_network_table': overlay_network_table,
             'permissions': permissions,
         })
 
@@ -937,38 +937,38 @@ class VLANGroupVLANsView(View):
 
 
 #
-# VxLANs
+# OverlayNetworks
 #
 
-class VxLANListView(ObjectListView):
-    queryset = VxLAN.objects.select_related('site', 'group', 'tenant', 'role')
-    filter = filters.VxLANFilter
-    filter_form = forms.VxLANFilterForm
-    table = tables.VxLANDetailTable
-    template_name = 'ipam/vxlan_list.html'
+class OverlayNetworkListView(ObjectListView):
+    queryset = OverlayNetwork.objects.select_related('site', 'group', 'tenant', 'role')
+    filter = filters.OverlayNetworkFilter
+    filter_form = forms.OverlayNetworkFilterForm
+    table = tables.OverlayNetworkDetailTable
+    template_name = 'ipam/overlay_network_list.html'
 
 
-class VxLANView(View):
+class OverlayNetworkView(View):
 
     def get(self, request, pk):
 
-        vxlan = get_object_or_404(VxLAN.objects.select_related(
+        overlay_network = get_object_or_404(OverlayNetwork.objects.select_related(
             'site__region', 'tenant__group', 'role'
         ), pk=pk)
 
-        return render(request, 'ipam/vxlan.html', {
-            'vxlan': vxlan,
+        return render(request, 'ipam/overlay_network.html', {
+            'overlay_network': overlay_network,
         })
 
 
-class VxLANMembersView(View):
+class OverlayNetworkMembersView(View):
 
     def get(self, request, pk):
 
-        vxlan = get_object_or_404(VxLAN.objects.all(), pk=pk)
-        members = vxlan.get_members().select_related('device', 'virtual_machine')
+        overlay_network = get_object_or_404(OverlayNetwork.objects.all(), pk=pk)
+        members = overlay_network.get_members().select_related('device', 'virtual_machine')
 
-        members_table = tables.VxLANMemberTable(members)
+        members_table = tables.OverlayNetworkMemberTable(members)
 
         paginate = {
             'paginator_class': EnhancedPaginator,
@@ -976,53 +976,53 @@ class VxLANMembersView(View):
         }
         RequestConfig(request, paginate).configure(members_table)
 
-        return render(request, 'ipam/vxlan_members.html', {
-            'vxlan': vxlan,
+        return render(request, 'ipam/overlay_network_members.html', {
+            'overlay_network': overlay_network,
             'members_table': members_table,
             'active_tab': 'members',
         })
 
 
-class VxLANCreateView(PermissionRequiredMixin, ObjectEditView):
-    permission_required = 'ipam.add_vxlan'
-    model = VxLAN
-    model_form = forms.VxLANForm
-    template_name = 'ipam/vxlan_edit.html'
-    default_return_url = 'ipam:vxlan_list'
+class OverlayNetworkCreateView(PermissionRequiredMixin, ObjectEditView):
+    permission_required = 'ipam.add_overlay_network'
+    model = OverlayNetwork
+    model_form = forms.OverlayNetworkForm
+    template_name = 'ipam/overlay_network_edit.html'
+    default_return_url = 'ipam:overlay_network_list'
 
 
-class VxLANEditView(VxLANCreateView):
-    permission_required = 'ipam.change_vxlan'
+class OverlayNetworkEditView(OverlayNetworkCreateView):
+    permission_required = 'ipam.change_overlay_network'
 
 
-class VxLANDeleteView(PermissionRequiredMixin, ObjectDeleteView):
-    permission_required = 'ipam.delete_vxlan'
-    model = VxLAN
-    default_return_url = 'ipam:vxlan_list'
+class OverlayNetworkDeleteView(PermissionRequiredMixin, ObjectDeleteView):
+    permission_required = 'ipam.delete_overlay_network'
+    model = OverlayNetwork
+    default_return_url = 'ipam:overlay_network_list'
 
 
-class VxLANBulkImportView(PermissionRequiredMixin, BulkImportView):
-    permission_required = 'ipam.add_vxlan'
-    model_form = forms.VxLANCSVForm
-    table = tables.VxLANTable
-    default_return_url = 'ipam:vxlan_list'
+class OverlayNetworkBulkImportView(PermissionRequiredMixin, BulkImportView):
+    permission_required = 'ipam.add_overlay_network'
+    model_form = forms.OverlayNetworkCSVForm
+    table = tables.OverlayNetworkTable
+    default_return_url = 'ipam:overlay_network_list'
 
 
-class VxLANBulkEditView(PermissionRequiredMixin, BulkEditView):
-    permission_required = 'ipam.change_vxlan'
-    queryset = VxLAN.objects.select_related('site', 'group', 'tenant', 'role')
-    filter = filters.VxLANFilter
-    table = tables.VxLANTable
-    form = forms.VxLANBulkEditForm
-    default_return_url = 'ipam:vxlan_list'
+class OverlayNetworkBulkEditView(PermissionRequiredMixin, BulkEditView):
+    permission_required = 'ipam.change_overlay_network'
+    queryset = OverlayNetwork.objects.select_related('site', 'group', 'tenant', 'role')
+    filter = filters.OverlayNetworkFilter
+    table = tables.OverlayNetworkTable
+    form = forms.OverlayNetworkBulkEditForm
+    default_return_url = 'ipam:overlay_network_list'
 
 
-class VxLANBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
-    permission_required = 'ipam.delete_vxlan'
-    queryset = VxLAN.objects.select_related('site', 'group', 'tenant', 'role')
-    filter = filters.VxLANFilter
-    table = tables.VxLANTable
-    default_return_url = 'ipam:vxlan_list'
+class OverlayNetworkBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
+    permission_required = 'ipam.delete_overlay_network'
+    queryset = OverlayNetwork.objects.select_related('site', 'group', 'tenant', 'role')
+    filter = filters.OverlayNetworkFilter
+    table = tables.OverlayNetworkTable
+    default_return_url = 'ipam:overlay_network_list'
 
 
 #

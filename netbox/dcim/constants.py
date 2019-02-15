@@ -64,7 +64,7 @@ IFACE_ORDERING_CHOICES = [
 # Virtual
 IFACE_FF_VIRTUAL = 0
 IFACE_FF_BRIDGE = 100
-IFACE_FF_VTEP = 150
+IFACE_FF_ONTEP = 150
 IFACE_FF_LAG = 200
 # Ethernet
 IFACE_FF_100ME_FIXED = 800
@@ -134,7 +134,7 @@ IFACE_FF_CHOICES = [
         [
             [IFACE_FF_VIRTUAL, 'Virtual'],
             [IFACE_FF_BRIDGE, 'Bridge'],
-            [IFACE_FF_VTEP, 'VTEP'],
+            [IFACE_FF_ONTEP, 'ONTEP'],
             [IFACE_FF_LAG, 'Link Aggregation Group (LAG)'],
         ],
     ],

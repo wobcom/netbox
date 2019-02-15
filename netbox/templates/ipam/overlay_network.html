@@ -1,0 +1,140 @@
+{% extends '_base.html' %}
+{% load helpers %}
+
+{% block header %}
+    <div class="row">
+        <div class="col-sm-8 col-md-9">
+            <ol class="breadcrumb">
+                <li><a href="{% url 'ipam:overlay_network_list' %}">Overlay Networks</a></li>
+                {% if overlay_network.site %}
+                    <li><a href="{% url 'ipam:overlay_network_list' %}?site={{ overlay_network.site.slug }}">{{ overlay_network.site }}</a></li>
+                {% endif %}
+                {% if overlay_network.group %}
+                    <li><a href="{% url 'ipam:overlay_network_list' %}?group={{ overlay_network.group.slug }}">{{ overlay_network.group }}</a></li>
+                {% endif %}
+                <li>{{ overlay_network }}</li>
+            </ol>
+        </div>
+        <div class="col-sm-4 col-md-3">
+        <form action="{% url 'ipam:overlay_network_list' %}" method="get">
+            <div class="input-group">
+                <input type="text" name="q" class="form-control" placeholder="Search Overlay Networks" />
+                <span class="input-group-btn">
+                    <button type="submit" class="btn btn-primary">
+                        <span class="fa fa-search" aria-hidden="true"></span>
+                    </button>
+                </span>
+            </div>
+        </form>
+        </div>
+    </div>
+    <div class="pull-right">
+        {% if perms.ipam.change_overlay_network %}
+            <a href="{% url 'ipam:overlay_network_edit' pk=overlay_network.pk %}" class="btn btn-warning">
+                <span class="fa fa-pencil" aria-hidden="true"></span>
+                Edit this Overlay Network
+            </a>
+        {% endif %}
+        {% if perms.ipam.delete_overlay_network %}
+            <a href="{% url 'ipam:overlay_network_delete' pk=overlay_network.pk %}" class="btn btn-danger">
+                <span class="fa fa-trash" aria-hidden="true"></span>
+                Delete this Overlay Network
+            </a>
+        {% endif %}
+    </div>
+    <h1>{% block title %}Overlay Network {{ overlay_network.display_name }}{% endblock %}</h1>
+    {% include 'inc/created_updated.html' with obj=overlay_network %}
+    <ul class="nav nav-tabs" style="margin-bottom: 20px">
+        <li role="presentation"{% if not active_tab %} class="active"{% endif %}>
+            <a href="{% url 'ipam:overlay_network' pk=overlay_network.pk %}">Overlay Network</a>
+        </li>
+        <li role="presentation"{% if active_tab == 'members' %} class="active"{% endif %}>
+            <a href="{% url 'ipam:overlay_network_members' pk=overlay_network.pk %}">Members <span class="badge">{{ overlay_network.get_members.count }}</span></a>
+        </li>
+        <li role="presentation"{% if active_tab == 'changelog' %} class="active"{% endif %}>
+            <a href="{% url 'ipam:overlay_network_changelog' pk=overlay_network.pk %}">Changelog</a>
+        </li>
+    </ul>
+{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <div class="col-md-6">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <strong>Overlay Network</strong>
+                </div>
+                <table class="table table-hover panel-body attr-table">
+                    <tr>
+                        <td>Site</td>
+                        <td>
+                            {% if overlay_network.site %}
+                                {% if overlay_network.site.region %}
+                                    <a href="{{ overlay_network.site.region.get_absolute_url }}">{{ overlay_network.site.region }}</a>
+                                    <i class="fa fa-angle-right"></i>
+                                {% endif %}
+                                <a href="{% url 'dcim:site' slug=overlay_network.site.slug %}">{{ overlay_network.site }}</a>
+                            {% else %}
+                                <span class="text-muted">None</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Group</td>
+                        <td>
+                            {% if overlay_network.group %}
+                                <a href="{{ overlay_network.group.get_absolute_url }}">{{ overlay_network.group }}</a>
+                            {% else %}
+                                <span class="text-muted">None</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Overlay Network ID</td>
+                        <td>{{ overlay_network.vid }}</td>
+                    </tr>
+                    <tr>
+                        <td>Name</td>
+                        <td>{{ overlay_network.name }}</td>
+                    </tr>
+                    <tr>
+                        <td>Tenant</td>
+                        <td>
+                            {% if overlay_network.tenant %}
+                                {% if overlay_network.tenant.group %}
+                                    <a href="{{ overlay_network.tenant.group.get_absolute_url }}">{{ overlay_network.tenant.group }}</a>
+                                    <i class="fa fa-angle-right"></i>
+                                {% endif %}
+                                <a href="{{ overlay_network.tenant.get_absolute_url }}">{{ overlay_network.tenant }}</a>
+                            {% else %}
+                                <span class="text-muted">None</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Status</td>
+                        <td>
+                            <span class="label label-{{ overlay_network.get_status_class }}">{{ overlay_network.get_status_display }}</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Role</td>
+                        <td>
+                            {% if overlay_network.role %}
+                                <a href="{% url 'ipam:overlay_network_list' %}?role={{ overlay_network.role.slug }}">{{ overlay_network.role }}</a>
+                            {% else %}
+                                <span class="text-muted">None</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Description</td>
+                        <td>{{ overlay_network.description|placeholder }}</td>
+                    </tr>
+                </table>
+            </div>
+            {% include 'inc/custom_fields_panel.html' with obj=overlay_network %}
+            {% include 'extras/inc/tags_panel.html' with tags=overlay_network.tags.all url='ipam:overlay_network_list' %}
+        </div>
+    </div>
+{% endblock %}
