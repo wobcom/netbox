@@ -180,9 +180,28 @@ class ChangeSet(models.Model):
             'primary': ip_address.is_primary
         }
 
+    def yamlify_bridge_interface(self, interface):
+        res = {
+            'name': interface.name,
+            'child_interfaces': self.child_interfaces(interface),
+            'enabled': interface.enabled,
+            'mtu': interface.mtu,
+            'untagged_vlan': self.yamlify_vlan(interface.untagged_vlan),
+            }
+        tagged_vlans = []
+        for child_interface in Interface.objects.filter(lag=interface):
+            if child_interface.form_factor == IFACE_FF_ONTEP:
+                tagged_vlans += child_interface.overlay_network.vlans.all()
+            else:
+                tagged_vlans += child_interface.tagged_vlans.all()
+        res['tagged_vlans'] = [self.yamlify_vlan(v) for v in tagged_vlans]
+        return [res]
+
     def yamlify_interface(self, interface):
         if interface.form_factor == IFACE_FF_ONTEP:
             return self.yamlify_ontep_interface(interface)
+        elif interface.form_factor == IFACE_FF_BRIDGE:
+            return self.yamlify_bridge_interface(interface)
         elif interface:
             return [{
                 'name': interface.name,
