@@ -184,6 +184,7 @@ class ChangeSet(models.Model):
         res = {
             'name': interface.name,
             'child_interfaces': self.child_interfaces(interface),
+            'form_factor': 'bridge',
             'enabled': interface.enabled,
             'mtu': interface.mtu,
             'untagged_vlan': self.yamlify_vlan(interface.untagged_vlan),
