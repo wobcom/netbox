@@ -184,6 +184,8 @@ def open_gitlab_issue(o):
         'ref': 'master'
     })
     actions = check_actions(project, actions, branch_name)
+    actions.append(o.create_inventory())
+    actions.append(o.create_topology_graph())
     project.commits.create({
         'id': project.id,
         'branch': branch_name,
