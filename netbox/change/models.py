@@ -195,12 +195,12 @@ class ChangeSet(models.Model):
             'mtu': interface.mtu,
             'untagged_vlan': self.yamlify_vlan(interface.untagged_vlan),
             }
-        tagged_vlans = []
+        tagged_vlans = set()
         for child_interface in Interface.objects.filter(lag=interface):
             if child_interface.form_factor == IFACE_FF_ONTEP:
-                tagged_vlans += child_interface.overlay_network.vlans.all()
+                tagged_vlans |= set(child_interface.overlay_network.vlans.all())
             else:
-                tagged_vlans += child_interface.tagged_vlans.all()
+                tagged_vlans |= set(child_interface.tagged_vlans.all())
         res['tagged_vlans'] = [self.yamlify_vlan(v) for v in tagged_vlans]
         return [res]
 
