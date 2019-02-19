@@ -1103,7 +1103,7 @@ class VLANBulkImportView(PermissionRequiredMixin, BulkImportView):
 
 class VLANBulkEditView(PermissionRequiredMixin, BulkEditView):
     permission_required = 'ipam.change_vlan'
-    queryset = VLAN.objects.select_related('site', 'group', 'tenant', 'role')
+    queryset = VLAN.objects.select_related('site', 'group', 'tenant', 'role', 'overlay_network')
     filter = filters.VLANFilter
     table = tables.VLANTable
     form = forms.VLANBulkEditForm

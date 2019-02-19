@@ -136,5 +136,17 @@
             {% include 'inc/custom_fields_panel.html' with obj=overlay_network %}
             {% include 'extras/inc/tags_panel.html' with tags=overlay_network.tags.all url='ipam:overlay_network_list' %}
         </div>
+        <div class="col-md-6">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <strong>VLANs</strong>
+                </div>
+                <div class="panel-body">
+                    {% for vlan in  overlay_network.vlans.all %}
+                      <a href="{% url 'ipam:vlan' pk=vlan.pk %}">{{vlan}}</a>{% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
     </div>
 {% endblock %}

@@ -1326,6 +1326,10 @@ class VLANBulkEditForm(BootstrapMixin, AddRemoveTagsForm, CustomFieldBulkEditFor
         queryset=Role.objects.all(),
         required=False
     )
+    overlay_network = forms.ModelChoiceField(
+        queryset=OverlayNetwork.objects.all(),
+        required=False
+    )
     description = forms.CharField(
         max_length=100,
         required=False
@@ -1333,7 +1337,7 @@ class VLANBulkEditForm(BootstrapMixin, AddRemoveTagsForm, CustomFieldBulkEditFor
 
     class Meta:
         nullable_fields = [
-            'site', 'group', 'tenant', 'role', 'description',
+            'site', 'group', 'tenant', 'role', 'overlay_network', 'description',
         ]
 
 

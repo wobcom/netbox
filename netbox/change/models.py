@@ -313,7 +313,7 @@ class ChangeSet(models.Model):
             res.write("\n\n[{}]".format(group))
             for entry in entries:
                 res.write("\n{}".format(entry))
-        return self.to_action('inventory.ini', 'update', str(res.getvalue()))
+        return self.to_action('inventory.ini', 'update', res.getvalue())
 
     def to_actions(self):
         """Creates Gitlab actions for all devices"""
