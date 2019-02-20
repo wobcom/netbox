@@ -302,10 +302,10 @@ class ReviewedView(ViewSet):
         if obj.status != IN_REVIEW:
             return HttpResponseForbidden('Change is not in review!')
 
+        open_gitlab_mr(obj)
+
         obj.status = ACCEPTED
         obj.save()
-
-        open_gitlab_mr(obj)
 
         # no content
         return HttpResponse(status=204)
