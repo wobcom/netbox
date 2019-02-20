@@ -305,7 +305,9 @@ class ReviewedView(ViewSet):
         obj.status = ACCEPTED
         obj.save()
 
-        open_gitlab_mr(obj)
+        # only if there is no surveyor do we open a mr at this point
+        if not configuration.TOPDESK_SURVEYOR_URL:
+            open_gitlab_mr(obj)
 
         # no content
         return HttpResponse(status=204)
