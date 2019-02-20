@@ -75,7 +75,7 @@ class ObjectChangeMiddleware(object):
         for obj, action in _thread_locals.changed_objects:
 
             # Record the change
-            if hasattr(obj, 'log_change') and not request.user.is_anonymous():
+            if hasattr(obj, 'log_change') and not request.user.is_anonymous:
                 obj.log_change(request.user, request.id, action)
 
             # Enqueue webhooks
