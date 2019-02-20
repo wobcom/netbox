@@ -221,22 +221,22 @@ class AcceptView(View):
             return HttpResponseForbidden('Change was already accepted!')
 
         try:
-            # if there is no topdesk url, we create an MR right away.
-            # otherwise we first create the ticket and defer creating the MR
             if configuration.TOPDESK_URL:
                 res_id = trigger_topdesk_change(obj)
                 obj.ticket_id = res_id
                 obj.save()
-            else:
-                messages.info(request, open_gitlab_mr(obj))
 
             # register in surveyor if its configured
+            # if there is no topdesk surveyor url, we create an MR right away.
+            # otherwise we first create the ticket and defer creating the MR
             if configuration.TOPDESK_URL and configuration.TOPDESK_SURVEYOR_URL:
                 requests.post('{}/{}/{}'.format(
                     configuration.TOPDESK_SURVEYOR_URL,
                     obj.id,
                     res_id)
                 )
+            else:
+                messages.info(request, open_gitlab_mr(obj))
         except ConnectionError as e:
             return HttpResponseServerError(str(e))
 
