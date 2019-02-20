@@ -550,7 +550,7 @@ class VLANTable(BaseTable):
     tenant = tables.TemplateColumn(template_code=COL_TENANT)
     status = tables.TemplateColumn(STATUS_LABEL)
     role = tables.TemplateColumn(VLAN_ROLE_LINK)
-    overlay_network = tables.LinkColumn('ipam:overlay_network', args=[Accessor('overlay_network.vxlan_prefix')])
+    overlay_network = tables.LinkColumn('ipam:overlay_network', args=[Accessor('overlay_network.pk')])
 
     class Meta(BaseTable.Meta):
         model = VLAN
