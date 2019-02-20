@@ -174,7 +174,7 @@ def open_gitlab_mr(o):
     gl = gitlab.Gitlab(configuration.GITLAB_URL, configuration.GITLAB_TOKEN)
     project = gl.projects.get(configuration.GITLAB_PROJECT_ID)
     actions = o.to_actions()
-    mr_txt = mr_TXT.format(o.id, o.user, o.ticket_id,
+    mr_txt = MR_TXT.format(o.id, o.user, o.ticket_id,
                                  o.executive_summary())
     emergency_label = ['emergency'] if o.change_information.is_emergency else []
     branch_name = 'change_{}'.format(o.id)
