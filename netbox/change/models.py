@@ -287,7 +287,11 @@ class ChangeSet(models.Model):
                 if interface.form_factor in NONCONNECTABLE_IFACE_TYPES + AGGREGATABLE_IFACE_TYPES:
                     continue
                 peer_interface = interface.trace()[0][2]
-                if not peer_interface or peer_interface.device in seen_devices:
+                if not peer_interface:
+                    continue
+                elif peer_interface.device in seen_devices:
+                    continue
+                elif peer_interface.device.status != DEVICE_STATUS_ACTIVE:
                     continue
                 graph.edge(
                     "{}:{}".format(device.name, interface.name),
