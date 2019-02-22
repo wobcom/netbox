@@ -276,7 +276,7 @@ class ChangeSet(models.Model):
         )
         seen_devices = []
         # TODO apply filtering
-        for device in Device.objects.all():
+        for device in Device.objects.filter(status=DEVICE_STATUS_ACTIVE):
             attributes = {
                 "function": device.device_role.name,
                 "os" : self.map_platform_to_vagrant_box(device.platform)
