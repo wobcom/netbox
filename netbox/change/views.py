@@ -150,7 +150,7 @@ def trigger_topdesk_change(obj):
     return res_id
 
 
-ISSUE_TXT = """Change #{} was created in Netbox by {} (TOPdesk ticket {}).
+MR_TXT = """Change #{} was created in Netbox by {} (TOPdesk ticket {}).
 
 ## Executive Summary
 
@@ -170,11 +170,11 @@ def check_actions(project, actions, branch):
     return new_actions
 
 
-def open_gitlab_issue(o):
+def open_gitlab_mr(o):
     gl = gitlab.Gitlab(configuration.GITLAB_URL, configuration.GITLAB_TOKEN)
     project = gl.projects.get(configuration.GITLAB_PROJECT_ID)
     actions = o.to_actions()
-    issue_txt = ISSUE_TXT.format(o.id, o.user, o.ticket_id,
+    mr_txt = MR_TXT.format(o.id, o.user, o.ticket_id,
                                  o.executive_summary())
     emergency_label = ['emergency'] if o.change_information.is_emergency else []
     branch_name = 'change_{}'.format(o.id)
@@ -195,7 +195,7 @@ def open_gitlab_issue(o):
     })
     mr = project.mergerequests.create({
         'title': 'Change #{} was created in Netbox'.format(o.id),
-        'description': issue_txt,
+        'description': mr_txt,
         'source_branch': branch_name,
         'target_branch': 'master',
         'labels': ['netbox', 'unreviewed'] + emergency_label
@@ -221,18 +221,22 @@ class AcceptView(View):
             return HttpResponseForbidden('Change was already accepted!')
 
         try:
-            res_id = trigger_topdesk_change(obj)
-            obj.ticket_id = res_id
-            obj.save()
-            messages.info(request, open_gitlab_issue(obj))
+            if configuration.TOPDESK_URL:
+                res_id = trigger_topdesk_change(obj)
+                obj.ticket_id = res_id
+                obj.save()
 
             # register in surveyor if its configured
-            if configuration.TOPDESK_SURVEYOR_URL:
+            # if there is no topdesk surveyor url, we create an MR right away.
+            # otherwise we first create the ticket and defer creating the MR
+            if configuration.TOPDESK_URL and configuration.TOPDESK_SURVEYOR_URL:
                 requests.post('{}/{}/{}'.format(
                     configuration.TOPDESK_SURVEYOR_URL,
                     obj.id,
                     res_id)
                 )
+            else:
+                messages.info(request, open_gitlab_mr(obj))
         except ConnectionError as e:
             return HttpResponseServerError(str(e))
 
@@ -297,6 +301,8 @@ class ReviewedView(ViewSet):
 
         if obj.status != IN_REVIEW:
             return HttpResponseForbidden('Change is not in review!')
+
+        open_gitlab_mr(obj)
 
         obj.status = ACCEPTED
         obj.save()
