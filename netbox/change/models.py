@@ -19,6 +19,8 @@ from ipam.models import IPADDRESS_ROLE_LOOPBACK
 from change.utilities import Markdownify
 from dcim.constants import *
 
+DEVICE_ROLE_TOPOLOGY_WHITELIST = ['leaf', 'spine', 'superspine']
+
 class ChangeInformation(models.Model):
     """Meta information about a change."""
     is_emergency = models.BooleanField(verbose_name="Is an emergency change")
@@ -277,6 +279,8 @@ class ChangeSet(models.Model):
         seen_devices = []
         # TODO apply filtering
         for device in Device.objects.filter(status=DEVICE_STATUS_ACTIVE):
+            if device.device_role.name not in DEVICE_ROLE_TOPOLOGY_WHITELIST:
+                continue
             attributes = {
                 "function": device.device_role.name,
                 "os" : self.map_platform_to_vagrant_box(device.platform)
@@ -292,6 +296,8 @@ class ChangeSet(models.Model):
                 elif peer_interface.device in seen_devices:
                     continue
                 elif peer_interface.device.status != DEVICE_STATUS_ACTIVE:
+                    continue
+                elif peer_interface.device.device_role.name not in DEVICE_ROLE_TOPOLOGY_WHITELIST:
                     continue
                 graph.edge(
                     "{}:{}".format(device.name, interface.name),
