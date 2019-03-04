@@ -292,7 +292,7 @@ class ProvisionedView(ViewSet):
 class FailedView(ViewSet):
     model = ChangeSet
     queryset = ChangeSet.objects
-    def retrieve(self, request, pk=None):
+    def update(self, request, pk=None):
         """
         This view is triggered when the change was provisioned by Gitlab and
         errored. The status of the changeset is updated and the changes are
