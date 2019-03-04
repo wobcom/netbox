@@ -7,6 +7,7 @@ from datetime import timedelta
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.postgres.fields import JSONField
 from django.db import models
 from django.shortcuts import redirect
 from django.utils import timezone
@@ -71,6 +72,7 @@ IN_REVIEW = 2
 ACCEPTED = 3
 IMPLEMENTED = 4
 REJECTED = 5
+FAILED = 6
 
 
 class ChangeSet(models.Model):
@@ -103,6 +105,11 @@ class ChangeSet(models.Model):
         null=True
     )
 
+    provision_log = JSONField(
+        blank=True,
+        null=True
+    )
+
     status = models.SmallIntegerField(
         default=DRAFT,
         choices=(
@@ -111,6 +118,7 @@ class ChangeSet(models.Model):
             (ACCEPTED, 'Accepted'),
             (IMPLEMENTED, 'Implemented'),
             (REJECTED, 'Rejected'),
+            (FAILED, 'Failed'),
         )
     )
 
