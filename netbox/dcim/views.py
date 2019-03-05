@@ -1234,6 +1234,16 @@ class PowerOutletBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
 # Interfaces
 #
 
+
+class InterfaceListView(ObjectListView):
+    queryset = Interface.objects
+    filter = filters.InterfaceFilter
+    filter_form = forms.InterfaceFilterForm
+    table = tables.InterfacePKTable
+    template_name = 'dcim/interface_list.html'
+
+
+
 class InterfaceView(View):
 
     def get(self, request, pk):
@@ -1284,6 +1294,68 @@ class InterfaceEditView(PermissionRequiredMixin, ObjectEditView):
     model = Interface
     model_form = forms.InterfaceForm
     template_name = 'dcim/interface_edit.html'
+
+
+class InterfaceBulkAddVLANView(PermissionRequiredMixin, BulkEditView):
+    permission_required = 'dcim.change_interface'
+    queryset = Interface.objects
+    filter = filters.InterfaceFilter
+    table = tables.InterfaceTable
+    form = forms.InterfaceBulkAddVLANForm
+    default_return_url = 'dcim:interface_list'
+
+    def post(self, request, **kwargs):
+        model = self.queryset.model
+
+        # Are we editing *all* objects in the queryset or just a selected subset?
+        if request.POST.get('_all') and self.filter is not None:
+            models = self.filter(request.GET, model.objects.only('pk'))
+        else:
+            models = self.queryset.filter(pk__in=[int(pk) for pk in request.POST.getlist('pk')])
+
+        no_mode = models.filter(mode__isnull=True)
+
+        if no_mode.exists():
+            messages.error(request, 'Interfaces {} do not have a 802.11Q mode set.'.format(','.join(no_mode.values_list('name', flat=True))))
+            return redirect(self.get_return_url(request))
+
+        if '_apply' in request.POST:
+            form = self.form(model, None, request.POST)
+            if form.is_valid():
+                form.save(self, models=models)
+                return redirect(self.get_return_url(request))
+        else:
+            return super().post(request, **kwargs)
+
+        # Retrieve objects being edited
+        table = self.table(models, orderable=False)
+        if not table.rows:
+            messages.warning(request, "No {} were selected.".format(model._meta.verbose_name_plural))
+            return redirect(self.get_return_url(request))
+
+        return render(request, self.template_name, {
+            'form': form,
+            'table': table,
+            'obj_type_plural': model._meta.verbose_name_plural,
+            'return_url': self.get_return_url(request),
+        })
+
+
+class InterfaceBulkEditSingleView(PermissionRequiredMixin, BulkEditView):
+    permission_required = 'dcim.change_interface'
+    queryset = Interface.objects
+    filter = filters.InterfaceFilter
+    table = tables.InterfaceTable
+    form = forms.InterfaceBulkEditForm
+    default_return_url = 'dcim:interface_list'
+
+
+class InterfaceBulkDeleteSingleView(PermissionRequiredMixin, BulkDeleteView):
+    permission_required = 'dcim.delete_interface'
+    queryset = Interface.objects
+    filter = filters.InterfaceFilter
+    table = tables.InterfaceTable
+    default_return_url = 'dcim:interface_list'
 
 
 class InterfaceAssignVLANsView(PermissionRequiredMixin, ObjectEditView):

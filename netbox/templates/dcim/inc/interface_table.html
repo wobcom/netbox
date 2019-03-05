@@ -1,0 +1,7 @@
+{% extends 'utilities/obj_table.html' %}
+
+{% block extra_actions %}
+    <button type="submit" formaction="{% url 'dcim:interface_bulk_add_vlan' %}?return_url={% url 'dcim:interface_list' %}" class="btn btn-primary btn-sm {% if selected.all.mode == 100 and selected.all.untagged_vlan %}disabled{% endif %}">
+        <i class="glyphicon glyphicon-plus"></i> Add VLANs to selected
+    </a>
+{% endblock %}

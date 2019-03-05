@@ -1865,6 +1865,77 @@ class InterfaceForm(BootstrapMixin, forms.ModelForm):
             self.cleaned_data['tagged_vlans'] = []
 
 
+class InterfaceFilterForm(BootstrapMixin, CustomFieldFilterForm):
+    model = Interface
+    q = forms.CharField(
+        required=False,
+        label='Search'
+    )
+    device = FilterChoiceField(
+        queryset=Device.objects.annotate(
+            filter_count=Count('interfaces')
+        ),
+        to_field_name='name',
+    )
+
+class InterfaceBulkAddVLANForm(BootstrapMixin, BulkEditForm):
+    pk = forms.ModelMultipleChoiceField(
+        queryset=Interface.objects.all(),
+        widget=forms.MultipleHiddenInput()
+    )
+    vlans = forms.MultipleChoiceField(
+        choices=[],
+        label='VLANs',
+        widget=forms.SelectMultiple(
+            attrs={
+                'size': 20,
+            }
+        )
+    )
+    tagged = forms.BooleanField(
+        required=False,
+        initial=True
+    )
+
+    class Meta:
+        model = Interface
+        fields = []
+
+    def __init__(self, *args, **kwargs):
+
+        super().__init__(*args, **kwargs)
+
+        # Compile VLAN choices
+        vlan_choices = []
+
+        # Add non-grouped global VLANs
+        global_vlans = VLAN.objects.filter(site=None, group=None)
+        vlan_choices.append((
+            'Global', [(vlan.pk, vlan) for vlan in global_vlans])
+        )
+
+        # Add grouped global VLANs
+        for group in VLANGroup.objects.all():
+            global_group_vlans = VLAN.objects.filter(group=group)
+            vlan_choices.append(
+                (group.name, [(vlan.pk, vlan) for vlan in global_group_vlans])
+            )
+
+        self.fields['vlans'].choices = vlan_choices
+
+    def save(self, *args, **kwargs):
+        models=kwargs.get('models', [])
+
+        for model in models:
+            if self.cleaned_data['tagged']:
+                for vlan in self.cleaned_data['vlans']:
+                    if not model.tagged_vlans.filter(pk=vlan).exists():
+                        model.tagged_vlans.add(vlan)
+            else:
+                model.untagged_vlan_id = self.cleaned_data['vlans'][0]
+
+
+
 class InterfaceAssignVLANsForm(BootstrapMixin, forms.ModelForm):
     vlans = forms.MultipleChoiceField(
         choices=[],
@@ -2048,7 +2119,8 @@ class InterfaceBulkEditForm(BootstrapMixin, AddRemoveTagsForm, BulkEditForm):
         required=False
     )
     mode = forms.ChoiceField(
-        choices=add_blank_choice(IFACE_MODE_CHOICES),
+        #choices=add_blank_choice(IFACE_MODE_CHOICES),
+        choices=IFACE_MODE_CHOICES,
         required=False
     )
 
