@@ -135,6 +135,10 @@ class FieldChangeMiddleware(object):
         self.get_response = get_response
 
     def __call__(self, request):
+        # fast track for admin stuff
+        if request.path.startswith('/admin'):
+            return self.get_response(request)
+
         in_change = request.session.get('in_change', False)
         to_uninstall = []
         if in_change:
