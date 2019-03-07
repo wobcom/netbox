@@ -264,7 +264,7 @@ class ChangeSet(models.Model):
     def map_platform_to_vagrant_box(self, platform):
         default = "centos/7"
         m = {
-            "cumulus" : "CumulusCommunity/cumulus-vx",
+            "Cumulus Linux" : "CumulusCommunity/cumulus-vx",
             "debian9" : "debian/stretch64"
         }
         if platform and platform.name:
