@@ -590,6 +590,19 @@ class InterfaceTable(BaseTable):
         fields = ('name', 'form_factor', 'lag', 'enabled', 'mgmt_only', 'description')
 
 
+class InterfacePKTable(BaseTable):
+    pk = ToggleColumn()
+    name = tables.LinkColumn()
+    device = tables.LinkColumn(
+        viewname='dcim:device',
+        args=[Accessor('device.pk')]
+    )
+
+    class Meta(BaseTable.Meta):
+        model = Interface
+        fields = ('pk', 'name', 'device', 'form_factor', 'lag', 'enabled', 'mgmt_only', 'description', 'mode')
+
+
 class FrontPortTable(BaseTable):
 
     class Meta(BaseTable.Meta):

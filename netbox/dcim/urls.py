@@ -211,6 +211,10 @@ urlpatterns = [
     url(r'^interfaces/(?P<pk>\d+)/trace/$', views.CableTraceView.as_view(), name='interface_trace', kwargs={'model': Interface}),
     url(r'^interfaces/rename/$', views.InterfaceBulkRenameView.as_view(), name='interface_bulk_rename'),
     url(r'^interfaces/disconnect/$', views.InterfaceBulkDisconnectView.as_view(), name='interface_bulk_disconnect'),
+    url(r'^interfaces/$', views.InterfaceListView.as_view(), name='interface_list'),
+    url(r'^interfaces/edit/$', views.InterfaceBulkEditSingleView.as_view(), name='interface_bulk_edit'),
+    url(r'^interfaces/delete/$', views.InterfaceBulkDeleteSingleView.as_view(), name='interface_bulk_delete'),
+    url(r'^interfaces/add-vlan/$', views.InterfaceBulkAddVLANView.as_view(), name='interface_bulk_add_vlan'),
 
     # Front ports
     # url(r'^devices/front-ports/add/$', views.DeviceBulkAddFrontPortView.as_view(), name='device_bulk_add_frontport'),

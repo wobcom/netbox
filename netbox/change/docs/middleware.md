@@ -14,10 +14,16 @@ of different things at once. Let’s go through the source code of the function
 together, and find out what exactly!
 
 ```python
+if request.path.startswith('/admin'):
+    return self.get_response(request)
+
 in_change = request.session.get('in_change', False)
 to_uninstall = []
 if in_change:
 ```
+
+We’re starting out by checking whether our user does admin-y things. If they do,
+we put them on the fast track and ignore them.
 
 We also need to set up a list of hooks we need to uninstall (called
 `to_uninstall` here). It’s initially empty, but depending on where we will go

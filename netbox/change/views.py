@@ -289,6 +289,28 @@ class ProvisionedView(ViewSet):
         return HttpResponse(status=204)
 
 
+class FailedView(ViewSet):
+    model = ChangeSet
+    queryset = ChangeSet.objects
+    def update(self, request, pk=None):
+        """
+        This view is triggered when the change was provisioned by Gitlab and
+        errored. The status of the changeset is updated and the changes are
+        re-applied.
+        """
+        obj = get_object_or_404(self.model, pk=pk)
+
+        if obj.status != ACCEPTED:
+            return HttpResponseForbidden('Change was not accepted!')
+
+        obj.status = FAILED
+        obj.provision_log = json.loads(request.body.decode('utf-8'))
+        obj.save()
+
+        # no content
+        return HttpResponse(status=204)
+
+
 class ReviewedView(ViewSet):
     model = ChangeSet
     queryset = ChangeSet.objects

@@ -18,6 +18,7 @@ router.APIRootView = ChangeRootView
 router.register(r'accepted', views.ReviewedView, 'change-accepted')
 router.register(r'rejected', views.RejectedView, 'change-rejected')
 router.register(r'provisioned', views.ProvisionedView, 'change-provisioned')
+router.register(r'failed', views.FailedView, 'change-failed')
 
 app_name = 'change-api'
 urlpatterns = router.urls
