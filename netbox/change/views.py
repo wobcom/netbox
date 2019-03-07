@@ -282,6 +282,7 @@ class ProvisionedView(ViewSet):
             return HttpResponseForbidden('Change was already provisioned!')
 
         obj.status = IMPLEMENTED
+        obj.provision_log = json.loads(request.body.decode('utf-8'))
         obj.apply()
         obj.save()
 
