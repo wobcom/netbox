@@ -171,7 +171,17 @@ def check_actions(project, actions, branch):
     return new_actions
 
 
-def open_gitlab_mr(o):
+def check_branch_exists(project, branch_name):
+    try:
+        b = project.branches.get(branch_name)
+        if b:
+            return True
+    except gitlab.exceptions.GitlabError:
+        pass
+    return False
+
+
+def open_gitlab_mr(o, delete_branch=False):
     gl = gitlab.Gitlab(configuration.GITLAB_URL, configuration.GITLAB_TOKEN)
     project = gl.projects.get(configuration.GITLAB_PROJECT_ID)
     actions = o.to_actions()
@@ -180,6 +190,10 @@ def open_gitlab_mr(o):
     emergency_label = ['emergency'] if o.change_information.is_emergency else []
     branch_name = 'change_{}'.format(o.id)
     commit_msg = 'Autocommit from Netbox (Change #{})'.format(o.id)
+
+    if delete_branch and check_branch_exists(project, branch_name):
+        project.branches.delete(branch_name)
+
     project.branches.create({
         'branch': branch_name,
         'ref': 'master'
@@ -204,6 +218,54 @@ def open_gitlab_mr(o):
     msg = "You can review your merge request at {}/{}/merge_requests/{}!"
     return msg.format(configuration.GITLAB_URL, project.path_with_namespace,
                       mr.iid)
+
+
+@method_decorator(login_required, name='dispatch')
+class MRView(View):
+    model = ChangeSet
+
+    def get(self, request, pk=None):
+        """
+        This view is triggered when the operator clicks on "Recreate Merge
+        Request" in the change list view.
+        A merge request is created in Gitlab, and the status of the object is
+        changed to Accepted.
+        """
+        obj = get_object_or_404(self.model, pk=pk)
+
+        messages.info(request, open_gitlab_mr(obj, delete_branch=True))
+        obj.status = ACCEPTED
+        obj.save()
+
+        return redirect('/change/list')
+
+
+@method_decorator(login_required, name='dispatch')
+class TOPdeskView(View):
+    model = ChangeSet
+
+    def get(self, request, pk=None):
+        """
+        This view is triggered when the operator clicks on "Recreate TOPdesk
+        Ticket" in the change list view.
+        A ticket is created in TOPdesk, and the status of the object is
+        changed to in review.
+        """
+        if configuration.TOPDESK_URL:
+            res_id = trigger_topdesk_change(obj)
+            obj.ticket_id = res_id
+            obj.status = ACCEPTED
+            obj.save()
+
+        # register in surveyor if its configured
+        if configuration.TOPDESK_URL and configuration.TOPDESK_SURVEYOR_URL:
+            requests.post('{}/{}/{}'.format(
+                configuration.TOPDESK_SURVEYOR_URL,
+                obj.id,
+                res_id)
+            )
+
+        return redirect('/change/list')
 
 
 @method_decorator(login_required, name='dispatch')
