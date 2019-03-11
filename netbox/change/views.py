@@ -271,7 +271,7 @@ class RejectView(View):
 class ProvisionedView(ViewSet):
     model = ChangeSet
     queryset = ChangeSet.objects
-    def retrieve(self, request, pk=None):
+    def update(self, request, pk=None):
         """
         This view is triggered when the change was provisioned by Gitlab.
         The status of the changeset is updated and the changes are re-applied.
@@ -282,6 +282,7 @@ class ProvisionedView(ViewSet):
             return HttpResponseForbidden('Change was already provisioned!')
 
         obj.status = IMPLEMENTED
+        obj.provision_log = json.loads(request.body.decode('utf-8'))
         obj.apply()
         obj.save()
 
