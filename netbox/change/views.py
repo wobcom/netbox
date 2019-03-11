@@ -99,15 +99,6 @@ class ToggleView(View):
         changeset.active = False
         changeset.save()
 
-        if (not changeset.changedfield_set.count() and
-           not changeset.changedobject_set.count()):
-            if change_information:
-                del request.session['change_information']
-                change_information.delete()
-            return render(request, 'change/list.html', {
-                'changeset': None
-            })
-
         res = render(request, 'change/list.html', {
             'changeset': changeset
         })
