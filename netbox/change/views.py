@@ -300,9 +300,6 @@ class FailedView(ViewSet):
         """
         obj = get_object_or_404(self.model, pk=pk)
 
-        if obj.status != ACCEPTED:
-            return HttpResponseForbidden('Change was not accepted!')
-
         obj.status = FAILED
         obj.provision_log = json.loads(request.body.decode('utf-8'))
         obj.save()
