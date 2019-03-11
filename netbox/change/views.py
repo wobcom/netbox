@@ -21,7 +21,7 @@ from utilities.views import ObjectListView
 from . import tables
 from .forms import AffectedCustomerInlineFormSet
 from .models import ChangeInformation, ChangedField, ChangedObject, ChangeSet, \
-    DRAFT, IN_REVIEW, ACCEPTED, REJECTED, IMPLEMENTED
+    DRAFT, IN_REVIEW, ACCEPTED, REJECTED, IMPLEMENTED, FAILED
 from .utilities import redirect_to_referer
 
 
