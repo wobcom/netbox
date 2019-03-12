@@ -1890,7 +1890,7 @@ class PowerOutlet(CableTermination, ComponentModel):
 # Interfaces
 #
 
-class Interface(CableTermination, ComponentModel):
+class Interface(CableTermination, ComponentModel, CustomFieldModel):
     """
     A network interface within a Device or VirtualMachine. A physical Interface can connect to exactly one other
     Interface.
@@ -1997,6 +1997,11 @@ class Interface(CableTermination, ComponentModel):
         null=True,
         verbose_name='CLAG ID',
     )
+    custom_field_values = GenericRelation(
+        to='extras.CustomFieldValue',
+        content_type_field='obj_type',
+        object_id_field='obj_id'
+    )
 
     objects = InterfaceManager()
     tags = TaggableManager()
@@ -2025,7 +2030,6 @@ class Interface(CableTermination, ComponentModel):
             self.get_form_factor_display(),
             self.enabled,
             self.mac_address,
-            self.mtu,
             self.mgmt_only,
             self.description,
             self.get_mode_display(),
