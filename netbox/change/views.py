@@ -15,7 +15,6 @@ from rest_framework.decorators import action
 from rest_framework.viewsets import ViewSet
 import gitlab
 import requests
-import topdesk
 
 from netbox import configuration
 from utilities.views import ObjectListView
@@ -24,13 +23,6 @@ from .forms import AffectedCustomerInlineFormSet
 from .models import ChangeInformation, ChangedField, ChangedObject, ChangeSet, \
     DRAFT, IN_REVIEW, ACCEPTED, REJECTED, IMPLEMENTED, FAILED
 from .utilities import redirect_to_referer
-
-
-
-TP = topdesk.Topdesk(configuration.TOPDESK_URL,
-                     verify=configuration.TOPDESK_VERIFY_HTTPS,
-                     app_creds=(configuration.TOPDESK_USERNAME,
-                                configuration.TOPDESK_PASSWORD))
 
 
 
@@ -130,28 +122,7 @@ class ToggleView(View):
         return res
 
 
-def trigger_topdesk_change(obj):
-    type_ = 'extensive' if obj.change_information.is_extensive else 'simple'
-    request_txt = 'Change #{} was created in Netbox by {}.\n\nSummary:\n{}'
-    request_txt = request_txt.format(obj.id, obj.user,
-                                     obj.executive_summary(no_markdown=True))
-    data = {
-        'requester': {
-            'id': configuration.TOPDESK_REQ_ID,
-            'name': configuration.TOPDESK_REQ_NAME,
-        },
-        'briefDescription': 'Change #{} was created in Netbox'.format(obj.id),
-        'changeType': type_,
-        'request': request_txt,
-    }
-    res = TP.create_operator_change(data)
-    res_id = res['id']
-    obj.ticket_id = res_id
-    obj.save()
-    return res_id
-
-
-MR_TXT = """Change #{} was created in Netbox by {} (TOPdesk ticket {}).
+MR_TXT = """Change #{} was created in Netbox by {}.
 
 ## Executive Summary
 
@@ -185,8 +156,7 @@ def open_gitlab_mr(o, delete_branch=False):
     gl = gitlab.Gitlab(configuration.GITLAB_URL, configuration.GITLAB_TOKEN)
     project = gl.projects.get(configuration.GITLAB_PROJECT_ID)
     actions = o.to_actions()
-    mr_txt = MR_TXT.format(o.id, o.user, o.ticket_id,
-                                 o.executive_summary())
+    mr_txt = MR_TXT.format(o.id, o.user, o.executive_summary())
     emergency_label = ['emergency'] if o.change_information.is_emergency else []
     branch_name = 'change_{}'.format(o.id)
     commit_msg = 'Autocommit from Netbox (Change #{})'.format(o.id)
@@ -241,42 +211,14 @@ class MRView(View):
 
 
 @method_decorator(login_required, name='dispatch')
-class TOPdeskView(View):
-    model = ChangeSet
-
-    def get(self, request, pk=None):
-        """
-        This view is triggered when the operator clicks on "Recreate TOPdesk
-        Ticket" in the change list view.
-        A ticket is created in TOPdesk, and the status of the object is
-        changed to in review.
-        """
-        if configuration.TOPDESK_URL:
-            res_id = trigger_topdesk_change(obj)
-            obj.ticket_id = res_id
-            obj.status = ACCEPTED
-            obj.save()
-
-        # register in surveyor if its configured
-        if configuration.TOPDESK_URL and configuration.TOPDESK_SURVEYOR_URL:
-            requests.post('{}/{}/{}'.format(
-                configuration.TOPDESK_SURVEYOR_URL,
-                obj.id,
-                res_id)
-            )
-
-        return redirect('/change/list')
-
-
-@method_decorator(login_required, name='dispatch')
 class AcceptView(View):
     model = ChangeSet
 
     def get(self, request, pk=None):
         """
         This view is triggered when the change was accepted by the operator.
-        The changes are propagated into TOPdesk and Gitlab, and the status of
-        the object is changed to in review.
+        The changes are propagated into Gitlab, and the status of the object is
+        changed to in review.
         """
         obj = get_object_or_404(self.model, pk=pk)
 
@@ -284,22 +226,7 @@ class AcceptView(View):
             return HttpResponseForbidden('Change was already accepted!')
 
         try:
-            if configuration.TOPDESK_URL:
-                res_id = trigger_topdesk_change(obj)
-                obj.ticket_id = res_id
-                obj.save()
-
-            # register in surveyor if its configured
-            # if there is no topdesk surveyor url, we create an MR right away.
-            # otherwise we first create the ticket and defer creating the MR
-            if configuration.TOPDESK_URL and configuration.TOPDESK_SURVEYOR_URL:
-                requests.post('{}/{}/{}'.format(
-                    configuration.TOPDESK_SURVEYOR_URL,
-                    obj.id,
-                    res_id)
-                )
-            else:
-                messages.info(request, open_gitlab_mr(obj))
+            messages.info(request, open_gitlab_mr(obj))
         except ConnectionError as e:
             return HttpResponseServerError(str(e))
 
