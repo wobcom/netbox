@@ -185,6 +185,18 @@ def open_gitlab_mr(o, delete_branch=False):
         'target_branch': 'master',
         'labels': ['netbox', 'unreviewed'] + emergency_label
     })
+
+    # set project approvals so the surveyor can do its funk if the approver is
+    # set
+    if configuration.GITLAB_APPROVER_ID:
+        mr_mras = mr.approvals.get()
+        mr_mras.approvals_before_merge = 1
+        mr_mras.save()
+
+        mr.approvals.set_approvers(
+            approver_ids=[configuration.GITLAB_APPROVER_ID]
+        )
+
     msg = "You can review your merge request at {}/{}/merge_requests/{}!"
     return msg.format(configuration.GITLAB_URL, project.path_with_namespace,
                       mr.iid)
