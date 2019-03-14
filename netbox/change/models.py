@@ -301,7 +301,7 @@ class ChangeSet(models.Model):
                 trace = interface.trace()[0]
                 cable = trace[1]
                 peer_interface = trace[2]
-                if cable.status != CONNECTION_STATUS_CONNECTED:
+                if cable==None or cable.status != CONNECTION_STATUS_CONNECTED:
                     continue
                 if not peer_interface:
                     continue
