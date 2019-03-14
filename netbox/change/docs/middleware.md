@@ -33,10 +33,16 @@ uninstalled.
 ## Chapert I: We are in a change
 
 If we ourselves are inside a change, we should first get the change set we are
-working with.
+working with. We have to take some precautions, because someone might have
+deleted the change set while it’s still active.
 
 ```python
-c = ChangeSet.objects.get(pk=request.session['change_id'])
+c = None
+try:
+    c = ChangeSet.objects.get(pk=request.session['change_id'])
+except ChangeSet.DoesNotExist:
+    messages.warning(request, "Your change session was deleted.")
+    request.session['in_change'] = False
 ```
 
 Then we check whether the change set is current. There is a utility function
@@ -44,7 +50,7 @@ defined on the change set called `in_use` that checks whether the last update on
 the changeset was conducted before the timeout threshold.
 
 ```python
-if c.in_use():
+if c and c.in_use():
 ```
 
 So, what should we do if the change is still in use? As it turns out, a couple
@@ -75,7 +81,7 @@ Now we are done, and can take care of the other alternative, which is that our
 change timed out.
 
 ```python
-else:
+elif c:
 ```
 
 If it timed out, we will simply unset the cookie that tells us that the user is
