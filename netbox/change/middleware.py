@@ -57,8 +57,11 @@ def install_save_hooks(request):
     The pre-save hook captures all updated models, the post-save hooks captures
     all newly-created models.
     """
-    changeset = ChangeSet.objects.get(pk=request.session['change_id'])
     handled = []
+    try:
+        changeset = ChangeSet.objects.get(pk=request.session['change_id'])
+    except ChangeSet.DoesNotExist:
+        return handled
 
     def before_save_internal(sender, instance, **kwargs):
         """
@@ -173,8 +176,14 @@ class FieldChangeMiddleware(object):
         in_change = request.session.get('in_change', False)
         to_uninstall = []
         if in_change:
-            c = ChangeSet.objects.get(pk=request.session['change_id'])
-            if c.in_use():
+            c = None
+            try:
+                c = ChangeSet.objects.get(pk=request.session['change_id'])
+            except ChangeSet.DoesNotExist:
+                messages.warning(request, "Your change session was deleted.")
+                request.session['in_change'] = False
+
+            if c and c.in_use():
                 # we do not install the hooks if we're currently toggling,
                 # because otherwise our reverts would be recorded
                 if request.path != '/change/toggle/':
@@ -183,7 +192,7 @@ class FieldChangeMiddleware(object):
                                                  '/change/toggle/']
                 if not request.session.get('change_information') and wrong_url:
                     return redirect('/change/form')
-            else:
+            elif c:
                 messages.warning(request, "Your change session timed out.")
                 request.session['in_change'] = False
         else:
