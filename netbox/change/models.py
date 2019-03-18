@@ -298,7 +298,11 @@ class ChangeSet(models.Model):
             for interface in device.interfaces.all():
                 if interface.form_factor in NONCONNECTABLE_IFACE_TYPES + AGGREGATABLE_IFACE_TYPES:
                     continue
-                peer_interface = interface.trace()[0][2]
+                trace = interface.trace()[0]
+                cable = trace[1]
+                peer_interface = trace[2]
+                if cable==None or cable.status != CONNECTION_STATUS_CONNECTED:
+                    continue
                 if not peer_interface:
                     continue
                 elif peer_interface.device in seen_devices:
