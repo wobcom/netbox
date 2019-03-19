@@ -34,6 +34,7 @@ _patterns = [
     # Apps
     url(r'^change/', include('change.urls')),
     url(r'^circuits/', include('circuits.urls')),
+    url(r'^configuration/', include('configuration.urls')),
     url(r'^dcim/', include('dcim.urls')),
     url(r'^extras/', include('extras.urls')),
     url(r'^ipam/', include('ipam.urls')),

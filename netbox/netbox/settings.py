@@ -161,6 +161,7 @@ INSTALLED_APPS = [
     'timezone_field',
     'change',
     'circuits',
+    'configuration',
     'dcim',
     'ipam',
     'extras',
