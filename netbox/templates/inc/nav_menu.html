@@ -413,6 +413,21 @@
                         </ul>
                     </li>
                 {% endif %}
+                  <li class="dropdown{% if request.path|contains:'/configuration/' %} active{% endif %}">
+                      <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Configuration <span class="caret"></span></a>
+                      <ul class="dropdown-menu">
+                          <li class="dropdown-header">BGP</li>
+                          <li>
+                              {% if perms.configuration.add_bgp %}
+                                  <div class="buttons pull-right">
+                                      <a href="{% url 'configuration:bgp_add' %}" class="btn btn-xs btn-success" title="Add"><i class="fa fa-plus"></i></a>
+                                      <a href="{% url 'configuration:bgp_import' %}" class="btn btn-xs btn-info" title="Import"><i class="fa fa-download"></i></a>
+                                  </div>
+                              {% endif %}
+                              <a href="{% url 'configuration:bgp_list' %}">BGP</a>
+                          </li>
+                      </ul>
+                  </li>
             </ul>
             {% endif %}
             <ul class="nav navbar-nav navbar-right">
@@ -420,8 +435,9 @@
                     {% if not request.session.foreign_change %}
                     <li>
                       <form class="navbar-form" action="{% url 'change:change_toggle' %}">
-                          <button type="submit" class="btn btn-primary">
-                          {% if request.session.in_change %}End{% else %}Begin{% endif %} Change
+                          <button type="submit" class="btn btn-{% if request.session.in_change %}warning{% else %}primary{% endif %}">
+                            <i class="fa fa-{% if request.session.in_change %}stop{% else %}play{% endif %}"></i>
+                            Change
                           </button>
                       </form>
                     </li>
@@ -446,7 +462,7 @@
                 {% endif %}
             </ul>
             <form action="{% url 'search' %}" method="get" class="navbar-form navbar-right" id="navbar_search" role="search">
-                <div class="input-group">
+                <div class="input-group" style="width:130px">
                     <input type="text" name="q" class="form-control" placeholder="Search">
                     <span class="input-group-btn">
                         <button type="submit" class="btn btn-primary">
