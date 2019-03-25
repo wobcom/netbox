@@ -11,4 +11,5 @@ urlpatterns = [
     url(r'^bgp/import/$', views.BGPBulkImportView.as_view(), name='bgp_import'),
     url(r'^bgp/delete/$', views.BGPBulkDeleteView.as_view(), name='bgp_bulk_delete'),
     url(r'^bgp/(?P<pk>\d+)/edit/$', views.BGPEditView.as_view(), name='bgp_edit'),
+    url(r'^bgp/addto/(?P<pk>\d+)/$', views.BGPAddView.as_view(), name='bgp_addto'),
 ]

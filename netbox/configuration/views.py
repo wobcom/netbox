@@ -1,4 +1,5 @@
 from django.contrib.auth.mixins import PermissionRequiredMixin
+from django.shortcuts import render
 
 from utilities.views import (
     BulkDeleteView, BulkImportView, ObjectEditView, ObjectListView,
@@ -19,6 +20,19 @@ class BGPCreateView(PermissionRequiredMixin, ObjectEditView):
     model = BGPConfiguration
     model_form = forms.BGPForm
     default_return_url = 'configuration:bgp_list'
+
+
+class BGPAddView(PermissionRequiredMixin, ObjectEditView):
+    permission_required = 'configuration.change_bgp'
+    model = BGPConfiguration
+    default_return_url = 'configuration:bgp_list'
+    def get(self, request, pk=None):
+        table = tables.BGPTable(BGPConfiguration.objects.all())
+        table.columns.show('pk')
+        return render(request, 'configuration/bgp_select.html', {
+            'device': pk,
+            'table': table,
+        })
 
 
 class BGPEditView(BGPCreateView):

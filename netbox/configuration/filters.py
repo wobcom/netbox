@@ -1,7 +1,10 @@
 import django_filters
+from django.core.exceptions import ValidationError
 from django.db.models import Q
 
 from .models import BGPConfiguration
+
+from dcim.models import Device
 
 class BGPFilter(django_filters.FilterSet):
     q = django_filters.CharFilter(
@@ -17,10 +20,14 @@ class BGPFilter(django_filters.FilterSet):
         field_name='remote_as',
         label='Remote AS',
     )
+    devices = django_filters.ModelMultipleChoiceFilter(
+        queryset=Device.objects.all(),
+        label='Device (ID)',
+    )
 
     class Meta:
         model = BGPConfiguration
-        fields = ['neighbor', 'remote_as']
+        fields = ['neighbor', 'remote_as', 'devices']
 
     def search(self, queryset, name, value):
         if not value.strip():
@@ -31,10 +38,7 @@ class BGPFilter(django_filters.FilterSet):
         if not value.strip():
             return queryset
         try:
-            # Match address and subnet mask
-            if '/' in value:
-                return queryset.filter(address=value)
-            return queryset.filter(address__contains=value)
+            return queryset.filter(neighbor__contains=value)
         except ValidationError:
             return queryset.none()
 

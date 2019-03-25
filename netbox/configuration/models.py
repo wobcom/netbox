@@ -1,6 +1,7 @@
 from django.db import models
 from django.core import validators
 
+from dcim.models import Device
 from ipam.fields import IPAddressField
 
 class BGPConfiguration(models.Model):
@@ -10,6 +11,7 @@ class BGPConfiguration(models.Model):
     remote_as = models.PositiveIntegerField(
         validators=[validators.MaxValueValidator(65536)]
     )
+    devices = models.ManyToManyField(Device)
 
     csv_headers = [
         'neighbor', 'remote_as',
