@@ -8,10 +8,11 @@ from dcim.models import Device
 class BGPForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = BGPConfiguration
-        fields = ['neighbor', 'remote_as']
+        fields = ['neighbor', 'remote_as', 'description']
         labels = {
             'neighbor': 'BGP neighbor',
             'remote_as': 'Remote AS',
+            'description': 'Neighbor Description',
         }
 
 
@@ -22,6 +23,7 @@ class BGPCSVForm(forms.ModelForm):
         help_texts = {
             'neighbor': 'BGP neighbor',
             'remote_as': 'Remote AS',
+            'description': 'Neighbor Description',
         }
 
 

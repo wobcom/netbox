@@ -11,10 +11,11 @@ class BGPConfiguration(models.Model):
     remote_as = models.PositiveIntegerField(
         validators=[validators.MaxValueValidator(65536)]
     )
+    description = models.TextField(max_length=255, blank=True, null=True)
     devices = models.ManyToManyField(Device)
 
     csv_headers = [
-        'neighbor', 'remote_as',
+        'neighbor', 'remote_as', 'description',
     ]
 
     def __str__(self):
