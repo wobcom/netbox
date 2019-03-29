@@ -50,3 +50,35 @@ class BGPFilterForm(BootstrapMixin, forms.Form):
         queryset=BGPCommunity.objects,
         null_label='-- None --'
     )
+
+
+class CommunityForm(BootstrapMixin, forms.ModelForm):
+    class Meta:
+        model = BGPCommunity
+        fields = ['name', 'description']
+        labels = {
+            'name': 'BGP Community Name',
+            'description': 'BGP Description',
+        }
+
+
+class CommunityCSVForm(forms.ModelForm):
+    class Meta:
+        model = BGPCommunity
+        fields = BGPCommunity.csv_headers
+        help_texts = {
+            'name': 'BGP Community Name',
+            'description': 'BGP Description',
+        }
+
+
+class CommunityFilterForm(BootstrapMixin, forms.Form):
+    model = BGPCommunity
+    q = forms.CharField(
+        required=False,
+        label='Search'
+    )
+    name = forms.CharField(
+        label='Community Name',
+        required=False,
+    )

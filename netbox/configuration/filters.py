@@ -2,7 +2,7 @@ import django_filters
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 
-from .models import BGPSession
+from .models import BGPSession, BGPCommunity
 
 from dcim.models import Device
 
@@ -46,3 +46,34 @@ class BGPFilter(django_filters.FilterSet):
         if not value:
             return queryset
         return queryset.filter(remote_as=value)
+
+
+class CommunityFilter(django_filters.FilterSet):
+    q = django_filters.CharFilter(
+        method='search',
+        label='Search',
+    )
+    name = django_filters.CharFilter(
+        method='filter_name',
+        field_name='name',
+        label='Name',
+    )
+    community = django_filters.NumberFilter(
+        method='filter_community',
+        field_name='community',
+        label='Community',
+    )
+
+    class Meta:
+        model = BGPCommunity
+        fields = ['name', 'community']
+
+    def search(self, queryset, name, value):
+        if not value.strip():
+            return queryset
+        return queryset.filter(Q(name__icontains=value)|Q(description__icontains=value))
+
+    def filter_name(self, queryset, name, value):
+        if not value:
+            return queryset
+        return queryset.filter(name_icontains=value)

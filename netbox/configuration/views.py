@@ -5,7 +5,7 @@ from utilities.views import (
     BulkDeleteView, BulkImportView, ObjectEditView, ObjectListView,
 )
 from . import filters, forms, tables
-from .models import BGPSession
+from .models import BGPSession, BGPCommunity
 
 class BGPListView(ObjectListView):
     queryset = BGPSession.objects.all()
@@ -52,3 +52,37 @@ class BGPBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
     filter = filters.BGPFilter
     table = tables.BGPTable
     default_return_url = 'configuration:bgp_list'
+
+
+class CommunityListView(ObjectListView):
+    queryset = BGPCommunity.objects.all()
+    filter = filters.CommunityFilter
+    filter_form = forms.CommunityFilterForm
+    table = tables.CommunityTable
+    template_name = 'configuration/community_list.html'
+
+
+class CommunityCreateView(PermissionRequiredMixin, ObjectEditView):
+    permission_required = 'configuration.add_bgp'
+    model = BGPCommunity
+    model_form = forms.CommunityForm
+    default_return_url = 'configuration:community_list'
+
+
+class CommunityEditView(CommunityCreateView):
+    permission_required = 'configuration.change_bgp'
+
+
+class CommunityBulkImportView(PermissionRequiredMixin, BulkImportView):
+    permission_required = 'configuration.add_bgp'
+    model_form = forms.CommunityCSVForm
+    table = tables.CommunityTable
+    default_return_url = 'configuration:community_list'
+
+
+class CommunityBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
+    permission_required = 'configuration.delete_bgp'
+    queryset = BGPCommunity.objects
+    filter = filters.CommunityFilter
+    table = tables.CommunityTable
+    default_return_url = 'configuration:community_list'
