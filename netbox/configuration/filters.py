@@ -2,7 +2,7 @@ import django_filters
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 
-from .models import BGPConfiguration
+from .models import BGPSession
 
 from dcim.models import Device
 
@@ -26,7 +26,7 @@ class BGPFilter(django_filters.FilterSet):
     )
 
     class Meta:
-        model = BGPConfiguration
+        model = BGPSession
         fields = ['neighbor', 'remote_as', 'devices']
 
     def search(self, queryset, name, value):

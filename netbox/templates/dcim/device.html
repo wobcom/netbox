@@ -552,7 +552,7 @@
                 </div>
                 <div class="panel panel-default">
                     <div class="panel-heading">
-                        <strong>BGP Configurations</strong>
+                        <strong>BGP Sessions</strong>
                     </div>
                     <table id="interfaces_table" class="table table-hover table-headings panel-body component-list">
                         <thead>
@@ -579,7 +579,7 @@
                         {% if perms.dcim.add_bgp %}
                             <div class="pull-right">
                                 <a href="{% url 'configuration:bgp_addto' pk=device.pk %}" class="btn btn-primary btn-xs">
-                                    <span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Add BGP Configuration
+                                    <span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Add BGP Session
                                 </a>
                             </div>
                             <div class="clearfix"></div>

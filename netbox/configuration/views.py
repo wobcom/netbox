@@ -5,10 +5,10 @@ from utilities.views import (
     BulkDeleteView, BulkImportView, ObjectEditView, ObjectListView,
 )
 from . import filters, forms, tables
-from .models import BGPConfiguration
+from .models import BGPSession
 
 class BGPListView(ObjectListView):
-    queryset = BGPConfiguration.objects.all()
+    queryset = BGPSession.objects.all()
     filter = filters.BGPFilter
     filter_form = forms.BGPFilterForm
     table = tables.BGPTable
@@ -17,17 +17,17 @@ class BGPListView(ObjectListView):
 
 class BGPCreateView(PermissionRequiredMixin, ObjectEditView):
     permission_required = 'configuration.add_bgp'
-    model = BGPConfiguration
+    model = BGPSession
     model_form = forms.BGPForm
     default_return_url = 'configuration:bgp_list'
 
 
 class BGPAddView(PermissionRequiredMixin, ObjectEditView):
     permission_required = 'configuration.change_bgp'
-    model = BGPConfiguration
+    model = BGPSession
     default_return_url = 'configuration:bgp_list'
     def get(self, request, pk=None):
-        table = tables.BGPTable(BGPConfiguration.objects.all())
+        table = tables.BGPTable(BGPSession.objects.all())
         table.columns.show('pk')
         return render(request, 'configuration/bgp_select.html', {
             'device': pk,
@@ -48,7 +48,7 @@ class BGPBulkImportView(PermissionRequiredMixin, BulkImportView):
 
 class BGPBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
     permission_required = 'configuration.delete_bgp'
-    queryset = BGPConfiguration.objects
+    queryset = BGPSession.objects
     filter = filters.BGPFilter
     table = tables.BGPTable
     default_return_url = 'configuration:bgp_list'
