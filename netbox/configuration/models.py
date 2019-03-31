@@ -6,13 +6,20 @@ from ipam.fields import IPAddressField
 
 
 class BGPCommunity(models.Model):
-    community = models.PositiveIntegerField()
+    community = models.CharField(max_length=128)
     name = models.CharField(max_length=128)
     description = models.TextField(max_length=255, blank=True, null=True)
 
     csv_headers = [
         'community', 'name', 'description'
     ]
+
+    def __str__(self):
+        return '{} ({})'.format(self.name, self.community)
+
+    class Meta:
+        verbose_name = 'BGP Community'
+        verbose_name_plural = 'BGP Communities'
 
 
 class BGPSession(models.Model):
@@ -23,7 +30,7 @@ class BGPSession(models.Model):
         validators=[validators.MaxValueValidator(65536)]
     )
     description = models.TextField(max_length=255, blank=True, null=True)
-    devices = models.ManyToManyField(Device)
+    devices = models.ManyToManyField(Device, related_name='bgp_sessions')
     community = models.ForeignKey(BGPCommunity, blank=True, null=True, on_delete=models.SET_NULL)
 
     csv_headers = [

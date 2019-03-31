@@ -562,21 +562,22 @@
                                 {% endif %}
                                 <th>Neighbor</th>
                                 <th>Remote AS</th>
+                                <th>Community</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {% for bgp in bgp_configurations %}
+                            {% for bgp in device.bgp_sessions.all %}
                                 {% include 'dcim/inc/bgp.html' %}
                             {% endfor %}
                         </tbody>
                     </table>
                     <div class="panel-footer">
-                        {% if bgp_configurations and perms.dcim.change_bgp %}
-                            <button type="submit" name="_delete" formaction="{% url 'configuration:bgp_bulk_delete' pk=device.pk %}?return_url={{ device.get_absolute_url }}" class="btn btn-danger btn-xs">
+                        {% if device.bgp_sessions.count and perms.configuration.change_bgp %}
+                            <button type="submit" name="_delete" formaction="{% url 'configuration:bgp_deletefrom' pk=device.pk %}?return_url={{ device.get_absolute_url }}" class="btn btn-danger btn-xs">
                                 <span class="glyphicon glyphicon-trash" aria-hidden="true"></span> Delete
                             </button>
                         {% endif %}
-                        {% if perms.dcim.add_bgp %}
+                        {% if perms.configuration.add_bgp %}
                             <div class="pull-right">
                                 <a href="{% url 'configuration:bgp_addto' pk=device.pk %}" class="btn btn-primary btn-xs">
                                     <span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Add BGP Session

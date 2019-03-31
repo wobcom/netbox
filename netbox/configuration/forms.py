@@ -55,9 +55,10 @@ class BGPFilterForm(BootstrapMixin, forms.Form):
 class CommunityForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = BGPCommunity
-        fields = ['name', 'description']
+        fields = ['name', 'community', 'description']
         labels = {
             'name': 'BGP Community Name',
+            'community': 'BGP Community',
             'description': 'BGP Description',
         }
 

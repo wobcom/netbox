@@ -1,6 +1,7 @@
 from django.contrib.auth.mixins import PermissionRequiredMixin
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 
+from dcim.models import Device
 from utilities.views import (
     BulkDeleteView, BulkImportView, ObjectEditView, ObjectListView,
 )
@@ -29,10 +30,36 @@ class BGPAddView(PermissionRequiredMixin, ObjectEditView):
     def get(self, request, pk=None):
         table = tables.BGPTable(BGPSession.objects.all())
         table.columns.show('pk')
+        perm_base_name = '{}.{{}}_{}'.format(self.model._meta.app_label,
+                                             self.model._meta.model_name)
+        permissions = {
+            p: request.user.has_perm(perm_base_name.format(p))
+                for p in ['add', 'change', 'delete']
+        }
         return render(request, 'configuration/bgp_select.html', {
-            'device': pk,
+            'device_id': pk,
+            'permissions': permissions,
             'table': table,
         })
+
+    def post(self, request, pk=None):
+        sessions = request.POST.getlist('pk')
+        d = Device.objects.get(pk=pk)
+        d.bgp_sessions.add(*[int(pk) for pk in sessions])
+        d.save()
+        return redirect('dcim:device', pk=pk)
+
+
+class BGPDeleteView(PermissionRequiredMixin, ObjectEditView):
+    permission_required = 'configuration.change_bgp'
+    model = BGPSession
+    default_return_url = 'configuration:bgp_list'
+    def post(self, request, pk=None):
+        sessions = request.POST.getlist('pk')
+        d = Device.objects.get(pk=pk)
+        d.bgp_sessions.remove(*[int(pk) for pk in sessions])
+        d.save()
+        return redirect('dcim:device', pk=pk)
 
 
 class BGPEditView(BGPCreateView):

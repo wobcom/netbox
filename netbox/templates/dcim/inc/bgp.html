@@ -1,0 +1,19 @@
+{% load helpers %}
+<tr id="bgp_{{ bgp.name }}">
+
+    {# Checkbox #}
+    {% if perms.configuration.change_bgp or perms.configuration.delete_bgp %}
+        <td class="pk">
+            <input name="pk" type="checkbox" value="{{ bgp.pk }}" />
+        </td>
+    {% endif %}
+
+    {# Name #}
+    <td class="text-nowrap">{{ bgp.neighbor }}</td>
+
+    {# Configuration #}
+    <td>{{ bgp.remote_as }}</td>
+
+    {# Community #}
+    <td>{{ bgp.community }}</td>
+</tr>
