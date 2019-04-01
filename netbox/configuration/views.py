@@ -55,7 +55,7 @@ class BGPAddView(PermissionRequiredMixin, ObjectEditView):
         return render(request, 'configuration/bgp_select.html', {
             'device_id': pk,
             'permissions': permissions,
-            'external_table': external_table,
+            'table': table,
         })
 
     def post(self, request, pk=None):
