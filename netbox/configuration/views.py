@@ -6,20 +6,34 @@ from utilities.views import (
     BulkDeleteView, BulkImportView, ObjectEditView, ObjectListView,
 )
 from . import filters, forms, tables
-from .models import BGPSession, BGPCommunity
+from .models import BGPSession, BGPCommunity, BGP_INTERNAL, BGP_EXTERNAL
 
 class BGPListView(ObjectListView):
     queryset = BGPSession.objects.all()
+    table_querysets = {
+        'internal_table': BGPSession.objects.filter(tag=BGP_INTERNAL),
+        'external_table': BGPSession.objects.filter(tag=BGP_EXTERNAL),
+    }
     filter = filters.BGPFilter
     filter_form = forms.BGPFilterForm
-    table = tables.BGPTable
+    table = {
+        'internal_table': tables.BGPInternalTable,
+        'external_table': tables.BGPExternalTable,
+    }
     template_name = 'configuration/bgp_list.html'
 
 
-class BGPCreateView(PermissionRequiredMixin, ObjectEditView):
+class BGPCreateInternalView(PermissionRequiredMixin, ObjectEditView):
     permission_required = 'configuration.add_bgp'
     model = BGPSession
-    model_form = forms.BGPForm
+    model_form = forms.BGPInternalForm
+    default_return_url = 'configuration:bgp_list'
+
+
+class BGPCreateExternalView(PermissionRequiredMixin, ObjectEditView):
+    permission_required = 'configuration.add_bgp'
+    model = BGPSession
+    model_form = forms.BGPExternalForm
     default_return_url = 'configuration:bgp_list'
 
 
@@ -28,7 +42,9 @@ class BGPAddView(PermissionRequiredMixin, ObjectEditView):
     model = BGPSession
     default_return_url = 'configuration:bgp_list'
     def get(self, request, pk=None):
-        table = tables.BGPTable(BGPSession.objects.all())
+        table = tables.BGPExternalTable(
+            BGPSession.objects.filter(tag=BGP_EXTERNAL)
+        )
         table.columns.show('pk')
         perm_base_name = '{}.{{}}_{}'.format(self.model._meta.app_label,
                                              self.model._meta.model_name)
@@ -39,7 +55,7 @@ class BGPAddView(PermissionRequiredMixin, ObjectEditView):
         return render(request, 'configuration/bgp_select.html', {
             'device_id': pk,
             'permissions': permissions,
-            'table': table,
+            'external_table': external_table,
         })
 
     def post(self, request, pk=None):
@@ -62,14 +78,18 @@ class BGPDeleteView(PermissionRequiredMixin, ObjectEditView):
         return redirect('dcim:device', pk=pk)
 
 
-class BGPEditView(BGPCreateView):
+class BGPEditInternalView(BGPCreateInternalView):
+    permission_required = 'configuration.change_bgp'
+
+
+class BGPEditExternalView(BGPCreateExternalView):
     permission_required = 'configuration.change_bgp'
 
 
 class BGPBulkImportView(PermissionRequiredMixin, BulkImportView):
     permission_required = 'configuration.add_bgp'
     model_form = forms.BGPCSVForm
-    table = tables.BGPTable
+    table = tables.BGPInternalTable
     default_return_url = 'configuration:bgp_list'
 
 
@@ -77,7 +97,7 @@ class BGPBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
     permission_required = 'configuration.delete_bgp'
     queryset = BGPSession.objects
     filter = filters.BGPFilter
-    table = tables.BGPTable
+    table = tables.BGPInternalTable
     default_return_url = 'configuration:bgp_list'
 
 

@@ -237,6 +237,7 @@ MEDIA_URL = '/{}media/'.format(BASE_PATH)
 
 # Disable default limit of 1000 fields per request. Needed for bulk deletion of objects. (Added in Django 1.10.)
 DATA_UPLOAD_MAX_NUMBER_FIELDS = None
+DATA_UPLOAD_MAX_MEMORY_SIZE = 20*1024*1024
 
 # Messages
 MESSAGE_TAGS = {

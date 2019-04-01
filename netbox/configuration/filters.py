@@ -77,3 +77,8 @@ class CommunityFilter(django_filters.FilterSet):
         if not value:
             return queryset
         return queryset.filter(name_icontains=value)
+
+    def filter_community(self, queryset, name, value):
+        if not value:
+            return queryset
+        return queryset.filter(communities__contains=value)

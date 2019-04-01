@@ -22,19 +22,58 @@ class BGPCommunity(models.Model):
         verbose_name_plural = 'BGP Communities'
 
 
+BGP_INTERNAL = 0
+BGP_EXTERNAL = 1
+
+
 class BGPSession(models.Model):
+    tag = models.PositiveSmallIntegerField(
+        choices=(
+            (BGP_INTERNAL, 'Internal Session'),
+            (BGP_EXTERNAL, 'External Session'),
+        ),
+        default=BGP_INTERNAL,
+    )
     neighbor = IPAddressField(
-        help_text='IPv4 or IPv6 address (with mask)'
+        help_text='IPv4 or IPv6 address (with mask)',
+        blank=True,
+        null=True,
     )
     remote_as = models.PositiveIntegerField(
-        validators=[validators.MaxValueValidator(65536)]
+        validators=[validators.MaxValueValidator(65536)],
+        blank=True,
+        null=True,
+    )
+    device_a = models.ForeignKey(
+        Device,
+        related_name='bgp_sessions_a',
+        blank=True,
+        null=True,
+        on_delete=models.CASCADE,
+    )
+    device_a_as = models.PositiveIntegerField(
+        validators=[validators.MaxValueValidator(65536)],
+        blank=True,
+        null=True,
+    )
+    device_b = models.ForeignKey(
+        Device,
+        related_name='bgp_sessions_b',
+        blank=True,
+        null=True,
+        on_delete=models.CASCADE,
+    )
+    device_b_as = models.PositiveIntegerField(
+        validators=[validators.MaxValueValidator(65536)],
+        blank=True,
+        null=True,
     )
     description = models.TextField(max_length=255, blank=True, null=True)
     devices = models.ManyToManyField(Device, related_name='bgp_sessions')
-    community = models.ForeignKey(BGPCommunity, blank=True, null=True, on_delete=models.SET_NULL)
+    communities = models.ManyToManyField(BGPCommunity, related_name='sessions')
 
     csv_headers = [
-        'neighbor', 'remote_as', 'description', 'community'
+        'tag', 'neighbor', 'remote_as', 'description', 'communities'
     ]
 
     def __str__(self):

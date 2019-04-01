@@ -151,9 +151,18 @@ class ObjectListView(View):
         permissions = {p: request.user.has_perm(perm_base_name.format(p)) for p in ['add', 'change', 'delete']}
 
         # Construct the table based on the user's permissions
-        table = self.table(self.queryset)
-        if 'pk' in table.base_columns and (permissions['change'] or permissions['delete']):
-            table.columns.show('pk')
+        if isinstance(self.table, dict):
+            table = {}
+            for k, v in self.table.items():
+                t = v(self.table_querysets[k])
+                if 'pk' in t.base_columns and (permissions['change'] or permissions['delete']):
+                    t.columns.show('pk')
+                table[k] = t
+        else:
+            t = self.table(self.queryset)
+            if 'pk' in t.base_columns and (permissions['change'] or permissions['delete']):
+                t.columns.show('pk')
+            table = {'table': t}
 
         # Construct queryset for tags list
         if hasattr(model, 'tags'):
@@ -166,16 +175,17 @@ class ObjectListView(View):
             'paginator_class': EnhancedPaginator,
             'per_page': request.GET.get('per_page', settings.PAGINATE_COUNT)
         }
-        RequestConfig(request, paginate).configure(table)
+        for t in table.values():
+            RequestConfig(request, paginate).configure(t)
 
         context = {
             'content_type': content_type,
-            'table': table,
             'permissions': permissions,
             'filter_form': self.filter_form(request.GET, label_suffix='') if self.filter_form else None,
             'tags': tags,
         }
         context.update(self.extra_context())
+        context.update(table)
 
         return render(request, self.template_name, context)
 

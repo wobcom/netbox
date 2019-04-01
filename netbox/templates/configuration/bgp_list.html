@@ -4,7 +4,8 @@
 {% block content %}
 <div class="pull-right">
     {% if perms.configuration.add_bgp %}
-        {% add_button 'configuration:bgp_add' %}
+        {% add_button_custom 'configuration:bgp_add_internal' 'Add Internal' %}
+        {% add_button_custom 'configuration:bgp_add_external' 'Add External' %}
         {% import_button 'configuration:bgp_import' %}
     {% endif %}
     {% export_button content_type %}
@@ -12,8 +13,15 @@
 <h1>{% block title %}BGP Session{% endblock %}</h1>
 <div class="row">
 	<div class="col-md-9">
-        {% include 'utilities/obj_table.html' with bulk_delete_url='configuration:bgp_bulk_delete' %}
-    </div>
+    <h3>Internal</h3>
+    {% with table=internal_table %}
+      {% include 'utilities/obj_table.html' with bulk_delete_url='configuration:bgp_bulk_delete' %}
+    {% endwith %}
+    <h3>External</h3>
+    {% with table=external_table %}
+      {% include 'utilities/obj_table.html' with bulk_delete_url='configuration:bgp_bulk_delete' %}
+    {% endwith %}
+  </div>
 	<div class="col-md-3">
 		{% include 'inc/search_panel.html' %}
 	</div>

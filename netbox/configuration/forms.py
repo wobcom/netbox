@@ -1,19 +1,49 @@
 from django import forms
 from utilities.forms import BootstrapMixin, FilterChoiceField
 
-from .models import BGPSession, BGPCommunity
+from .models import BGPSession, BGPCommunity, BGP_INTERNAL, BGP_EXTERNAL
 
 from dcim.models import Device
 
-class BGPForm(BootstrapMixin, forms.ModelForm):
+class BGPExternalForm(BootstrapMixin, forms.ModelForm):
+    tag = forms.IntegerField(
+        widget=forms.HiddenInput(), initial=BGP_EXTERNAL,
+    )
+
+    def __init__(self, *args, **kwargs):
+        kwargs.update({
+            'initial': {**(kwargs.get('initial', {})), 'tag': BGP_EXTERNAL}
+        })
+        super().__init__(*args, **kwargs)
+
     class Meta:
         model = BGPSession
-        fields = ['neighbor', 'remote_as', 'community', 'description']
+        fields = ['tag', 'neighbor', 'remote_as', 'communities', 'description']
         labels = {
             'neighbor': 'BGP neighbor',
             'remote_as': 'Remote AS',
             'description': 'Neighbor Description',
-            'community': 'BGP Community',
+            'communities': 'BGP Communities',
+        }
+
+
+class BGPInternalForm(BootstrapMixin, forms.ModelForm):
+    tag = forms.IntegerField(
+        widget=forms.HiddenInput(), initial=BGP_INTERNAL,
+    )
+    class Meta:
+        model = BGPSession
+        fields = [
+            'tag', 'device_a', 'device_a_as', 'device_b', 'device_b_as',
+            'communities', 'description'
+        ]
+        labels = {
+            'device_a': 'Device A',
+            'device_a_as': 'Device A AS',
+            'device_b': 'Device B',
+            'device_b_as': 'Device B AS',
+            'description': 'Neighbor Description',
+            'communities': 'BGP Communities',
         }
 
 
