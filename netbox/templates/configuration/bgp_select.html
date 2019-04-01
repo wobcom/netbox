@@ -2,10 +2,17 @@
 {% load buttons %}
 
 {% block content %}
-<h1>{% block title %}Select BGP Session{% endblock %}</h1>
 <div class="row">
-  <div class="col-md-9">
-    {% include 'configuration/inc/bgp_table.html' %}
+  <div class="col-md-3"></div>
+  <div class="col-md-6">
+    <div class="panel panel-default">
+      <div class="panel-heading">
+          <strong>{% block title %}Select BGP Session{% endblock %}</strong>
+      </div>
+      <div>
+        {% include 'configuration/inc/bgp_table.html' %}
+      </div>
+    </div>
   </div>
 </div>
 {% endblock %}
