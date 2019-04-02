@@ -17,7 +17,7 @@ class BGPInternalTable(BaseTable):
     class Meta(BaseTable.Meta):
         model = BGPSession
         fields = (
-            'pk', 'device_a', 'device_a_as', 'device_b_as', 'device_b_as',
+            'pk', 'device_a', 'device_a_as', 'device_b', 'device_b_as',
             'communities'
         )
 
