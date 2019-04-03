@@ -1810,7 +1810,7 @@ class PowerOutletBulkDisconnectForm(ConfirmationForm):
 # Interfaces
 #
 
-class InterfaceForm(BootstrapMixin, forms.ModelForm):
+class InterfaceForm(BootstrapMixin, CustomFieldForm, forms.ModelForm):
     tags = TagField(
         required=False
     )
@@ -1820,7 +1820,7 @@ class InterfaceForm(BootstrapMixin, forms.ModelForm):
         fields = [
             'device', 'name', 'form_factor', 'enabled', 'lag', 'mac_address', 'mtu', 'mgmt_only', 'description',
             'mode', 'untagged_vlan', 'tagged_vlans', 'tags',
-            'clag_id', 'overlay_network',
+            'clag_id', 'overlay_network'
         ]
         widgets = {
             'device': forms.HiddenInput(),

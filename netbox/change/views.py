@@ -1,4 +1,5 @@
 import io
+import json
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -14,22 +15,14 @@ from rest_framework.decorators import action
 from rest_framework.viewsets import ViewSet
 import gitlab
 import requests
-import topdesk
 
 from netbox import configuration
 from utilities.views import ObjectListView
 from . import tables
 from .forms import AffectedCustomerInlineFormSet
 from .models import ChangeInformation, ChangedField, ChangedObject, ChangeSet, \
-    DRAFT, IN_REVIEW, ACCEPTED, REJECTED, IMPLEMENTED
+    DRAFT, IN_REVIEW, ACCEPTED, REJECTED, IMPLEMENTED, FAILED
 from .utilities import redirect_to_referer
-
-
-
-TP = topdesk.Topdesk(configuration.TOPDESK_URL,
-                     verify=configuration.TOPDESK_VERIFY_HTTPS,
-                     app_creds=(configuration.TOPDESK_USERNAME,
-                                configuration.TOPDESK_PASSWORD))
 
 
 
@@ -129,28 +122,7 @@ class ToggleView(View):
         return res
 
 
-def trigger_topdesk_change(obj):
-    type_ = 'extensive' if obj.change_information.is_extensive else 'simple'
-    request_txt = 'Change #{} was created in Netbox by {}.\n\nSummary:\n{}'
-    request_txt = request_txt.format(obj.id, obj.user,
-                                     obj.executive_summary(no_markdown=True))
-    data = {
-        'requester': {
-            'id': configuration.TOPDESK_REQ_ID,
-            'name': configuration.TOPDESK_REQ_NAME,
-        },
-        'briefDescription': 'Change #{} was created in Netbox'.format(obj.id),
-        'changeType': type_,
-        'request': request_txt,
-    }
-    res = TP.create_operator_change(data)
-    res_id = res['id']
-    obj.ticket_id = res_id
-    obj.save()
-    return res_id
-
-
-MR_TXT = """Change #{} was created in Netbox by {} (TOPdesk ticket {}).
+MR_TXT = """Change #{} was created in Netbox by {}.
 
 ## Executive Summary
 
@@ -170,15 +142,28 @@ def check_actions(project, actions, branch):
     return new_actions
 
 
-def open_gitlab_mr(o):
+def check_branch_exists(project, branch_name):
+    try:
+        b = project.branches.get(branch_name)
+        if b:
+            return True
+    except gitlab.exceptions.GitlabError:
+        pass
+    return False
+
+
+def open_gitlab_mr(o, delete_branch=False):
     gl = gitlab.Gitlab(configuration.GITLAB_URL, configuration.GITLAB_TOKEN)
     project = gl.projects.get(configuration.GITLAB_PROJECT_ID)
     actions = o.to_actions()
-    mr_txt = MR_TXT.format(o.id, o.user, o.ticket_id,
-                                 o.executive_summary())
+    mr_txt = MR_TXT.format(o.id, o.user, o.executive_summary())
     emergency_label = ['emergency'] if o.change_information.is_emergency else []
     branch_name = 'change_{}'.format(o.id)
     commit_msg = 'Autocommit from Netbox (Change #{})'.format(o.id)
+
+    if delete_branch and check_branch_exists(project, branch_name):
+        project.branches.delete(branch_name)
+
     project.branches.create({
         'branch': branch_name,
         'ref': 'master'
@@ -200,9 +185,41 @@ def open_gitlab_mr(o):
         'target_branch': 'master',
         'labels': ['netbox', 'unreviewed'] + emergency_label
     })
+
+    # set project approvals so the surveyor can do its funk if the approver is
+    # set
+    if configuration.GITLAB_APPROVER_ID:
+        mr_mras = mr.approvals.get()
+        mr_mras.approvals_before_merge = 1
+        mr_mras.save()
+
+        mr.approvals.set_approvers(
+            approver_ids=[configuration.GITLAB_APPROVER_ID]
+        )
+
     msg = "You can review your merge request at {}/{}/merge_requests/{}!"
     return msg.format(configuration.GITLAB_URL, project.path_with_namespace,
                       mr.iid)
+
+
+@method_decorator(login_required, name='dispatch')
+class MRView(View):
+    model = ChangeSet
+
+    def get(self, request, pk=None):
+        """
+        This view is triggered when the operator clicks on "Recreate Merge
+        Request" in the change list view.
+        A merge request is created in Gitlab, and the status of the object is
+        changed to Accepted.
+        """
+        obj = get_object_or_404(self.model, pk=pk)
+
+        messages.info(request, open_gitlab_mr(obj, delete_branch=True))
+        obj.status = ACCEPTED
+        obj.save()
+
+        return redirect('/change/list')
 
 
 @method_decorator(login_required, name='dispatch')
@@ -212,8 +229,8 @@ class AcceptView(View):
     def get(self, request, pk=None):
         """
         This view is triggered when the change was accepted by the operator.
-        The changes are propagated into TOPdesk and Gitlab, and the status of
-        the object is changed to in review.
+        The changes are propagated into Gitlab, and the status of the object is
+        changed to in review.
         """
         obj = get_object_or_404(self.model, pk=pk)
 
@@ -221,22 +238,7 @@ class AcceptView(View):
             return HttpResponseForbidden('Change was already accepted!')
 
         try:
-            if configuration.TOPDESK_URL:
-                res_id = trigger_topdesk_change(obj)
-                obj.ticket_id = res_id
-                obj.save()
-
-            # register in surveyor if its configured
-            # if there is no topdesk surveyor url, we create an MR right away.
-            # otherwise we first create the ticket and defer creating the MR
-            if configuration.TOPDESK_URL and configuration.TOPDESK_SURVEYOR_URL:
-                requests.post('{}/{}/{}'.format(
-                    configuration.TOPDESK_SURVEYOR_URL,
-                    obj.id,
-                    res_id)
-                )
-            else:
-                messages.info(request, open_gitlab_mr(obj))
+            messages.info(request, open_gitlab_mr(obj))
         except ConnectionError as e:
             return HttpResponseServerError(str(e))
 
@@ -271,7 +273,7 @@ class RejectView(View):
 class ProvisionedView(ViewSet):
     model = ChangeSet
     queryset = ChangeSet.objects
-    def retrieve(self, request, pk=None):
+    def update(self, request, pk=None):
         """
         This view is triggered when the change was provisioned by Gitlab.
         The status of the changeset is updated and the changes are re-applied.
@@ -282,6 +284,7 @@ class ProvisionedView(ViewSet):
             return HttpResponseForbidden('Change was already provisioned!')
 
         obj.status = IMPLEMENTED
+        obj.provision_log = json.loads(request.body.decode('utf-8'))
         obj.apply()
         obj.save()
 
@@ -299,9 +302,6 @@ class FailedView(ViewSet):
         re-applied.
         """
         obj = get_object_or_404(self.model, pk=pk)
-
-        if obj.status != ACCEPTED:
-            return HttpResponseForbidden('Change was not accepted!')
 
         obj.status = FAILED
         obj.provision_log = json.loads(request.body.decode('utf-8'))
