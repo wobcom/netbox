@@ -7,6 +7,7 @@ CUSTOMFIELD_MODELS = (
     'secret',                                                      # Secrets
     'tenant',                                                      # Tenancy
     'cluster', 'virtualmachine',                                   # Virtualization
+    'bgpsession',                                                 # Configuration
 )
 
 # Custom field types

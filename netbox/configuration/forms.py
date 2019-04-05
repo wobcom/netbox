@@ -3,9 +3,10 @@ from utilities.forms import BootstrapMixin, FilterChoiceField
 
 from .models import BGPSession, BGPCommunity, BGP_INTERNAL, BGP_EXTERNAL
 
+from extras.forms import CustomFieldForm
 from dcim.models import Device
 
-class BGPExternalForm(BootstrapMixin, forms.ModelForm):
+class BGPExternalForm(BootstrapMixin, CustomFieldForm):
     tag = forms.IntegerField(
         widget=forms.HiddenInput(), initial=BGP_EXTERNAL,
     )
@@ -18,16 +19,19 @@ class BGPExternalForm(BootstrapMixin, forms.ModelForm):
 
     class Meta:
         model = BGPSession
-        fields = ['tag', 'neighbor', 'remote_as', 'communities', 'description']
+        fields = [
+            'tag', 'neighbor', 'remote_as', 'communities', 'description', 'vrf'
+        ]
         labels = {
             'neighbor': 'BGP neighbor',
             'remote_as': 'Remote AS',
             'description': 'Neighbor Description',
             'communities': 'BGP Communities',
+            'vrf': 'The VRF this session relates to',
         }
 
 
-class BGPInternalForm(BootstrapMixin, forms.ModelForm):
+class BGPInternalForm(BootstrapMixin, CustomFieldForm):
     tag = forms.IntegerField(
         widget=forms.HiddenInput(), initial=BGP_INTERNAL,
     )
@@ -35,7 +39,7 @@ class BGPInternalForm(BootstrapMixin, forms.ModelForm):
         model = BGPSession
         fields = [
             'tag', 'device_a', 'device_a_as', 'device_b', 'device_b_as',
-            'communities', 'description'
+            'communities', 'description', 'vrf',
         ]
         labels = {
             'device_a': 'Device A',

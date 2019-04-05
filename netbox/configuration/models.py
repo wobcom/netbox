@@ -1,8 +1,11 @@
 from django.db import models
+from django.contrib.contenttypes.fields import GenericRelation
 from django.core import validators
 
 from dcim.models import Device
+from extras.models import CustomFieldModel
 from ipam.fields import IPAddressField
+from ipam.models import VRF
 
 
 class BGPCommunity(models.Model):
@@ -26,7 +29,7 @@ BGP_INTERNAL = 0
 BGP_EXTERNAL = 1
 
 
-class BGPSession(models.Model):
+class BGPSession(CustomFieldModel):
     tag = models.PositiveSmallIntegerField(
         choices=(
             (BGP_INTERNAL, 'Internal Session'),
@@ -71,9 +74,22 @@ class BGPSession(models.Model):
     description = models.TextField(max_length=255, blank=True, null=True)
     devices = models.ManyToManyField(Device, related_name='bgp_sessions')
     communities = models.ManyToManyField(BGPCommunity, related_name='sessions')
+    vrf = models.ForeignKey(
+        VRF,
+        related_name='bgp_sessions',
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+        verbose_name='VRF'
+    )
+    custom_field_values = GenericRelation(
+        to='extras.CustomFieldValue',
+        content_type_field='obj_type',
+        object_id_field='obj_id'
+    )
 
     csv_headers = [
-        'tag', 'neighbor', 'remote_as', 'description', 'communities'
+        'tag', 'neighbor', 'remote_as', 'description', 'communities', 'vrf'
     ]
 
     def __str__(self):
