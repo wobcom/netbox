@@ -5,10 +5,10 @@ from .models import BGPSession, BGPCommunity
 
 class BGPInternalTable(BaseTable):
     pk = ToggleColumn()
-    device_a = tables.Column(verbose_name='Device A')
-    device_a_as = tables.Column(verbose_name='Device A AS')
-    device_b = tables.Column(verbose_name='Device B')
-    device_b_as = tables.Column(verbose_name='Device B AS')
+    neighbor_a = tables.Column(verbose_name='Neighbor A')
+    neighbor_a_as = tables.Column(verbose_name='Neighbor A AS')
+    neighbor_b = tables.Column(verbose_name='Neighbor B')
+    neighbor_b_as = tables.Column(verbose_name='Neighbor B AS')
     communities = tables.Column(verbose_name='Communities')
 
     def render_communities(self, record):
@@ -17,7 +17,7 @@ class BGPInternalTable(BaseTable):
     class Meta(BaseTable.Meta):
         model = BGPSession
         fields = (
-            'pk', 'device_a', 'device_a_as', 'device_b', 'device_b_as',
+            'pk', 'neighbor_a', 'neighbor_a_as', 'neighbor_b', 'neighbor_b_as',
             'communities'
         )
 

@@ -5,7 +5,7 @@ from django.core import validators
 from dcim.models import Device
 from extras.models import CustomFieldModel
 from ipam.fields import IPAddressField
-from ipam.models import VRF
+from ipam.models import IPAddress, VRF
 
 
 class BGPCommunity(models.Model):
@@ -47,26 +47,26 @@ class BGPSession(CustomFieldModel):
         blank=True,
         null=True,
     )
-    device_a = models.ForeignKey(
-        Device,
+    neighbor_a = models.ForeignKey(
+        IPAddress,
         related_name='bgp_sessions_a',
         blank=True,
         null=True,
         on_delete=models.CASCADE,
     )
-    device_a_as = models.PositiveIntegerField(
+    neighbor_a_as = models.PositiveIntegerField(
         validators=[validators.MaxValueValidator(65536)],
         blank=True,
         null=True,
     )
-    device_b = models.ForeignKey(
-        Device,
+    neighbor_b = models.ForeignKey(
+        IPAddress,
         related_name='bgp_sessions_b',
         blank=True,
         null=True,
         on_delete=models.CASCADE,
     )
-    device_b_as = models.PositiveIntegerField(
+    neighbor_b_as = models.PositiveIntegerField(
         validators=[validators.MaxValueValidator(65536)],
         blank=True,
         null=True,
@@ -93,7 +93,18 @@ class BGPSession(CustomFieldModel):
     ]
 
     def __str__(self):
-        return 'neighbor {}, remote AS {}'.format(self.neighbor, self.remote_as)
+        if self.tag == BGP_EXTERNAL:
+            return 'neighbor {}, remote AS {}'.format(
+                self.neighbor,
+                self.remote_as
+            )
+        elif self.tag == BGP_INTERNAL:
+            return '{} ({})<->{} ({})'.format(
+                self.neighbor_a,
+                self.neighbor_a_as,
+                self.neighbor_b,
+                self.neighbor_b_as,
+            )
 
     class Meta:
         verbose_name = 'BGP Session'

@@ -1,10 +1,13 @@
 from django import forms
-from utilities.forms import BootstrapMixin, FilterChoiceField
+from django.db.models import Count, Q
+from django.forms.models import ModelChoiceIterator, ModelChoiceField
 
 from .models import BGPSession, BGPCommunity, BGP_INTERNAL, BGP_EXTERNAL
 
 from extras.forms import CustomFieldForm
-from dcim.models import Device
+from dcim.models import Device, Interface
+from ipam.models import IPAddress
+from utilities.forms import BootstrapMixin, FilterChoiceField
 
 class BGPExternalForm(BootstrapMixin, CustomFieldForm):
     tag = forms.IntegerField(
@@ -31,21 +34,56 @@ class BGPExternalForm(BootstrapMixin, CustomFieldForm):
         }
 
 
+# nb: we could make this generic, but because of multiple indirection this
+# wouldn’t add a ton of value. should tis pattern ever arise again, making this
+# generic shouldn't be too much work.
+class GroupedIPByDeviceIterator(ModelChoiceIterator):
+    def __init__(self, field):
+        super().__init__(field)
+
+    def __iter__(self):
+        if self.field.empty_label is not None:
+            yield ("", self.field.empty_label)
+        # sadly we cant do this via queryset, the modelchoice will not validate
+        query = Interface.objects.prefetch_related(
+            'device',
+            'ip_addresses'
+        )
+        query = query.filter(ip_addresses__isnull=False).distinct()
+        for elem in query.order_by('device__name'):
+            yield ("{} - {}".format(elem.device, elem),
+                   [self.choice(ip) for ip in elem.ip_addresses.all()])
+
+
+class GroupedIPByDeviceField(ModelChoiceField):
+    def __init__(self, *args, **kwargs):
+        self.iterator = GroupedIPByDeviceIterator
+        super().__init__(*args, **kwargs)
+
+
 class BGPInternalForm(BootstrapMixin, CustomFieldForm):
     tag = forms.IntegerField(
         widget=forms.HiddenInput(), initial=BGP_INTERNAL,
     )
+    neighbor_a = GroupedIPByDeviceField(
+        queryset=IPAddress.objects.all(),
+        label="Neighbor A"
+    )
+    neighbor_b = GroupedIPByDeviceField(
+        queryset=IPAddress.objects.all(),
+        label="Neighbor B"
+    )
     class Meta:
         model = BGPSession
         fields = [
-            'tag', 'device_a', 'device_a_as', 'device_b', 'device_b_as',
+            'tag', 'neighbor_a', 'neighbor_a_as', 'neighbor_b', 'neighbor_b_as',
             'communities', 'description', 'vrf',
         ]
         labels = {
-            'device_a': 'Device A',
-            'device_a_as': 'Device A AS',
-            'device_b': 'Device B',
-            'device_b_as': 'Device B AS',
+            'neighbor_a': 'Neighbor A',
+            'neighbor_a_as': 'Neighbor A AS',
+            'neighbor_b': 'Neighbor B',
+            'neighbor_b_as': 'Neighbor B AS',
             'description': 'Neighbor Description',
             'communities': 'BGP Communities',
         }
