@@ -11,9 +11,10 @@ import pickle
 
 from django.contrib import messages
 from django.contrib.auth.models import User
+from django.contrib.contenttypes.models import ContentType
 from django.contrib.sessions.models import Session
 from django.db import models
-from django.db.models.signals import pre_save, post_save
+from django.db.models.signals import pre_save, post_save, m2m_changed
 from django.shortcuts import redirect
 from django.utils import timezone
 
@@ -32,6 +33,7 @@ CHANGE_BLACKLIST = [
     ObjectChange,
     Session,
     User,
+    ContentType,
 ]
 
 
@@ -113,13 +115,41 @@ def install_save_hooks(request):
         changeset.save()
         handled.append(instance)
 
+    def m2m_changed_internal(sender, instance, action, model=None, pk_set=None, **kwargs):
+        if not pk_set:
+            pk_set = {}
+        if action not in ['post_add', 'pre_remove']:
+            return
+        if sender in CHANGE_BLACKLIST:
+            return
+
+        if action == 'post_add':
+            for pk in pk_set:
+                through = sender.objects.get(**{
+                    '{}_id'.format(instance._meta.model.__name__.lower()): instance.pk,
+                    '{}_id'.format(model.__name__.lower()): pk
+                })
+                co = ChangedObject(
+                    changed_object=through,
+                    changed_object_data=pickle.dumps(through),
+                    user=request.user,
+                )
+                co.save()
+                changeset.changedobject_set.add(co)
+                changeset.updated = timezone.now()
+                changeset.save()
+
+
+
     # we need to install them strongly, because they are closures;
     # otherwise django will throw away the weak references at the end of this
     # function (we need it to be there until the end of this request)
     pre_save.connect(before_save_internal, weak=False, dispatch_uid='chgfield')
     post_save.connect(after_save_internal, weak=False, dispatch_uid='chgfield')
+    m2m_changed.connect(m2m_changed_internal, weak=False, dispatch_uid='chgfield')
     return [{'handler': before_save_internal, 'signal': pre_save},
-            {'handler': after_save_internal, 'signal': post_save}]
+            {'handler': after_save_internal, 'signal': post_save},
+            {'handler': m2m_changed_internal, 'signal': m2m_changed}]
 
 
 SITE_BLACKLIST = ["add/", "edit/", "delete/", "import/", "change/toggle/"]

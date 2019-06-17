@@ -2016,7 +2016,7 @@ class InterfaceAssignVLANsForm(BootstrapMixin, forms.ModelForm):
 
         if self.cleaned_data['tagged']:
             for vlan in self.cleaned_data['vlans']:
-                self.instance.tagged_vlans.add(VLAN.objects.get(pk=vlan))
+                self.instance.tagged_vlans.add(vlan)
         else:
             self.instance.untagged_vlan = VLAN.objects.get(pk=self.cleaned_data['vlans'][0])
 
