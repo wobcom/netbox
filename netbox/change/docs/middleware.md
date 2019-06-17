@@ -115,7 +115,7 @@ Now, let’s check whether there is someone making a change. If not, we are done
 so we do not need an `else` clause this time—phew.
 
 ```python
-if cs.exists():
+if cs.exists() and cs.first().id != request.session.get('change_id'):
 ```
 
 First, we get the change that is active.

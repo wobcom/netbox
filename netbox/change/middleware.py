@@ -199,7 +199,7 @@ class FieldChangeMiddleware(object):
             # this is the simplest solution, albeit incredibly dirty
             cs = ChangeSet.objects.filter(active=True)
             request.session['foreign_change'] = cs.exists()
-            if cs.exists():
+            if cs.exists() and cs.first().id != request.session.get('change_id'):
                 c = cs.first()
                 # this costs a lot for every request
                 if c.in_use():
