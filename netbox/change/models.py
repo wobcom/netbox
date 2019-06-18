@@ -246,7 +246,7 @@ class ChangeSet(models.Model):
                                             in interface.ip_addresses.all()]
             }]
         if interface:
-            res['extra_fields'] = self.yamlify_extra_fields(interface)
+            res[0]['extra_fields'] = self.yamlify_extra_fields(interface)
         return res
 
     def yamlify_device(self, device):
