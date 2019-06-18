@@ -79,8 +79,9 @@ def install_save_hooks(request):
             old_value = getattr(old_instance, field.name)
             new_value = getattr(instance, field.name)
 
-            # field was not changed
-            if new_value == old_value:
+            # field was not changed; this also blocks changes from None to
+            # empty string and the like (as per request by @cdieckhoff)
+            if new_value == old_value or not new_value and not old_value:
                 continue
 
             cf = ChangedField(
