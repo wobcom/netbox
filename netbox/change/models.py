@@ -362,15 +362,19 @@ class ChangeSet(models.Model):
         return self.change_information.executive_summary(no_markdown=no_markdown)
 
     def apply(self):
-        for change in self.changedobject_set.order_by("time").all():
-            change.apply()
-        for change in self.changedfield_set.order_by("time").all():
+        change_objects = list(self.changedobject_set.all())
+        change_fields = list(self.changedfield_set.all())
+        changes = sorted(change_objects + change_fields, key=lambda x: x.time)
+        for change in changes:
             change.apply()
 
     def revert(self):
-        for change in self.changedfield_set.all():
-            change.revert()
-        for change in self.changedobject_set.all():
+        change_objects = list(self.changedobject_set.all())
+        change_fields = list(self.changedfield_set.all())
+        changes = sorted(
+            change_objects + change_fields, key=lambda x: x.time, reverse=True
+        )
+        for change in changes:
             change.revert()
 
     def in_use(self):
