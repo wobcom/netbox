@@ -218,12 +218,13 @@ class ChangeSet(models.Model):
         return [res]
 
     def yamlify_interface(self, interface):
+        res = None
         if interface.form_factor == IFACE_FF_ONTEP:
-            return self.yamlify_ontep_interface(interface)
+            res = self.yamlify_ontep_interface(interface)
         elif interface.form_factor == IFACE_FF_BRIDGE:
-            return self.yamlify_bridge_interface(interface)
+            res = self.yamlify_bridge_interface(interface)
         elif interface:
-            return [{
+            res = [{
                 'name': interface.name,
                 'child_interfaces': self.child_interfaces(interface),
                 'clag_id': interface.clag_id,
@@ -244,6 +245,9 @@ class ChangeSet(models.Model):
                                             for address
                                             in interface.ip_addresses.all()]
             }]
+        if interface:
+            res['extra_fields'] = self.yamlify_extra_fields(interface)
+        return res
 
     def yamlify_device(self, device):
         res = {
