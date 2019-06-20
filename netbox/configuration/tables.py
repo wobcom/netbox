@@ -1,39 +1,8 @@
 import django_tables2 as tables
+from django_tables2.utils import Accessor
 from utilities.tables import BaseTable, ToggleColumn
 
-from .models import BGPSession, BGPCommunity
-
-class BGPInternalTable(BaseTable):
-    pk = ToggleColumn()
-    neighbor_a = tables.Column(verbose_name='Neighbor A')
-    neighbor_a_as = tables.Column(verbose_name='Neighbor A AS')
-    neighbor_b = tables.Column(verbose_name='Neighbor B')
-    neighbor_b_as = tables.Column(verbose_name='Neighbor B AS')
-    communities = tables.Column(verbose_name='Communities')
-
-    def render_communities(self, record):
-        return ', '.join(record.communities.values_list('community', flat=True))
-
-    class Meta(BaseTable.Meta):
-        model = BGPSession
-        fields = (
-            'pk', 'neighbor_a', 'neighbor_a_as', 'neighbor_b', 'neighbor_b_as',
-            'communities'
-        )
-
-
-class BGPExternalTable(BaseTable):
-    pk = ToggleColumn()
-    neighbor = tables.Column(verbose_name='Neighbor')
-    remote_as = tables.Column(verbose_name='Remote AS')
-    communities = tables.Column(verbose_name='Communities')
-
-    def render_communities(self, record):
-        return ', '.join(record.communities.values_list('community', flat=True))
-
-    class Meta(BaseTable.Meta):
-        model = BGPSession
-        fields = ('pk', 'neighbor', 'remote_as', 'communities')
+from .models import BGPCommunity, BGPCommunityList, RouteMap, BGPASN, BGPDeviceASN
 
 
 class CommunityTable(BaseTable):
@@ -44,3 +13,37 @@ class CommunityTable(BaseTable):
     class Meta(BaseTable.Meta):
         model = BGPCommunity
         fields = ('pk', 'community', 'name')
+
+
+class CommunityListTable(BaseTable):
+    pk = ToggleColumn()
+    name = tables.LinkColumn('configuration:communitylist_detail', args=[Accessor('pk')])
+
+    class Meta(BaseTable.Meta):
+        model = BGPCommunityList
+        fields = ('pk', 'name')
+
+
+class RouteMapTable(BaseTable):
+    pk = ToggleColumn()
+    name = tables.LinkColumn('configuration:routemap_edit', args=[Accessor('pk')])
+
+    class Meta(BaseTable.Meta):
+        model = RouteMap
+        fields = ('pk', 'name')
+
+
+class BGPASNTable(BaseTable):
+    pk = ToggleColumn()
+    asn = tables.LinkColumn('configuration:asn_edit', args=[Accessor('pk')])
+
+    class Meta(BaseTable.Meta):
+        model = BGPASN
+        fields = ('pk', 'asn')
+
+
+class BGPDeviceASNTable(BaseTable):
+
+    class Meta(BaseTable.Meta):
+        model = BGPDeviceASN
+        fields = ('pk', 'device', 'asn')
