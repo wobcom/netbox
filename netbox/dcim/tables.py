@@ -4,7 +4,7 @@ from django_tables2.utils import Accessor
 from tenancy.tables import COL_TENANT
 from utilities.tables import BaseTable, BooleanColumn, ColorColumn, ToggleColumn
 from .models import (
-    Cable, ConsolePort, ConsolePortTemplate, ConsoleServerPort, ConsoleServerPortTemplate, Device, DeviceBay,
+    Cable, ConsolePort, ConsolePortTemplate, ConsoleServerPort, ConsoleServerPortTemplate, Device, DeviceLicense, DeviceBay,
     DeviceBayTemplate, DeviceRole, DeviceType, FrontPort, FrontPortTemplate, Interface, InterfaceTemplate,
     InventoryItem, Manufacturer, Platform, PowerOutlet, PowerOutletTemplate, PowerPort, PowerPortTemplate, Rack,
     RackGroup, RackReservation, RackRole, RearPort, RearPortTemplate, Region, Site, VirtualChassis,
@@ -549,6 +549,14 @@ class DeviceImportTable(BaseTable):
         model = Device
         fields = ('name', 'status', 'tenant', 'site', 'rack', 'position', 'device_role', 'device_type')
         empty_text = False
+
+
+class DeviceLicenseTable(BaseTable):
+    pk = ToggleColumn()
+
+    class Meta(BaseTable.Meta):
+        model = DeviceLicense
+        fields = ('pk', 'device', 'license')
 
 
 #

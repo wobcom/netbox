@@ -25,7 +25,7 @@ from utilities.views import (
 from virtualization.models import VirtualMachine
 from . import filters, forms, tables
 from .models import (
-    Cable, ConsolePort, ConsolePortTemplate, ConsoleServerPort, ConsoleServerPortTemplate, Device, DeviceBay,
+    Cable, ConsolePort, ConsolePortTemplate, ConsoleServerPort, ConsoleServerPortTemplate, Device, DeviceBay, DeviceLicense,
     DeviceBayTemplate, DeviceRole, DeviceType, FrontPort, FrontPortTemplate, Interface, InterfaceTemplate,
     InventoryItem, Manufacturer, Platform, PowerOutlet, PowerOutletTemplate, PowerPort, PowerPortTemplate, Rack,
     RackGroup, RackReservation, RackRole, RearPort, RearPortTemplate, Region, Site, VirtualChassis,
@@ -1021,6 +1021,33 @@ class DeviceCreateView(PermissionRequiredMixin, ObjectEditView):
     model = Device
     model_form = forms.DeviceForm
     template_name = 'dcim/device_edit.html'
+    default_return_url = 'dcim:device_list'
+
+
+class DeviceLicenseCreateView(PermissionRequiredMixin, ObjectEditView):
+    permission_required = 'dcim.add_device'
+    model = DeviceLicense
+    model_form = forms.DeviceLicenseForm
+    template_name = 'dcim/device_license_edit.html'
+    default_return_url = 'dcim:device_license_list'
+
+
+class DeviceLicenseDeleteView(PermissionRequiredMixin, ObjectDeleteView):
+    permission_required = 'dcim.delete_device'
+    model = DeviceLicense
+    default_return_url = 'dcim:device_license_list'
+
+
+class DeviceLicenseListView(ObjectListView):
+    queryset = DeviceLicense.objects.all()
+    table = tables.DeviceLicenseTable
+    template_name = 'dcim/device_license_list.html'
+
+
+class DeviceLicenseBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
+    permission_required = 'dcim.delete_device'
+    queryset = DeviceLicense.objects.all()
+    table = tables.DeviceLicenseTable
     default_return_url = 'dcim:device_list'
 
 

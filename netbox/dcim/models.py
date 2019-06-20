@@ -9,7 +9,7 @@ from django.contrib.postgres.fields import ArrayField, JSONField
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Sum
 from django.urls import reverse
 from mptt.models import MPTTModel, TreeForeignKey
 from taggit.managers import TaggableManager
@@ -1681,6 +1681,11 @@ class Device(ChangeLoggedModel, ConfigContextModel, CustomFieldModel):
         """
         return self.virtual_chassis.master if self.virtual_chassis else None
 
+    def count_bgp_sessions(self):
+        return self.interfaces\
+            .annotate(session_count=Count('bgp_sessions'))\
+            .aggregate(res=Sum('session_count'))['res']
+
     @property
     def vc_interfaces(self):
         """
@@ -1700,6 +1705,20 @@ class Device(ChangeLoggedModel, ConfigContextModel, CustomFieldModel):
 
     def get_status_class(self):
         return STATUS_CLASSES[self.status]
+
+
+class DeviceLicense(models.Model):
+    license = models.FileField()
+    device = models.ForeignKey(
+        Device,
+        on_delete=models.CASCADE,
+        related_name="licenses",
+        blank=True,
+        null=True
+    )
+
+    def __str__(self):
+        return self.license.name
 
 
 #
