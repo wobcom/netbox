@@ -18,4 +18,13 @@
 {% endblock %}
 
 {% block javascript %}
+<script type="text/javascript">
+$( document ).ready(
+$('.select-interface').click(function(event) {
+  var pk = $(this).attr("data-pk");
+  $(this).closest('form').append('<input type="hidden" name="pk" value="'+this.value+'">');
+  $(this).closest('form').append('<input type="hidden" name="'+this.value+'" value="'+pk+'">');
+})
+)
+</script>
 {% endblock %}

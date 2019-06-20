@@ -127,6 +127,14 @@
                             <a href="{% url 'dcim:device_list' %}">Devices</a>
                         </li>
                         <li>
+                            {% if perms.dcim.add_device %}
+                                <div class="buttons pull-right">
+                                    <a href="{% url 'dcim:device_license_add' %}" class="btn btn-xs btn-success" title="Add"><i class="fa fa-plus"></i></a>
+                                </div>
+                            {% endif %}
+                            <a href="{% url 'dcim:device_license_list' %}">Device Licenses</a>
+                        </li>
+                        <li>
                             {% if perms.dcim.add_devicerole %}
                                 <div class="buttons pull-right">
                                     <a href="{% url 'dcim:devicerole_add' %}" class="btn btn-xs btn-success" title="Add"><i class="fa fa-plus"></i></a>
@@ -420,20 +428,38 @@
                           <li>
                               {% if perms.configuration.add_bgp %}
                                   <div class="buttons pull-right">
-                                      <a href="{% url 'configuration:bgp_add_internal' %}" class="btn btn-xs btn-success" title="Add"><i class="fa fa-plus"></i></a>
-                                      <a href="{% url 'configuration:bgp_import' %}" class="btn btn-xs btn-info" title="Import"><i class="fa fa-download"></i></a>
-                                  </div>
-                              {% endif %}
-                              <a href="{% url 'configuration:bgp_list' %}">BGP Sessions</a>
-                          </li>
-                          <li>
-                              {% if perms.configuration.add_bgp %}
-                                  <div class="buttons pull-right">
                                       <a href="{% url 'configuration:community_add' %}" class="btn btn-xs btn-success" title="Add"><i class="fa fa-plus"></i></a>
                                       <a href="{% url 'configuration:community_import' %}" class="btn btn-xs btn-info" title="Import"><i class="fa fa-download"></i></a>
                                   </div>
                               {% endif %}
                               <a href="{% url 'configuration:community_list' %}">BGP Communities</a>
+                          </li>
+                          <li>
+                              {% if perms.configuration.add_bgp %}
+                                  <div class="buttons pull-right">
+                                      <a href="{% url 'configuration:communitylist_add' %}" class="btn btn-xs btn-success" title="Add"><i class="fa fa-plus"></i></a>
+                                      <a href="{% url 'configuration:communitylist_import' %}" class="btn btn-xs btn-info" title="Import"><i class="fa fa-download"></i></a>
+                                  </div>
+                              {% endif %}
+                              <a href="{% url 'configuration:communitylist_list' %}">BGP Community Lists</a>
+                          </li>
+                          <li>
+                              {% if perms.configuration.add_bgp %}
+                                  <div class="buttons pull-right">
+                                      <a href="{% url 'configuration:routemap_add' %}" class="btn btn-xs btn-success" title="Add"><i class="fa fa-plus"></i></a>
+                                      <a href="{% url 'configuration:routemap_import' %}" class="btn btn-xs btn-info" title="Import"><i class="fa fa-download"></i></a>
+                                  </div>
+                              {% endif %}
+                              <a href="{% url 'configuration:routemap_list' %}">Routemaps</a>
+                          </li>
+                          <li>
+                              {% if perms.configuration.add_asn %}
+                                  <div class="buttons pull-right">
+                                      <a href="{% url 'configuration:asn_add' %}" class="btn btn-xs btn-success" title="Add"><i class="fa fa-plus"></i></a>
+                                      <a href="{% url 'configuration:asn_import' %}" class="btn btn-xs btn-info" title="Import"><i class="fa fa-download"></i></a>
+                                  </div>
+                              {% endif %}
+                              <a href="{% url 'configuration:asn_list' %}">ASNs</a>
                           </li>
                       </ul>
                   </li>

@@ -137,20 +137,6 @@
                 </div>
             </div>
         {% endif %}
-        {% if perms.configuration %}
-            <div class="panel panel-default">
-                <div class="panel-heading">
-                    <strong>Configuration</strong>
-                </div>
-                <div class="list-group">
-                    <div class="list-group-item">
-                        <span class="badge pull-right">{{ stats.configuration_count }}</span>
-                        <h4 class="list-group-item-heading"><a href="{% url 'configuration:bgp_list' %}">BGP</a></h4>
-                        <p class="list-group-item-text text-muted">BGP Neighbors</p>
-                    </div>
-                </div>
-            </div>
-        {% endif %}
     </div>
     <div class="col-sm-6 col-md-4">
         <div class="panel panel-default">

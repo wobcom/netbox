@@ -1,7 +1,0 @@
-{% extends 'utilities/obj_table.html' %}
-
-{% block extra_actions %}
-    <button type="submit" formaction="{% url 'configuration:bgp_addto' pk=device_id %}" class="btn btn-primary btn-sm pull-right" style="margin:0em 1em 1em 0em">
-        <i class="glyphicon glyphicon-plus"></i> Add to device
-    </button>
-{% endblock %}

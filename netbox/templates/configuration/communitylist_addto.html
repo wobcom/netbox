@@ -1,0 +1,66 @@
+{% extends '_base.html' %}
+{% load static %}
+{% load helpers %}
+
+{% block title %}Add communities to {{ list }}{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <div class="col-md-3"></div>
+        <div class="col-md-6">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <strong>Communities</strong>
+                </div>
+                <div class="panel-body">
+                    <table class="table table-hover">
+                    {% for community in communities %}
+                      <tr>
+                        <td><input type="checkbox" onclick="add(this, {{community.pk}})"></input></td>
+                        <td>{{community}}</td>
+                        <td>
+                          <select id='select-{{community.pk}}'>
+                            <option value="permit">Permit</option>
+                            <option value="deny">Deny</option>
+                          </select>
+                        </td>
+                    {% empty %}
+                    <span class="text-muted">No communities</span>
+                    {% endfor %}
+                    </table>
+                    <div class="pull-right">
+                      <button class="btn btn-md btn-primary" onclick="send()">Add Communities</button>
+                      <a href="{% url 'configuration:communitylist_list' %}" class="btn btn-md btn-default">Cancel</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% csrf_token %}
+<script>
+// do the csrf dance
+let data = {
+  'csrfmiddlewaretoken': document.querySelector("[name=csrfmiddlewaretoken]").value
+};
+function add(elem, pk) {
+  if (elem.checked) data[pk] = document.querySelector('#select-' + pk).value;
+  else delete data[pk];
+}
+
+// we’re building a form dynamically here from the data we received
+function send() {
+  let form = document.createElement("form");
+  form.method = "post";
+  form.enctype = "multipart/form-data";
+  for (let k in data) {
+    let elem = document.createElement('input');
+    elem.type = 'text';
+    elem.name = k;
+    elem.value = data[k];
+    form.appendChild(elem);
+  }
+  document.body.appendChild(form, document.body);
+  form.submit();
+}
+</script>
+{% endblock %}

@@ -3,16 +3,16 @@
 
 {% block content %}
 <div class="pull-right">
-    {% if perms.configuration.add_bgp %}
-        {% add_button 'configuration:bgp_add' %}
-        {% import_button 'configuration:bgp_import' %}
+    {% if perms.configuration.add_asn %}
+        {% add_button 'configuration:asn_add' %}
+        {% import_button 'configuration:asn_import' %}
     {% endif %}
     {% export_button content_type %}
 </div>
-<h1>{% block title %}BGP Session{% endblock %}</h1>
+<h1>{% block title %}ASN{% endblock %}</h1>
 <div class="row">
 	<div class="col-md-9">
-    {% include 'utilities/obj_table.html' with bulk_delete_url='configuration:bgp_bulk_delete' %}
+    {% include 'utilities/obj_table.html' with bulk_delete_url='configuration:asn_bulk_delete' %}
   </div>
 	<div class="col-md-3">
 		{% include 'inc/search_panel.html' %}
