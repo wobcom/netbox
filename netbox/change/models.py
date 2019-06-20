@@ -367,7 +367,7 @@ class ChangeSet(models.Model):
     def executive_summary(self, no_markdown=False):
         return self.change_information.executive_summary(no_markdown=no_markdown)
 
-    @atomic.transaction
+    @transaction.atomic
     def apply(self):
         change_objects = list(self.changedobject_set.all())
         change_fields = list(self.changedfield_set.all())
@@ -375,7 +375,7 @@ class ChangeSet(models.Model):
         for change in changes:
             change.apply()
 
-    @atomic.transaction
+    @transaction.atomic
     def revert(self):
         change_objects = list(self.changedobject_set.all())
         change_fields = list(self.changedfield_set.all())
