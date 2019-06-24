@@ -152,6 +152,9 @@ def open_gitlab_mr(o, delete_branch=False):
     emergency_label = ['emergency'] if o.change_information.is_emergency else []
     branch_name = 'change_{}'.format(o.id)
     req_approvals = 1 if o.change_information.is_emergency or not o.change_information.is_extensive else 2
+    commit_msg = 'Autocommit from Netbox (Change #{}: {})'.format(
+        o.id, o.change_information.name
+    )
 
     if delete_branch and check_branch_exists(project, branch_name):
         project.branches.delete(branch_name)
@@ -166,15 +169,16 @@ def open_gitlab_mr(o, delete_branch=False):
     project.commits.create({
         'id': project.id,
         'branch': branch_name,
-        'commit_message': 'Autocommit from Netbox (Change #{})'.format(o.id),
+        'commit_message': commit_msg,
         'author_name': 'Netbox',
         'actions': actions,
     })
     mr = project.mergerequests.create({
-        'title': 'Change #{} was created in Netbox'.format(o.id),
+        'title': 'Change #{}: {}'.format(o.id, o.change_information.name),
         'description': mr_txt,
         'source_branch': branch_name,
         'target_branch': 'master',
+        'approvals_before_merge': req_approvals,
         'labels': ['netbox', 'unreviewed'] + emergency_label
     })
 

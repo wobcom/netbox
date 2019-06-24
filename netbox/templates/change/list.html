@@ -17,7 +17,7 @@
   <div class="col-md-3"></div>
   <div class="col-md-6">
     {% if changeset != None %}
-      <h3>Changeset {{ changeset.pk }} created!</h3>
+      <h3>Changeset {{ changeset.pk }} ({{ changeset.change_information.name }}) created!</h3>
       <p>
         We’ve recorded these changes since you started this changeset. Please
         make sure that those changes are correct and then click the “Submit”

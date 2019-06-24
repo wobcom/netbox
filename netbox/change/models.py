@@ -28,6 +28,7 @@ DEVICE_ROLE_TOPOLOGY_WHITELIST = ['leaf', 'spine', 'superspine']
 
 class ChangeInformation(models.Model):
     """Meta information about a change."""
+    name = models.CharField(max_length=256, verbose_name="Change Title")
     is_emergency = models.BooleanField(verbose_name="Is an emergency change")
     is_extensive = models.BooleanField(verbose_name="Is an extensive change")
     affects_customer = models.BooleanField(verbose_name="Customers are affected")
