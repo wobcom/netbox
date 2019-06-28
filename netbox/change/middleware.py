@@ -209,6 +209,7 @@ class FieldChangeMiddleware(object):
                         return redirect_to_referer(request)
                 else:
                     c.active = False
+                    c.revert()
                     c.save()
 
         response = self.get_response(request)

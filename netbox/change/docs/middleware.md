@@ -148,11 +148,12 @@ What, however, if the changeset is not active anymore?
 else:
 ```
 
-Well, helpful citizens as we are, we should mark this change as not active, and
+Well, helpful citizens as we are, we should mark this change as not active, revert it, and
 save that result to the database, so let’s do just that!
 
 ```python
 c.active = False
+c.revert()
 c.save()
 ```
 
