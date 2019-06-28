@@ -544,6 +544,7 @@ class ChangedObject(models.Model):
 
     It can be reverted by calling revert(), which will simply delete the object.
     """
+    deleted = models.BooleanField(default=False)
     changeset = models.ForeignKey(
         ChangeSet,
         null=True,
@@ -573,14 +574,21 @@ class ChangedObject(models.Model):
     )
 
     def __str__(self):
-        return "{} #{} was added.".format(self.changed_object_type,
-                                          self.changed_object_id)
+        return "{} #{} was {}.".format(self.changed_object_type,
+                                       self.changed_object_id,
+                                       'deleted' if self.deleted else 'added')
 
     def apply(self):
         obj = pickle.loads(self.changed_object_data)
-        obj.save(force_insert=True)
+        if self.deleted:
+            obj.delete()
+        else:
+            obj.save(force_insert=True)
 
     def revert(self):
-        if self.changed_object:
-            self.changed_object.delete()
-
+        if self.deleted:
+            obj = pickle.loads(self.changed_object_data)
+            obj.save(force_insert=True)
+        else:
+            if self.changed_object:
+                self.changed_object.delete()

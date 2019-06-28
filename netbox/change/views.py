@@ -20,7 +20,7 @@ from netbox import configuration
 from utilities.views import ObjectListView
 from . import tables
 from .forms import AffectedCustomerInlineFormSet
-from .models import ChangeInformation, ChangedField, ChangedObject, ChangeSet, \
+from .models import ChangeInformation, ChangeSet, \
     DRAFT, IN_REVIEW, ACCEPTED, REJECTED, IMPLEMENTED, FAILED
 from .utilities import redirect_to_referer
 
@@ -82,10 +82,6 @@ class ToggleView(View):
             request.session['change_id'] = c.id
             return redirect('/change/form')
 
-        if 'change_information' not in request.session:
-            request.session['in_change'] = False
-            return redirect('/')
-
         # we finished our change. we generate the changeset now
         if 'change_id' not in request.session:
             return HttpResponseForbidden('Invalid session!')
@@ -108,6 +104,10 @@ class ToggleView(View):
         })
 
         changeset.revert()
+
+        if 'change_information' not in request.session:
+            request.session['in_change'] = False
+            return redirect('/')
 
         del request.session['change_information']
 

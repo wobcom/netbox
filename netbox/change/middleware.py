@@ -14,7 +14,7 @@ from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.sessions.models import Session
 from django.db import models
-from django.db.models.signals import pre_save, post_save, m2m_changed
+from django.db.models.signals import pre_save, post_save, m2m_changed, pre_delete
 from django.shortcuts import redirect
 from django.utils import timezone
 
@@ -143,13 +143,27 @@ def install_save_hooks(request):
                 changeset.updated = timezone.now()
                 changeset.save()
 
-
+    def before_delete_internal(sender, instance, **kwargs):
+        if sender in CHANGE_BLACKLIST or instance in handled:
+            return
+        co = ChangedObject(
+            changed_object=instance,
+            changed_object_data=pickle.dumps(instance),
+            deleted=True,
+            user=request.user,
+        )
+        co.save()
+        changeset.changedobject_set.add(co)
+        changeset.updated = timezone.now()
+        changeset.save()
+        handled.append(instance)
 
     # we need to install them strongly, because they are closures;
     # otherwise django will throw away the weak references at the end of this
     # function (we need it to be there until the end of this request)
     pre_save.connect(before_save_internal, weak=False, dispatch_uid='chgfield')
     post_save.connect(after_save_internal, weak=False, dispatch_uid='chgfield')
+    pre_delete.connect(before_delete_internal, weak=False, dispatch_uid='chgfield')
     m2m_changed.connect(m2m_changed_internal, weak=False, dispatch_uid='chgfield')
     return [{'handler': before_save_internal, 'signal': pre_save},
             {'handler': after_save_internal, 'signal': post_save},
@@ -198,19 +212,22 @@ class FieldChangeMiddleware(object):
         else:
             # this is the simplest solution, albeit incredibly dirty
             cs = ChangeSet.objects.filter(active=True)
-            request.session['foreign_change'] = cs.exists()
             if cs.exists() and cs.first().id != request.session.get('change_id'):
                 c = cs.first()
                 # this costs a lot for every request
                 if c.in_use():
+                    request.session['foreign_change'] = True
                     message = "User {} is currently making a change."
                     messages.warning(request, message.format(c.user.username))
                     if any(request.path.endswith(s) for s in SITE_BLACKLIST):
                         return redirect_to_referer(request)
                 else:
+                    request.session['foreign_change'] = False
                     c.active = False
                     c.revert()
                     c.save()
+            else:
+                request.session['foreign_change'] = False
 
         response = self.get_response(request)
         for handler in to_uninstall:
