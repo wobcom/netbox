@@ -167,6 +167,7 @@ def install_save_hooks(request):
     m2m_changed.connect(m2m_changed_internal, weak=False, dispatch_uid='chgfield')
     return [{'handler': before_save_internal, 'signal': pre_save},
             {'handler': after_save_internal, 'signal': post_save},
+            {'handler': before_delete_internal, 'signal': pre_delete},
             {'handler': m2m_changed_internal, 'signal': m2m_changed}]
 
 
