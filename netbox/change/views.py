@@ -146,15 +146,17 @@ def check_branch_exists(project, branch_name):
 
 def open_gitlab_mr(o, delete_branch=False):
     gl = gitlab.Gitlab(configuration.GITLAB_URL, configuration.GITLAB_TOKEN)
+    info = o.change_information
     project = gl.projects.get(configuration.GITLAB_PROJECT_ID)
     actions = o.to_actions()
     mr_txt = MR_TXT.format(o.id, o.user, o.executive_summary())
-    emergency_label = ['emergency'] if o.change_information.is_emergency else []
+    emergency_label = ['emergency'] if info.is_emergency else []
     branch_name = 'change_{}'.format(o.id)
     req_approvals = 1 if o.change_information.is_emergency or not o.change_information.is_extensive else 2
     commit_msg = 'Autocommit from Netbox (Change #{}: {})'.format(
-        o.id, o.change_information.name
+        o.id, info.name
     )
+    req_approvals = 0 if info.is_emergency or not info.is_extensive else 1
 
     if delete_branch and check_branch_exists(project, branch_name):
         project.branches.delete(branch_name)
@@ -174,7 +176,7 @@ def open_gitlab_mr(o, delete_branch=False):
         'actions': actions,
     })
     mr = project.mergerequests.create({
-        'title': 'Change #{}: {}'.format(o.id, o.change_information.name),
+        'title': 'Change #{}: {}'.format(o.id, info.name),
         'description': mr_txt,
         'source_branch': branch_name,
         'target_branch': 'master',
