@@ -1086,7 +1086,7 @@ class PlatformForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = Platform
         fields = [
-            'name', 'slug', 'manufacturer', 'napalm_driver', 'napalm_args',
+            'name', 'slug', 'manufacturer', 'napalm_driver', 'napalm_args', 'vagrant_box', 'vagrant_box_version',
         ]
         widgets = {
             'napalm_args': SmallTextarea(),

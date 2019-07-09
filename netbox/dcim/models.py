@@ -1283,8 +1283,22 @@ class Platform(ChangeLoggedModel):
         verbose_name='NAPALM arguments',
         help_text='Additional arguments to pass when initiating the NAPALM driver (JSON format)'
     )
+    vagrant_box = models.CharField(
+        max_length=50,
+        unique=False,
+        null=True,
+        verbose_name='Vagrant Box',
+        help_text='Vagrant Box (e.g. "debian/stretch64") to use in simulation'
+    )
+    vagrant_box_version = models.CharField(
+        max_length=50,
+        unique=False,
+        null=True,
+        verbose_name='Vagrant Box version',
+        help_text='Vagrant Box version to use in simulation'
+    )
 
-    csv_headers = ['name', 'slug', 'manufacturer', 'napalm_driver', 'napalm_args']
+    csv_headers = ['name', 'slug', 'manufacturer', 'napalm_driver', 'napalm_args', 'vagrant_box', 'vagrant_box_version']
 
     class Meta:
         ordering = ['name']
