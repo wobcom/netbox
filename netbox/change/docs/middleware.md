@@ -157,6 +157,18 @@ c.revert()
 c.save()
 ```
 
+If we are not in a change, we’ll have to do another thing: we’ll have to check whether we
+are allowed to edit anything outside a change. If not, we’ll have to disallow doing that.
+To that end, we look for the setting `NEED_CHANGE_FOR_WRITE`, and if this is set, we’ll
+redirect the person who tries to edit anything.
+
+```
+if settings.NEED_CHANGE_FOR_WRITE:
+    # dont check for change/toggle
+    if any(request.path.endswith(s) for s in SITE_BLACKLIST[:-1]):
+        return redirect_to_referer(request)
+```
+
 ## Epilogue
 
 Once we are done handling the change, we can now finally process the request.

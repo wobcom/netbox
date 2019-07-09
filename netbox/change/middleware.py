@@ -19,6 +19,7 @@ from django.shortcuts import redirect
 from django.utils import timezone
 
 from extras.models import ObjectChange
+from netbox import settings
 
 from .models import ChangedField, ChangedObject, ChangeSet, AffectedCustomer, \
     ChangeInformation
@@ -229,6 +230,11 @@ class FieldChangeMiddleware(object):
                     c.save()
             else:
                 request.session['foreign_change'] = False
+
+            if settings.NEED_CHANGE_FOR_WRITE:
+                # dont check for change/toggle
+                if any(request.path.endswith(s) for s in SITE_BLACKLIST[:-1]):
+                    return redirect_to_referer(request)
 
         response = self.get_response(request)
         for handler in to_uninstall:
