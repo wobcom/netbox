@@ -159,7 +159,7 @@ def open_gitlab_mr(o, delete_branch=False):
     mr_txt = MR_TXT.format(o.id, o.user, o.executive_summary())
     emergency_label = ['emergency'] if o.change_information.is_emergency else []
     branch_name = 'change_{}'.format(o.id)
-    commit_msg = 'Autocommit from Netbox (Change #{})'.format(o.id)
+    req_approvals = 1 if info.is_emergency or not info.is_extensive else 2
 
     if delete_branch and check_branch_exists(project, branch_name):
         project.branches.delete(branch_name)
