@@ -156,7 +156,7 @@ def open_gitlab_mr(o, delete_branch=False):
     commit_msg = 'Autocommit from Netbox (Change #{}: {})'.format(
         o.id, info.name
     )
-    req_approvals = 0 if info.is_emergency or not info.is_extensive else 1
+    req_approvals = 1 if info.is_emergency or not info.is_extensive else 2
 
     if delete_branch and check_branch_exists(project, branch_name):
         project.branches.delete(branch_name)
