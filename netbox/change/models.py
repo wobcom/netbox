@@ -264,7 +264,8 @@ class ChangeSet(models.Model):
             'soft_reconfiguration': neighbor.soft_reconfiguration,
         }
         if neighbor.neighbor_type == 'internal':
-            res['remote_ip'] = neighbor.internal_neighbor_ip.address
+            yaml_ip = self.yamlify_ip_address(neighbor.internal_neighbor_ip)
+            res['remote_ip'] = "{}/{}".format(yaml_ip['address'], yaml_ip['prefix_length'])
         elif neighbor.neighbor_type == 'external':
             res['remote_ip'] = neighbor.external_neighbor
         if neighbor.source_interface is not None:
