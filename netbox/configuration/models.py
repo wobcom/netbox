@@ -126,7 +126,7 @@ class BGPNeighbor(models.Model):
     source_interface = models.ForeignKey(to=Interface, on_delete=models.PROTECT, null=True, blank=True)
     next_hop_self = models.BooleanField(default=False)
     remove_private_as = models.BooleanField(default=False)
-    send_community = models.CharField(max_length=50, null=True, blank=True, choices=[
+    send_community = models.CharField(max_length=50, default='both', null=True, blank=True, choices=[
         ('normal', 'Normal'),
         ('extended', 'Extended'),
         ('both', 'Both'),
