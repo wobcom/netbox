@@ -185,7 +185,7 @@ class BGPNeighborForm(BootstrapMixin, forms.ModelForm):
             self.fields['source_interface'].queryset = Interface.objects.filter(
                 device=deviceasn.device
             )
-        if instance and instance.deviceasn:
+        if instance and instance.deviceasn_id:
             self.fields['source_interface'].queryset = Interface.objects.filter(
                 device=instance.deviceasn.device
             )
