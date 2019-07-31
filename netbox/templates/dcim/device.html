@@ -554,6 +554,49 @@
                     </form>
                 {% endif %}
             {% endif %}
+            {% if perms.configuration.change_bgpsession %}
+                <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="device" value="{{ device.pk }}" />
+            {% endif %}
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <strong>BGP</strong>
+                </div>
+                <table id="bgp_sessions_table" class="table table-hover table-headings panel-body">
+                    <thead>
+                        <tr>
+                            {% if perms.configuration.change_bgpdeviceasn or perms.configuration.delete_bgpdeviceasn %}
+                                <th class="pk"><input type="checkbox" class="toggle" title="Toggle all" /></th>
+                            {% endif %}
+                            <th>ASN</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for asn in device.bgpdeviceasn_set.all %}
+                            {% include 'dcim/inc/asn.html' %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div class="panel-footer">
+                    {% if perms.configuration.delete_bgpdeviceasn %}
+                        <button type="submit" name="_delete" formaction="{% url 'configuration:asn_link_bulk_delete' %}?return_url={{ device.get_absolute_url }}" class="btn btn-danger btn-xs">
+                            <span class="glyphicon glyphicon-trash" aria-hidden="true"></span> Delete
+                        </button>
+                    {% endif %}
+                    {% if perms.configuration.add_bgpdeviceasn %}
+                        <div class="pull-right">
+                            <a href="{% url 'configuration:asn_link' %}?device={{ device.pk }}&return_url={{ device.get_absolute_url }}" class="btn btn-primary btn-xs">
+                                <span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Add ASN
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% if perms.configuration.change_bgpsession %}
+                </form>
+            {% endif %}
             {% if consoleserverports %}
                 {% if perms.dcim.delete_consoleserverport %}
                     <form method="post">

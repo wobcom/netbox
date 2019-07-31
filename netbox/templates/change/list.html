@@ -4,20 +4,24 @@
 {% block header %}
 {% endblock %}
 
+{% block title %}
+  {% if changeset %}
+    Changeset {{ changeset.pk }} created!
+  {% else %}
+    Nothing to do!
+  {% endif %}
+{% endblock %}
+
 {% block content %}
 <div class="row">
   <div class="col-md-3"></div>
   <div class="col-md-6">
     {% if changeset != None %}
-      <h3>{% block title %}Changeset {{ changeset.pk }} created!{% endblock %}</h3>
+      <h3>Changeset {{ changeset.pk }} ({{ changeset.change_information.name }}) created!</h3>
       <p>
         We’ve recorded these changes since you started this changeset. Please
         make sure that those changes are correct and then click the “Submit”
         button below!
-      </p>
-      <p>
-        You can also check the generated YAML at the bottom of this page. This is
-        what we will feed into Ansible should this change be accepted!
       </p>
       <h4>Change Description</h4>
       {% if changeset.change_information.is_emergency %}
@@ -49,7 +53,7 @@
           <li>{{change}}</li>
         {% endfor %}
       </ol>
-      <a href="/change/accept/{{changeset.pk}}" class="btn btn-primary">
+      <a href="/change/accept/{{changeset.pk}}" class="btn btn-primary" id="change-accept">
         Accept
       </a>
       <a href="/change/reject/{{changeset.pk}}" class="btn btn-default">

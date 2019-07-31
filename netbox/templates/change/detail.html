@@ -10,7 +10,7 @@
         <div class="col-md-6">
             <div class="panel panel-default">
                 <div class="panel-heading">
-                    <strong>ChangeSet #{{ changeset.id }} ({{changeset.get_status_display}})</strong>
+                    <strong>ChangeSet #{{ changeset.id }}: {{changeset.change_information.name }} ({{changeset.get_status_display}})</strong>
                 </div>
                 <div class="panel-body">
                   {% if changeset.change_information.is_emergency %}

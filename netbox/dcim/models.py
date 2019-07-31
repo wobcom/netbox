@@ -9,7 +9,7 @@ from django.contrib.postgres.fields import ArrayField, JSONField
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Sum
 from django.urls import reverse
 from mptt.models import MPTTModel, TreeForeignKey
 from taggit.managers import TaggableManager
@@ -1283,8 +1283,22 @@ class Platform(ChangeLoggedModel):
         verbose_name='NAPALM arguments',
         help_text='Additional arguments to pass when initiating the NAPALM driver (JSON format)'
     )
+    vagrant_box = models.CharField(
+        max_length=50,
+        unique=False,
+        null=True,
+        verbose_name='Vagrant Box',
+        help_text='Vagrant Box (e.g. "debian/stretch64") to use in simulation'
+    )
+    vagrant_box_version = models.CharField(
+        max_length=50,
+        unique=False,
+        null=True,
+        verbose_name='Vagrant Box version',
+        help_text='Vagrant Box version to use in simulation'
+    )
 
-    csv_headers = ['name', 'slug', 'manufacturer', 'napalm_driver', 'napalm_args']
+    csv_headers = ['name', 'slug', 'manufacturer', 'napalm_driver', 'napalm_args', 'vagrant_box', 'vagrant_box_version']
 
     class Meta:
         ordering = ['name']
@@ -1681,6 +1695,11 @@ class Device(ChangeLoggedModel, ConfigContextModel, CustomFieldModel):
         """
         return self.virtual_chassis.master if self.virtual_chassis else None
 
+    def count_bgp_sessions(self):
+        return self.interfaces\
+            .annotate(session_count=Count('bgp_sessions'))\
+            .aggregate(res=Sum('session_count'))['res']
+
     @property
     def vc_interfaces(self):
         """
@@ -1700,6 +1719,20 @@ class Device(ChangeLoggedModel, ConfigContextModel, CustomFieldModel):
 
     def get_status_class(self):
         return STATUS_CLASSES[self.status]
+
+
+class DeviceLicense(models.Model):
+    license = models.FileField()
+    device = models.ForeignKey(
+        Device,
+        on_delete=models.CASCADE,
+        related_name="licenses",
+        blank=True,
+        null=True
+    )
+
+    def __str__(self):
+        return self.license.name
 
 
 #

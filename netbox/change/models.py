@@ -22,11 +22,13 @@ from virtualization.models import VirtualMachine
 
 from change.utilities import Markdownify
 from dcim.constants import *
+from configuration.models import RouteMap, BGPCommunity, BGPCommunityList
 
 DEVICE_ROLE_TOPOLOGY_WHITELIST = ['leaf', 'spine', 'superspine']
 
 class ChangeInformation(models.Model):
     """Meta information about a change."""
+    name = models.CharField(max_length=256, verbose_name="Change Title")
     is_emergency = models.BooleanField(verbose_name="Is an emergency change")
     is_extensive = models.BooleanField(verbose_name="Is an extensive change")
     affects_customer = models.BooleanField(verbose_name="Customers are affected")
@@ -218,12 +220,13 @@ class ChangeSet(models.Model):
         return [res]
 
     def yamlify_interface(self, interface):
+        res = None
         if interface.form_factor == IFACE_FF_ONTEP:
-            return self.yamlify_ontep_interface(interface)
+            res = self.yamlify_ontep_interface(interface)
         elif interface.form_factor == IFACE_FF_BRIDGE:
-            return self.yamlify_bridge_interface(interface)
+            res = self.yamlify_bridge_interface(interface)
         elif interface:
-            return [{
+            res = [{
                 'name': interface.name,
                 'child_interfaces': self.child_interfaces(interface),
                 'clag_id': interface.clag_id,
@@ -244,6 +247,79 @@ class ChangeSet(models.Model):
                                             for address
                                             in interface.ip_addresses.all()]
             }]
+        if interface:
+            res[0]['extra_fields'] = self.yamlify_extra_fields(interface)
+        return res
+
+    def yamlify_bgp_neighbor(self, neighbor):
+        res = {
+            'description': neighbor.description,
+            'routemap_in': neighbor.routemap_in.name if neighbor.routemap_in is not None else None,
+            'routemap_out': neighbor.routemap_out.name if neighbor.routemap_out is not None else None,
+            'remote_as': neighbor.remote_asn,
+            'status': neighbor.status,
+            'next_hop_self': neighbor.next_hop_self,
+            'remove_private_as': neighbor.remove_private_as,
+            'send_community': neighbor.send_community,
+            'soft_reconfiguration': neighbor.soft_reconfiguration,
+        }
+        if neighbor.neighbor_type == 'internal':
+            yaml_ip = self.yamlify_ip_address(neighbor.internal_neighbor_ip)
+            res['remote_ip'] = "{}/{}".format(yaml_ip['address'], yaml_ip['prefix_length'])
+        elif neighbor.neighbor_type == 'external':
+            res['remote_ip'] = neighbor.external_neighbor
+        if neighbor.source_interface is not None:
+            res['source_interface'] = neighbor.source_interface.name
+        return res
+
+    def yamlify_bgp(self, device):
+        res = {}
+
+        asns = device.bgpdeviceasn_set.all()
+
+        for asn in asns:
+            res[asn.asn.asn] = {}
+            res[asn.asn.asn]['exposed_networks'] = [str(p) for p in asn.get_exposed_prefixes()]
+            res[asn.asn.asn]['redistribute_local'] = asn.redistribute_connected
+            res[asn.asn.asn]['neighbors'] = []
+            neighbors = asn.neighbors.all()
+            for neighbor in neighbors:
+                res[asn.asn.asn]['neighbors'].append(self.yamlify_bgp_neighbor(neighbor))
+
+        return res
+
+    def yamlify_routemaps(self, device):
+        routemaps = RouteMap.objects.filter(models.Q(sessions_in__deviceasn__device=device) |
+                                            models.Q(sessions_out__deviceasn__device=device))
+
+        communities = BGPCommunity.objects.all()
+        res = []
+
+        for routemap in routemaps:
+            res.append({
+                'name': routemap.name,
+                'configuration': yaml.load(routemap.configuration.format(**{
+                    c.name: c.community for c in communities
+                }), Loader=yaml.SafeLoader),
+            })
+
+        return res
+
+    def yamlify_community_lists(self):
+        community_lists = BGPCommunityList.objects.all()
+        return [{
+            'name': lst.name,
+            'permit': [
+                member.community.community
+                for member
+                in lst.bgpcommunitylistmember_set.filter(type='permit')
+            ],
+            'deny': [
+                member.community.community
+                for member
+                in lst.bgpcommunitylistmember_set.filter(type='deny')
+            ],
+        } for lst in community_lists]
 
     def yamlify_device(self, device):
         res = {
@@ -257,6 +333,9 @@ class ChangeSet(models.Model):
             'tags': list(device.tags.names()),
             'interfaces': [],
             'primary_ip4': self.yamlify_ip_address(device.primary_ip4) if device.primary_ip4 else None,
+            'bgp': self.yamlify_bgp(device),
+            'routemaps': self.yamlify_routemaps(device),
+            'community-lists': self.yamlify_community_lists(),
             **self.yamlify_extra_fields(device)
         }
         for interface in device.interfaces.all():
@@ -466,6 +545,7 @@ class ChangedObject(models.Model):
 
     It can be reverted by calling revert(), which will simply delete the object.
     """
+    deleted = models.BooleanField(default=False)
     changeset = models.ForeignKey(
         ChangeSet,
         null=True,
@@ -495,14 +575,21 @@ class ChangedObject(models.Model):
     )
 
     def __str__(self):
-        return "{} #{} was added.".format(self.changed_object_type,
-                                          self.changed_object_id)
+        return "{} #{} was {}.".format(self.changed_object_type,
+                                       self.changed_object_id,
+                                       'deleted' if self.deleted else 'added')
 
     def apply(self):
         obj = pickle.loads(self.changed_object_data)
-        obj.save(force_insert=True)
+        if self.deleted:
+            obj.delete()
+        else:
+            obj.save(force_insert=True)
 
     def revert(self):
-        if self.changed_object:
-            self.changed_object.delete()
-
+        if self.deleted:
+            obj = pickle.loads(self.changed_object_data)
+            obj.save(force_insert=True)
+        else:
+            if self.changed_object:
+                self.changed_object.delete()

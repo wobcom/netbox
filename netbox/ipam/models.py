@@ -52,6 +52,12 @@ class VRF(ChangeLoggedModel, CustomFieldModel):
         content_type_field='obj_type',
         object_id_field='obj_id'
     )
+    imports = models.ManyToManyField(
+        'self',
+        related_name='imported',
+        symmetrical=False,
+        blank=True
+    )
 
     tags = TaggableManager()
 

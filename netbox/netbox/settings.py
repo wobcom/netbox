@@ -74,6 +74,8 @@ SHORT_TIME_FORMAT = getattr(configuration, 'SHORT_TIME_FORMAT', 'H:i:s')
 TIME_FORMAT = getattr(configuration, 'TIME_FORMAT', 'g:i a')
 TIME_ZONE = getattr(configuration, 'TIME_ZONE', 'UTC')
 WEBHOOKS_ENABLED = getattr(configuration, 'WEBHOOKS_ENABLED', False)
+NEED_CHANGE_FOR_WRITE = getattr(configuration, 'NEED_CHANGE_FOR_WRITE', False)
+
 
 CSRF_TRUSTED_ORIGINS = ALLOWED_HOSTS
 
@@ -161,6 +163,7 @@ INSTALLED_APPS = [
     'timezone_field',
     'change',
     'circuits',
+    'configuration',
     'dcim',
     'ipam',
     'extras',
@@ -236,6 +239,7 @@ MEDIA_URL = '/{}media/'.format(BASE_PATH)
 
 # Disable default limit of 1000 fields per request. Needed for bulk deletion of objects. (Added in Django 1.10.)
 DATA_UPLOAD_MAX_NUMBER_FIELDS = None
+DATA_UPLOAD_MAX_MEMORY_SIZE = 20*1024*1024
 
 # Messages
 MESSAGE_TAGS = {
@@ -329,8 +333,8 @@ SWAGGER_SETTINGS = {
 INTERNAL_IPS = (
     '127.0.0.1',
     '::1',
+    '172.18.0.1',
 )
-
 
 try:
     HOSTNAME = socket.gethostname()

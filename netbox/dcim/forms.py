@@ -26,7 +26,8 @@ from virtualization.models import Cluster, ClusterGroup
 from .constants import *
 from .models import (
     Cable, DeviceBay, DeviceBayTemplate, ConsolePort, ConsolePortTemplate, ConsoleServerPort, ConsoleServerPortTemplate,
-    Device, DeviceRole, DeviceType, FrontPort, FrontPortTemplate, Interface, InterfaceTemplate, Manufacturer,
+    Device, DeviceRole, DeviceType, DeviceLicense, FrontPort,
+    FrontPortTemplate, Interface, InterfaceTemplate, Manufacturer,
     InventoryItem, Platform, PowerOutlet, PowerOutletTemplate, PowerPort, PowerPortTemplate, Rack, RackGroup,
     RackReservation, RackRole, RearPort, RearPortTemplate, Region, Site, VirtualChassis,
 )
@@ -1085,7 +1086,7 @@ class PlatformForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = Platform
         fields = [
-            'name', 'slug', 'manufacturer', 'napalm_driver', 'napalm_args',
+            'name', 'slug', 'manufacturer', 'napalm_driver', 'napalm_args', 'vagrant_box', 'vagrant_box_version',
         ]
         widgets = {
             'napalm_args': SmallTextarea(),
@@ -1184,6 +1185,10 @@ class DeviceForm(BootstrapMixin, TenancyForm, CustomFieldForm):
             api_url='/api/virtualization/clusters/?group_id={{cluster_group}}',
         )
     )
+    licenses = forms.ModelMultipleChoiceField(
+        queryset=DeviceLicense.objects.filter(device__isnull=True),
+        required=False,
+    )
     comments = CommentField()
     tags = TagField(required=False)
     local_context_data = JSONField(required=False)
@@ -1193,13 +1198,14 @@ class DeviceForm(BootstrapMixin, TenancyForm, CustomFieldForm):
         fields = [
             'name', 'device_role', 'device_type', 'serial', 'asset_tag', 'site', 'rack', 'position', 'face',
             'status', 'platform', 'primary_ip4', 'primary_ip6', 'cluster_group', 'cluster', 'tenant_group', 'tenant',
-            'comments', 'tags', 'local_context_data'
+            'comments', 'tags', 'local_context_data', 'licenses'
         ]
         help_texts = {
             'device_role': "The function this device serves",
             'serial': "Chassis serial number",
             'local_context_data': "Local config context data overwrites all source contexts in the final rendered "
                                   "config context",
+            'licenses': 'A list of device licenses',
         }
         widgets = {
             'face': forms.Select(
@@ -1289,6 +1295,16 @@ class DeviceForm(BootstrapMixin, TenancyForm, CustomFieldForm):
             self.fields['rack'].disabled = True
             self.initial['site'] = self.instance.parent_bay.device.site_id
             self.initial['rack'] = self.instance.parent_bay.device.rack_id
+
+    def save(self, *args, **kwargs):
+        res = super().save(*args, **kwargs)
+
+        if self.cleaned_data['licenses']:
+            for license in self.cleaned_data['licenses']:
+                license.device = self.instance
+                license.save()
+
+        return res
 
 
 class BaseDeviceCSVForm(forms.ModelForm):
@@ -2943,3 +2959,9 @@ class VirtualChassisFilterForm(BootstrapMixin, CustomFieldFilterForm):
         to_field_name='slug',
         null_label='-- None --',
     )
+
+
+class DeviceLicenseForm(forms.ModelForm):
+    class Meta:
+        model = DeviceLicense
+        fields = ['license']

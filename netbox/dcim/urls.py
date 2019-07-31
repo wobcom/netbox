@@ -157,6 +157,12 @@ urlpatterns = [
     url(r'^devices/(?P<device>\d+)/services/assign/$', ServiceCreateView.as_view(), name='device_service_assign'),
     url(r'^devices/(?P<object_id>\d+)/images/add/$', ImageAttachmentEditView.as_view(), name='device_add_image', kwargs={'model': Device}),
 
+    # Device Licenses
+    url(r'^devices/licenses/$', views.DeviceLicenseListView.as_view(), name='device_license_list'),
+    url(r'^devices/licenses/add/$', views.DeviceLicenseCreateView.as_view(), name='device_license_add'),
+    url(r'^devices/licenses/(?P<pk>\d+)/delete/$', views.DeviceLicenseDeleteView.as_view(), name='device_license_delete'),
+    url(r'^devices/licenses/delete/$', views.DeviceLicenseBulkDeleteView.as_view(), name='device_license_bulk_delete'),
+
     # Console ports
     url(r'^devices/console-ports/add/$', views.DeviceBulkAddConsolePortView.as_view(), name='device_bulk_add_consoleport'),
     url(r'^devices/(?P<pk>\d+)/console-ports/add/$', views.ConsolePortCreateView.as_view(), name='consoleport_add'),

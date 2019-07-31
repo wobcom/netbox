@@ -41,10 +41,24 @@ class VRFForm(BootstrapMixin, TenancyForm, CustomFieldForm):
         required=False
     )
 
+    def __init__(self, *args, **kwargs):
+        instance = kwargs.get('instance')
+        super().__init__(*args, **kwargs)
+        qs = VRF.objects
+        if instance.id:
+            import_list = instance.imported.values_list('pk', flat=True)
+            # qs = qs.exclude(pk=instance.pk).exclude(pk__in=import_list)
+        field = forms.ModelMultipleChoiceField(
+            queryset=qs,
+            required=False,
+        )
+        field.widget.attrs['class'] = field.widget.attrs.get('class', '') + ' form-control'
+        self.fields['imports'] = field
+
     class Meta:
         model = VRF
         fields = [
-            'name', 'rd', 'enforce_unique', 'description', 'tenant_group', 'tenant', 'tags',
+            'name', 'rd', 'enforce_unique', 'description', 'tenant_group', 'tenant', 'tags', 'imports'
         ]
         labels = {
             'rd': "RD",

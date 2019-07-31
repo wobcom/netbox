@@ -20,7 +20,7 @@ from netbox import configuration
 from utilities.views import ObjectListView
 from . import tables
 from .forms import AffectedCustomerInlineFormSet
-from .models import ChangeInformation, ChangedField, ChangedObject, ChangeSet, \
+from .models import ChangeInformation, ChangeSet, \
     DRAFT, IN_REVIEW, ACCEPTED, REJECTED, IMPLEMENTED, FAILED
 from .utilities import redirect_to_referer
 
@@ -99,15 +99,6 @@ class ToggleView(View):
         changeset.active = False
         changeset.save()
 
-        if (not changeset.changedfield_set.count() and
-           not changeset.changedobject_set.count()):
-            if change_information:
-                del request.session['change_information']
-                change_information.delete()
-            return render(request, 'change/list.html', {
-                'changeset': None
-            })
-
         res = render(request, 'change/list.html', {
             'changeset': changeset
         })
@@ -115,7 +106,8 @@ class ToggleView(View):
         changeset.revert()
 
         if 'change_information' not in request.session:
-            return HttpResponseForbidden('You need to fill out the change form!')
+            request.session['in_change'] = False
+            return redirect('/')
 
         del request.session['change_information']
 
@@ -154,12 +146,17 @@ def check_branch_exists(project, branch_name):
 
 def open_gitlab_mr(o, delete_branch=False):
     gl = gitlab.Gitlab(configuration.GITLAB_URL, configuration.GITLAB_TOKEN)
+    info = o.change_information
     project = gl.projects.get(configuration.GITLAB_PROJECT_ID)
     actions = o.to_actions()
     mr_txt = MR_TXT.format(o.id, o.user, o.executive_summary())
-    emergency_label = ['emergency'] if o.change_information.is_emergency else []
+    emergency_label = ['emergency'] if info.is_emergency else []
     branch_name = 'change_{}'.format(o.id)
     req_approvals = 1 if o.change_information.is_emergency or not o.change_information.is_extensive else 2
+    commit_msg = 'Autocommit from Netbox (Change #{}: {})'.format(
+        o.id, info.name
+    )
+    req_approvals = 1 if info.is_emergency or not info.is_extensive else 2
 
     if delete_branch and check_branch_exists(project, branch_name):
         project.branches.delete(branch_name)
@@ -174,15 +171,16 @@ def open_gitlab_mr(o, delete_branch=False):
     project.commits.create({
         'id': project.id,
         'branch': branch_name,
-        'commit_message': 'Autocommit from Netbox (Change #{})'.format(o.id),
+        'commit_message': commit_msg,
         'author_name': 'Netbox',
         'actions': actions,
     })
     mr = project.mergerequests.create({
-        'title': 'Change #{} was created in Netbox'.format(o.id),
+        'title': 'Change #{}: {}'.format(o.id, info.name),
         'description': mr_txt,
         'source_branch': branch_name,
         'target_branch': 'master',
+        'approvals_before_merge': req_approvals,
         'labels': ['netbox', 'unreviewed'] + emergency_label
     })
 
