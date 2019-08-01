@@ -136,8 +136,8 @@ def install_save_hooks(request):
                 # do
                 if sender == TaggedItem:
                     through = sender.objects.get(**{
-                        instance._meta.model.__name__.lower(): instance,
-                        model.__name__.lower(): model.objects.get(pk=pk)
+                        'object_id': instance.pk,
+                        'tag_id': pk
                     })
                 else:
                     through = sender.objects.get(**{
