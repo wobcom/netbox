@@ -131,7 +131,7 @@ def install_save_hooks(request):
             return
         # its annoying that we have to do this, but it seems like we
         # do, taggit overrides through models and we double count.
-        if sender == TaggedItem
+        if sender == TaggedItem:
             return
 
         if action == 'post_add':
