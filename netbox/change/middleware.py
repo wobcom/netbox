@@ -130,7 +130,7 @@ def install_save_hooks(request):
 
         if action == 'post_add':
             for pk in pk_set:
-                through = sender.objects.get(**{
+                through = model.objects.get(**{
                     '{}_id'.format(instance._meta.model.__name__.lower()): instance.pk,
                     '{}_id'.format(model.__name__.lower()): pk
                 })
