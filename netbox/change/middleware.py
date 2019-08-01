@@ -130,10 +130,18 @@ def install_save_hooks(request):
 
         if action == 'post_add':
             for pk in pk_set:
-                through = model.objects.get(**{
-                    '{}_id'.format(instance._meta.model.__name__.lower()): instance.pk,
-                    '{}_id'.format(model.__name__.lower()): pk
-                })
+                # its annoying that we have to do this, but it seems like we
+                # do
+                if sender == TaggedItem:
+                    through = sender.objects.get(**{
+                        instance._meta.model.__name__.lower(): instance,
+                        model.__name__.lower(): model.objects.get(pk=pk)
+                    })
+                else:
+                    through = sender.objects.get(**{
+                        '{}_id'.format(instance._meta.model.__name__.lower()): instance.pk,
+                        '{}_id'.format(model.__name__.lower()): pk
+                    })
                 co = ChangedObject(
                     changed_object=through,
                     changed_object_data=pickle.dumps(through),
