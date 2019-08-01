@@ -129,21 +129,17 @@ def install_save_hooks(request):
             return
         if sender in CHANGE_BLACKLIST:
             return
+        # its annoying that we have to do this, but it seems like we
+        # do, taggit overrides through models and we double count.
+        if sender == TaggedItem
+            return
 
         if action == 'post_add':
             for pk in pk_set:
-                # its annoying that we have to do this, but it seems like we
-                # do
-                if sender == TaggedItem:
-                    through = sender.objects.get(**{
-                        'object_id': instance.pk,
-                        'tag_id': pk
-                    })
-                else:
-                    through = sender.objects.get(**{
-                        '{}_id'.format(instance._meta.model.__name__.lower()): instance.pk,
-                        '{}_id'.format(model.__name__.lower()): pk
-                    })
+                through = sender.objects.get(**{
+                    '{}_id'.format(instance._meta.model.__name__.lower()): instance.pk,
+                    '{}_id'.format(model.__name__.lower()): pk
+                })
                 co = ChangedObject(
                     changed_object=through,
                     changed_object_data=pickle.dumps(through),
