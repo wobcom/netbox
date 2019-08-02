@@ -1,3 +1,4 @@
+{% load bgp %}
 <tr class="asn" id="asn_{{ asn.asn.asn }}">
     {% if perms.configuration.change_bgpdeviceasn or perms.configuration.delete_bgpdeviceasn %}
         <td class="pk">
@@ -31,7 +32,7 @@
 </tr>
 
 {% with neighbors=asn.neighbors.all %}
-    {% if neighbors or device.neighbors %}
+    {% if neighbors or asn|unconfigured_neighbors_exists %}
         <tr class="neighbors">
             {# Placeholder #}
             {% if perms.configuration.change_bgpdeviceasn or perms.configuration.delete_bgpdeviceasn %}
