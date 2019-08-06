@@ -432,14 +432,12 @@ class ChangeSet(models.Model):
 
     def to_actions(self):
         """Creates Gitlab actions for all devices"""
-        actions = []
+        actions = {}
         self.apply()
 
-        for device in Device.objects.all():
-            actions.append({
-                'file_path': 'host_vars/{}/main.yaml'.format(device.name),
-                'content': self.yamlify_device(device)
-            })
+        for device in Device.objects.prefetch_related('interfaces', 'device_type').all():
+            key = 'host_vars/{}/main.yaml'.format(device.name)
+            actions[key] = self.yamlify_device(device)
         self.revert()
         return actions
 

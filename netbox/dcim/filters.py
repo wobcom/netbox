@@ -760,6 +760,10 @@ class InterfaceFilter(django_filters.FilterSet):
     """
     Not using DeviceComponentFilterSet for Interfaces because we need to check for VirtualChassis membership.
     """
+    q = django_filters.CharFilter(
+        method='search',
+        label='Search',
+    )
     device = django_filters.CharFilter(
         method='filter_device',
         field_name='name',
@@ -805,6 +809,16 @@ class InterfaceFilter(django_filters.FilterSet):
     class Meta:
         model = Interface
         fields = ['name', 'connection_status', 'form_factor', 'enabled', 'mtu', 'mgmt_only']
+
+    def search(self, queryset, name, value):
+        if not value.strip():
+            return queryset
+        qs_filter = (
+            Q(name__icontains=value) |
+            Q(device__name__icontains=value) |
+            Q(description__icontains=value)
+        )
+        return queryset.filter(qs_filter)
 
     def filter_device(self, queryset, name, value):
         try:

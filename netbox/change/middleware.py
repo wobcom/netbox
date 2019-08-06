@@ -18,6 +18,8 @@ from django.db.models.signals import pre_save, post_save, m2m_changed, pre_delet
 from django.shortcuts import redirect
 from django.utils import timezone
 
+from taggit.models import TaggedItem
+
 from extras.models import ObjectChange
 from netbox import settings
 
@@ -126,6 +128,10 @@ def install_save_hooks(request):
         if action not in ['post_add', 'pre_remove']:
             return
         if sender in CHANGE_BLACKLIST:
+            return
+        # its annoying that we have to do this, but it seems like we
+        # do, taggit overrides through models and we double count.
+        if sender == TaggedItem:
             return
 
         if action == 'post_add':
