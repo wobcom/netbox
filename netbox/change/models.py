@@ -435,7 +435,7 @@ class ChangeSet(models.Model):
         actions = {}
         self.apply()
 
-        for device in Device.objects.all():
+        for device in Device.objects.prefetch_related('interfaces', 'device_type').all():
             key = 'host_vars/{}/main.yaml'.format(device.name)
             actions[key] = self.yamlify_device(device)
         self.revert()
