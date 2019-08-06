@@ -123,14 +123,33 @@ MR_TXT = """Change #{} was created in Netbox by {}.
 
 
 def check_actions(project, actions, branch):
+    treated = set()
     new_actions = []
+    for f in project.repository_tree(path='host_vars', all=True, ):
+        # we only care for files
+        if f['type'] != 'blob':
+            continue
+        f = f['path']
+        if f in actions:
+            treated.add(f)
+            new_actions.append({
+                'action': 'update',
+                'file_path': f,
+                'content': actions[f],
+            })
+        else:
+            new_actions.append({
+                'action': 'delete',
+                'file_path': f,
+            })
     for action in actions:
-        try:
-            project.files.get(action['file_path'], ref=branch)
-            action['action'] = 'update'
-        except Exception as e:
-            action['action'] = 'create'
-        new_actions.append(action)
+        if action in treated:
+            continue
+        new_actions.append({
+            'action': 'create',
+            'file_path': f,
+            'content': actions[f],
+        })
     return new_actions
 
 
