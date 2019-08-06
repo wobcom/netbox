@@ -125,7 +125,7 @@ MR_TXT = """Change #{} was created in Netbox by {}.
 def check_actions(project, actions, branch):
     treated = set()
     new_actions = []
-    for f in project.repository_tree(path='host_vars', all=True, ):
+    for f in project.repository_tree(path='host_vars', all=True, recursive=True):
         # we only care for files
         if f['type'] != 'blob':
             continue
