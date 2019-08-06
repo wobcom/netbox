@@ -148,7 +148,7 @@ def check_actions(project, actions, branch):
         new_actions.append({
             'action': 'create',
             'file_path': action,
-            'content': actions[actions],
+            'content': actions[action],
         })
     return new_actions
 
