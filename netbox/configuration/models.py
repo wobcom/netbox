@@ -144,5 +144,17 @@ class BGPNeighbor(models.Model):
         else:
             return "External ({})".format(self.external_neighbor)
 
+    def is_internal_neighbor_complete(self):
+        """
+        Checks if internal BGP-Session is configured on both devices
+        :return: True if session is configured on both devices or neighbor_type is external, otherwise False
+        """
+        if self.neighbor_type == 'internal':
+            return self.internal_neighbor_device.bgpdeviceasn_set.filter(
+                    asn__asn=self.remote_asn,
+                    neighbors__internal_neighbor_device=self.deviceasn.device,
+                    neighbors__remote_asn=self.deviceasn.asn.asn).exists()
+        return True
+
     class Meta:
         verbose_name = 'BGP Neighbor'
