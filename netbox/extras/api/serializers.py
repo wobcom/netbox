@@ -1,6 +1,7 @@
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
+from drf_yasg.utils import swagger_serializer_method
 from rest_framework import serializers
-from taggit.models import Tag
 
 from dcim.api.nested_serializers import (
     NestedDeviceSerializer, NestedDeviceRoleSerializer, NestedPlatformSerializer, NestedRackSerializer,
@@ -10,12 +11,14 @@ from dcim.models import Device, DeviceRole, Platform, Rack, Region, Site
 from extras.constants import *
 from extras.models import (
     ConfigContext, ExportTemplate, Graph, ImageAttachment, ObjectChange, ReportResult, TopologyMap,
+    Tag
 )
 from tenancy.api.nested_serializers import NestedTenantSerializer, NestedTenantGroupSerializer
 from tenancy.models import Tenant, TenantGroup
 from users.api.nested_serializers import NestedUserSerializer
 from utilities.api import (
-    ChoiceField, ContentTypeField, get_serializer_for_model, SerializedPKRelatedField, ValidatedModelSerializer,
+    ChoiceField, ContentTypeField, get_serializer_for_model, SerializerNotFound, SerializedPKRelatedField,
+    ValidatedModelSerializer,
 )
 from .nested_serializers import *
 
@@ -53,10 +56,17 @@ class RenderedGraphSerializer(serializers.ModelSerializer):
 #
 
 class ExportTemplateSerializer(ValidatedModelSerializer):
+    template_language = ChoiceField(
+        choices=TEMPLATE_LANGUAGE_CHOICES,
+        default=TEMPLATE_LANGUAGE_JINJA2
+    )
 
     class Meta:
         model = ExportTemplate
-        fields = ['id', 'content_type', 'name', 'description', 'template_code', 'mime_type', 'file_extension']
+        fields = [
+            'id', 'content_type', 'name', 'description', 'template_language', 'template_code', 'mime_type',
+            'file_extension',
+        ]
 
 
 #
@@ -80,7 +90,7 @@ class TagSerializer(ValidatedModelSerializer):
 
     class Meta:
         model = Tag
-        fields = ['id', 'name', 'slug', 'tagged_items']
+        fields = ['id', 'name', 'slug', 'color', 'comments', 'tagged_items']
 
 
 #
@@ -88,7 +98,9 @@ class TagSerializer(ValidatedModelSerializer):
 #
 
 class ImageAttachmentSerializer(ValidatedModelSerializer):
-    content_type = ContentTypeField()
+    content_type = ContentTypeField(
+        queryset=ContentType.objects.all()
+    )
     parent = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
@@ -112,6 +124,7 @@ class ImageAttachmentSerializer(ValidatedModelSerializer):
 
         return data
 
+    @swagger_serializer_method(serializer_or_field=serializers.DictField)
     def get_parent(self, obj):
 
         # Static mapping of models to their nested serializers
@@ -205,25 +218,42 @@ class ReportDetailSerializer(ReportSerializer):
 #
 
 class ObjectChangeSerializer(serializers.ModelSerializer):
-    user = NestedUserSerializer(read_only=True)
-    content_type = ContentTypeField(read_only=True)
-    changed_object = serializers.SerializerMethodField(read_only=True)
+    user = NestedUserSerializer(
+        read_only=True
+    )
+    action = ChoiceField(
+        choices=OBJECTCHANGE_ACTION_CHOICES,
+        read_only=True
+    )
+    changed_object_type = ContentTypeField(
+        read_only=True
+    )
+    changed_object = serializers.SerializerMethodField(
+        read_only=True
+    )
 
     class Meta:
         model = ObjectChange
         fields = [
-            'id', 'time', 'user', 'user_name', 'request_id', 'action', 'content_type', 'changed_object', 'object_data',
+            'id', 'time', 'user', 'user_name', 'request_id', 'action', 'changed_object_type', 'changed_object',
+            'object_data',
         ]
 
+    @swagger_serializer_method(serializer_or_field=serializers.DictField)
     def get_changed_object(self, obj):
         """
         Serialize a nested representation of the changed object.
         """
         if obj.changed_object is None:
             return None
-        serializer = get_serializer_for_model(obj.changed_object, prefix='Nested')
-        if serializer is None:
+
+        try:
+            serializer = get_serializer_for_model(obj.changed_object, prefix='Nested')
+        except SerializerNotFound:
             return obj.object_repr
-        context = {'request': self.context['request']}
+        context = {
+            'request': self.context['request']
+        }
         data = serializer(obj.changed_object, context=context).data
+
         return data

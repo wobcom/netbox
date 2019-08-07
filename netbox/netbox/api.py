@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.db.models import QuerySet
 from rest_framework import authentication, exceptions
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import DjangoModelPermissions, SAFE_METHODS
@@ -55,16 +56,31 @@ class TokenPermissions(DjangoModelPermissions):
     Custom permissions handler which extends the built-in DjangoModelPermissions to validate a Token's write ability
     for unsafe requests (POST/PUT/PATCH/DELETE).
     """
+    # Override the stock perm_map to enforce view permissions
+    perms_map = {
+        'GET': ['%(app_label)s.view_%(model_name)s'],
+        'OPTIONS': [],
+        'HEAD': ['%(app_label)s.view_%(model_name)s'],
+        'POST': ['%(app_label)s.add_%(model_name)s'],
+        'PUT': ['%(app_label)s.change_%(model_name)s'],
+        'PATCH': ['%(app_label)s.change_%(model_name)s'],
+        'DELETE': ['%(app_label)s.delete_%(model_name)s'],
+    }
+
     def __init__(self):
+
         # LOGIN_REQUIRED determines whether read-only access is provided to anonymous users.
         self.authenticated_users_only = settings.LOGIN_REQUIRED
+
         super().__init__()
 
     def has_permission(self, request, view):
+
         # If token authentication is in use, verify that the token allows write operations (for unsafe methods).
         if request.method not in SAFE_METHODS and isinstance(request.auth, Token):
             if not request.auth.write_enabled:
                 return False
+
         return super().has_permission(request, view)
 
 
@@ -81,13 +97,8 @@ class OptionalLimitOffsetPagination(LimitOffsetPagination):
 
     def paginate_queryset(self, queryset, request, view=None):
 
-        if hasattr(queryset, 'all'):
-            # TODO: This breaks filtering by annotated values
-            # Make a clone of the queryset with any annotations stripped (performance hack)
-            qs = queryset.all()
-            qs.query.annotations.clear()
-            self.count = qs.count()
-
+        if isinstance(queryset, QuerySet):
+            self.count = queryset.count()
         else:
             # We're dealing with an iterable, not a QuerySet
             self.count = len(queryset)
@@ -147,18 +158,18 @@ class OptionalLimitOffsetPagination(LimitOffsetPagination):
 # Miscellaneous
 #
 
-def get_view_name(view_cls, suffix=None):
+def get_view_name(view, suffix=None):
     """
     Derive the view name from its associated model, if it has one. Fall back to DRF's built-in `get_view_name`.
     """
-    if hasattr(view_cls, 'queryset'):
+    if hasattr(view, 'queryset'):
         # Determine the model name from the queryset.
-        name = view_cls.queryset.model._meta.verbose_name
+        name = view.queryset.model._meta.verbose_name
         name = ' '.join([w[0].upper() + w[1:] for w in name.split()])  # Capitalize each word
 
     else:
         # Replicate DRF's built-in behavior.
-        name = view_cls.__name__
+        name = view.__class__.__name__
         name = formatting.remove_trailing_string(name, 'View')
         name = formatting.remove_trailing_string(name, 'ViewSet')
         name = formatting.camelcase_to_spaces(name)
