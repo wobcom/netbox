@@ -150,11 +150,10 @@ class BGPNeighbor(models.Model):
         :return: True if session is configured on both devices or neighbor_type is external, otherwise False
         """
         if self.neighbor_type == 'internal':
-            if self.internal_neighbor_device.bgpdeviceasn_set.filter(
+            return self.internal_neighbor_device.bgpdeviceasn_set.filter(
                     asn__asn=self.remote_asn,
                     neighbors__internal_neighbor_device=self.deviceasn.device,
-                    neighbors__remote_asn=self.deviceasn.asn.asn).count() == 0:
-                return False
+                    neighbors__remote_asn=self.deviceasn.asn.asn).exists()
         return True
 
     class Meta:

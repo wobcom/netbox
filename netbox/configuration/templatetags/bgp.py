@@ -13,13 +13,15 @@ def unconfigured_asns(device):
     :param device:
     :return: list of tuples (int or BGPASN, boolean) the boolean is true if BGPASN exists.
     """
-    if isinstance(device, Device):
-        for asn in set(device.neighbors.values_list('remote_asn', flat=True)) - \
-                   set(device.asns.values_list('asn', flat=True)):
-            try:
-                yield BGPASN.objects.get(asn=asn), True
-            except BGPASN.DoesNotExist:
-                yield asn, False
+    if not isinstance(device, Device):
+        return
+    configured_asns = device.asns.values_list('asn', flat=True)
+    unconfigured_neighbors = device.neighbors.exclude(remote_asn__in=configured_asns)
+    for asn in unconfigured_neighbors.values_list('remote_asn', flat=True):
+        try:
+            yield BGPASN.objects.get(asn=asn), True
+        except BGPASN.DoesNotExist:
+            yield asn.remote_asn, False
 
 
 @register.filter
@@ -29,5 +31,6 @@ def unconfigured_neighbors_exists(bgpdeviceasn):
     :param bgpdeviceasn:
     :return: boolean
     """
-    if isinstance(bgpdeviceasn, BGPDeviceASN):
-        return bgpdeviceasn.device.neighbors.filter(remote_asn=bgpdeviceasn.asn.asn).count() > 0
+    if not isinstance(bgpdeviceasn, BGPDeviceASN):
+        return
+    return bgpdeviceasn.device.neighbors.filter(remote_asn=bgpdeviceasn.asn.asn).exists()
