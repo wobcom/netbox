@@ -1286,6 +1286,7 @@ class Platform(ChangeLoggedModel):
     vagrant_box = models.CharField(
         max_length=50,
         unique=False,
+        blank=True,
         null=True,
         verbose_name='Vagrant Box',
         help_text='Vagrant Box (e.g. "debian/stretch64") to use in simulation'
@@ -1293,6 +1294,7 @@ class Platform(ChangeLoggedModel):
     vagrant_box_version = models.CharField(
         max_length=50,
         unique=False,
+        blank=True,
         null=True,
         verbose_name='Vagrant Box version',
         help_text='Vagrant Box version to use in simulation'
