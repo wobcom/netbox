@@ -1,3 +1,4 @@
+{% load bgp %}
 <tr class="asn" id="asn_{{ asn.asn.asn }}">
     {% if perms.configuration.change_bgpdeviceasn or perms.configuration.delete_bgpdeviceasn %}
         <td class="pk">
@@ -31,7 +32,7 @@
 </tr>
 
 {% with neighbors=asn.neighbors.all %}
-    {% if neighbors %}
+    {% if neighbors or asn|unconfigured_neighbors_exists %}
         <tr class="neighbors">
             {# Placeholder #}
             {% if perms.configuration.change_bgpdeviceasn or perms.configuration.delete_bgpdeviceasn %}
@@ -52,7 +53,7 @@
                         </tr>
                     </thead>
                     {% for neighbor in neighbors %}
-                        <tr>
+                        <tr class="{% if not neighbor.is_internal_neighbor_complete %}danger{% endif %}">
                             <td>
                                 {% if neighbor.neighbor_type == 'internal' %}
                                     <a href="{% url 'dcim:device' neighbor.internal_neighbor_device.pk %}">
@@ -100,6 +101,26 @@
                             </td>
                         </tr>
                     {% endfor %}
+                {% for neighbor in device.neighbors.all %}
+                {% if neighbor.remote_asn == asn.asn.asn and not neighbor.is_internal_neighbor_complete %}
+                    <tr class="danger">
+                        <td>
+                            <a href="{% url 'dcim:device' neighbor.deviceasn.device.pk %}">
+                                {{ neighbor.deviceasn.device.name }}
+                            </a>
+                        </td>
+                        <td>—</td>
+                        <td><span class="label label-danger">Not configured</span></td>
+                        <td> {{ neighbor.deviceasn.asn.asn }} </td>
+                        <td>—</td>
+                        <td class="text-right text-nowrap">
+                            <a href="{% url 'configuration:bgp_add' %}?deviceasn={{ asn.pk }}&neighbor_type=internal&internal_neighbor_device={{ neighbor.deviceasn.device.pk }}&remote_asn={{ neighbor.deviceasn.asn.asn }}&return_url={{ device.get_absolute_url }}" class="btn btn-success btn-xs" title="Add Neighbor">
+                                <span class="glyphicon glyphicon-plus" aria-hidden="true"></span>
+                            </a>
+                        </td>
+                    </tr>
+                {% endif %}
+                {% endfor %}
                 </table>
             </td>
         </tr>

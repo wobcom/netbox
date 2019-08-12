@@ -1,6 +1,7 @@
 {% extends '_base.html' %}
 {% load static %}
 {% load helpers %}
+{% load bgp %}
 
 {% block title %}{{ device }}{% endblock %}
 
@@ -576,6 +577,31 @@
                     <tbody>
                         {% for asn in device.bgpdeviceasn_set.all %}
                             {% include 'dcim/inc/asn.html' %}
+                        {% endfor %}
+                        {% for asn, asn_exists in device|unconfigured_asns %}
+                            <tr class="danger">
+                            {% if perms.configuration.change_bgpdeviceasn or perms.configuration.delete_bgpdeviceasn %}
+                                <td></td>
+                            {% endif %}
+                                <td>
+                                    {% if asn_exists %}{{ asn.asn }}{% else %}{{ asn }}{% endif %}
+                                </td>
+                                <td class="text-right text-nowrap">
+                                    {% if asn_exists %}
+                                        {% if perms.configuration.add_bgpdeviceasn %}
+                                            <a href="{% url 'configuration:asn_link' %}?device={{ device.pk }}&asn={{ asn.pk }}&return_url={{ device.get_absolute_url }}" class="btn btn-success btn-xs" title="Assign ASN">
+                                                <span class="glyphicon glyphicon-plus" aria-hidden="true"></span>
+                                            </a>
+                                        {% endif %}
+                                    {% else %}
+                                        {%  if perms.configuration.add_bgpasn %}
+                                            <a href="{% url 'configuration:asn_add' %}?asn={{ asn }}&return_url={{ device.get_absolute_url }}" class="btn btn-xs btn-warning" title="Create new ASN">
+                                                <span class="glyphicon glyphicon-plus"></span>
+                                            </a>
+                                        {% endif %}
+                                    {% endif %}
+                                </td>
+                            </tr>
                         {% endfor %}
                     </tbody>
                 </table>
