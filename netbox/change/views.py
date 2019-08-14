@@ -66,23 +66,9 @@ class ChangeFormView(CreateView):
 
 @method_decorator(login_required, name='dispatch')
 class ToggleView(View):
-    def get(self, request):
-        """
-        This view is triggered when we begin or end a change.
-        If we begin the change, we simply toggle the cookie. If we end it, we
-        finalize the change and present it to the user.
-        """
-        if request.session['foreign_change']:
-            return redirect_to_referer(request)
-        request.session['in_change'] = not request.session.get('in_change', False)
-        # we started the change and need to get info
-        if request.session['in_change']:
-            c = ChangeSet(user=request.user, active=True)
-            c.save()
-            request.session['change_id'] = c.id
-            return redirect('/change/form')
+    SESSION_VARS = ['change_information', 'in_change', 'foreign_change']
 
-        # we finished our change. we generate the changeset now
+    def get_changeset(self, request):
         if 'change_id' not in request.session:
             return HttpResponseForbidden('Invalid session!')
 
@@ -99,17 +85,45 @@ class ToggleView(View):
         changeset.active = False
         changeset.save()
 
+        changeset.revert()
+
+        return changeset
+
+    def clear_session(request):
+        for session_var in self.SESSION_VARS:
+            if session_var in request.session:
+                del request.session[session_var]
+
+    def get(self, request):
+        """
+        This view is triggered when we begin or end a change.
+        If we begin the change, we simply toggle the cookie. If we end it, we
+        finalize the change and present it to the user.
+        """
+        if request.session['foreign_change']:
+            return redirect_to_referer(request)
+
+        request.session['in_change'] = not request.session.get('in_change', False)
+
+        # we started the change and need to get info
+        if request.session['in_change']:
+            c = ChangeSet(user=request.user, active=True)
+            c.save()
+            request.session['change_id'] = c.id
+            return redirect('/change/form')
+
+        # we finished our change. we generate the changeset now
+        changeset = self.treat_changeset(request)
+
         res = render(request, 'change/list.html', {
             'changeset': changeset
         })
-
-        changeset.revert()
 
         if 'change_information' not in request.session:
             request.session['in_change'] = False
             return redirect('/')
 
-        del request.session['change_information']
+        self.clear_session(request)
 
         return res
 
