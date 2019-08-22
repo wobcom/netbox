@@ -38,16 +38,21 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='changeinformation',
             name='Art',
-            field=models.SmallIntegerField(choices=[(1, 'Standard Change (vorabgenehmigt)')], default=1),
+            field=models.BooleanField(verbose_name='Netzwerk-Change'),
         ),
-        migrations.AlterField(
-            model_name='changeinformation',
-            name='Kategorie',
-            field=models.SmallIntegerField(choices=[(1, 'Netzwerk')], default=1),
-        ),
-        migrations.AlterField(
-            model_name='changeinformation',
-            name='Unterkategorie',
-            field=models.SmallIntegerField(choices=[(0, '------------'), (1, 'Routing/Switching'), (2, 'Firewall'), (3, 'CPE'), (4, 'Access Netz'), (5, 'Extern')], default=0),
-        ),
+#        migrations.AlterField(
+#            model_name='changeinformation',
+#            name='Art',
+#            field=models.SmallIntegerField(choices=[(1, 'Standard Change (vorabgenehmigt)')], default=1),
+#        ),
+#        migrations.AlterField(
+#            model_name='changeinformation',
+#            name='Kategorie',
+#            field=models.SmallIntegerField(choices=[(1, 'Netzwerk')], default=1),
+#        ),
+#        migrations.AlterField(
+#            model_name='changeinformation',
+#            name='Unterkategorie',
+#            field=models.SmallIntegerField(choices=[(0, '------------'), (1, 'Routing/Switching'), (2, 'Firewall'), (3, 'CPE'), (4, 'Access Netz'), (5, 'Extern')], default=0),
+#        ),
     ]

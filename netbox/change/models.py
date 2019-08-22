@@ -34,9 +34,10 @@ class ChangeInformation(models.Model):
     affects_customer = models.BooleanField(verbose_name="Customers are affected")
     change_implications = models.TextField()
     ignore_implications = models.TextField()
-    Art = models.SmallIntegerField(choices=[(1, 'Standard Change (vorabgenehmigt)')], default=1)
-    Kategorie = models.SmallIntegerField(choices=[(1, 'Netzwerk')], default=1)
-    Unterkategorie = models.SmallIntegerField(choices=[(0, '------------'), (1, 'Routing/Switching'), (2, 'Firewall'), (3, 'CPE'), (4, 'Access Netz'), (5, 'Extern')], default=0)
+    Art = models.BooleanField(verbose_name="Netzwerk-Change")
+    #Art = models.SmallIntegerField(choices=[(1, 'Standard Change (vorabgenehmigt)')], default=1)
+    #Kategorie = models.SmallIntegerField(choices=[(1, 'Netzwerk')], default=1)
+    #Unterkategorie = models.SmallIntegerField(choices=[(0, '------------'), (1, 'Routing/Switching'), (2, 'Firewall'), (3, 'CPE'), (4, 'Access Netz'), (5, 'Extern')], default=0)
 
     def executive_summary(self, no_markdown=True):
         md = Markdownify(no_markdown=no_markdown)
@@ -49,6 +50,9 @@ class ChangeInformation(models.Model):
         res.write('\n{}\n\n'.format(self.change_implications))
         res.write(md.h3('Implications if this change is rejected:'))
         res.write('\n{}\n\n'.format(self.ignore_implications))
+        if self.Art:
+            res.write(md.bold('This change is a network change.'))
+            res.write('\n\n')
 
         if self.affects_customer:
             res.write(md.h3('This change affects customers'))
