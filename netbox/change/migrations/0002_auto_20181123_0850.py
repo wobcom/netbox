@@ -35,11 +35,6 @@ class Migration(migrations.Migration):
             name='is_emergency',
             field=models.BooleanField(verbose_name='Is an emergency change'),
         ),
-        migrations.AlterField(
-            model_name='changeinformation',
-            name='Art',
-            field=models.BooleanField(verbose_name='Netzwerk-Change'),
-        ),
 #        migrations.AlterField(
 #            model_name='changeinformation',
 #            name='Art',
