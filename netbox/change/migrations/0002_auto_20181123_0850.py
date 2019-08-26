@@ -35,4 +35,19 @@ class Migration(migrations.Migration):
             name='is_emergency',
             field=models.BooleanField(verbose_name='Is an emergency change'),
         ),
+#        migrations.AlterField(
+#            model_name='changeinformation',
+#            name='Art',
+#            field=models.SmallIntegerField(choices=[(1, 'Standard Change (vorabgenehmigt)')], default=1),
+#        ),
+#        migrations.AlterField(
+#            model_name='changeinformation',
+#            name='Kategorie',
+#            field=models.SmallIntegerField(choices=[(1, 'Netzwerk')], default=1),
+#        ),
+#        migrations.AlterField(
+#            model_name='changeinformation',
+#            name='Unterkategorie',
+#            field=models.SmallIntegerField(choices=[(0, '------------'), (1, 'Routing/Switching'), (2, 'Firewall'), (3, 'CPE'), (4, 'Access Netz'), (5, 'Extern')], default=0),
+#        ),
     ]
