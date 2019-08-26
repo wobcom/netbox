@@ -55,9 +55,6 @@ class Migration(migrations.Migration):
                 ('affects_customer', models.BooleanField()),
                 ('change_implications', models.TextField()),
                 ('ignore_implications', models.TextField()),
-                ('Art', models.SmallIntegerField(choices=[(1, 'Standard Change (vorabgenehmigt)')], default=1)),
-                ('Kategorie', models.SmallIntegerField(choices=[(1, 'Netzwerk')], default=1)),
-                ('Unterkategorie', models.SmallIntegerField(choices=[(0, '------------'), (1, 'Routing/Switching'), (2, 'Firewall'), (3, 'CPE'), (4, 'Access Netz'), (5, 'Extern')], default=0)),
             ],
         ),
         migrations.CreateModel(
