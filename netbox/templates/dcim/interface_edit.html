@@ -16,7 +16,7 @@
             {% render_field form.mode %}
             {% render_field form.tags %}
             {% render_field form.clag_id %}
-            <button id="assign-clag">Autoassign CLAG ID</button>
+            <button class="btn pull-right" id="assign-clag" type="button">Autoassign CLAG ID</button>
             {% if obj.is_ontep %}
               {% render_field form.overlay_network %}
             {% endif %}
@@ -67,8 +67,8 @@
             });
             $('#assign-clag').click(function () {
                 // get parent lag name
-                var name = $('#id_lag option:selected').text();
-                $('input[name="clag_id"]').val(name + "-clag");
+                var name = $('#id_lag option:selected').val();
+                $('input[name="clag_id"]').val(name);
             });
         });
     </script>
