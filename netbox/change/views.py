@@ -68,7 +68,7 @@ class ChangeFormView(CreateView):
 class ToggleView(View):
     SESSION_VARS = ['change_information', 'in_change', 'foreign_change']
 
-    def get_changeset(self, request):
+    def treat_changeset(self, request):
         if 'change_id' not in request.session:
             return HttpResponseForbidden('Invalid session!')
 
