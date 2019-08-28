@@ -66,8 +66,9 @@
                 return false;
             });
             $('#assign-clag').click(function () {
-                var name = $('input[name="name"]').val();
-                $('input[name="clag_id"]').val(name+"-clag");
+                // get parent lag name
+                var name = $('#id_lag option:selected').text();
+                $('input[name="clag_id"]').val(name + "-clag");
             });
         });
     </script>
