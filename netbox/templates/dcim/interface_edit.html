@@ -16,6 +16,7 @@
             {% render_field form.mode %}
             {% render_field form.tags %}
             {% render_field form.clag_id %}
+            <button id="assign-clag">Autoassign CLAG ID</button>
             {% if obj.is_ontep %}
               {% render_field form.overlay_network %}
             {% endif %}
@@ -63,6 +64,10 @@
             $('#clear_tagged_vlans').click(function () {
                 $('input[name="tagged_vlans"]').prop("checked", false);
                 return false;
+            });
+            $('#assign-clag').click(function () {
+                var name = $('input[name="name"]').val();
+                $('input[name="clag_id"]').val(name+"-clag");
             });
         });
     </script>
