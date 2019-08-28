@@ -50,7 +50,9 @@
                   </ol>
                   {% endif %}
                   {% if not changeset.active %}
-                    <a class="btn" href="/change/{{changeset.pk}}/reactivate">Reactivate</a>
+                    <a class="btn btn-primary" href="/change/{{changeset.pk}}/reactivate">
+                      Reactivate
+                    </a>
                   {% endif %}
                 </div>
             </div>

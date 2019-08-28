@@ -53,7 +53,9 @@ class ChangeFormView(PermissionRequiredMixin, CreateView):
         if customers_formset.is_valid():
             customers = customers_formset.save()
 
-        self.request.session['change_information'] = self.object.id
+        c = ChangeSet(user=request.user, active=True)
+        c.change_information = self.object
+        c.save()
 
         for depends in self.object.depends_on.all():
             depends.apply()
@@ -83,12 +85,6 @@ class ToggleView(View):
         changeset = ChangeSet.objects.get(pk=request.session['change_id'])
         if not changeset.active:
             return HttpResponseForbidden('Change timed out!')
-
-        info_id = request.session.get('change_information')
-        change_information = None
-        if info_id:
-            change_information = ChangeInformation.objects.get(pk=info_id)
-            changeset.change_information = change_information
 
         changeset.active = False
         changeset.save()
@@ -131,11 +127,9 @@ class ToggleView(View):
             'changeset': changeset
         })
 
-        if 'change_information' not in request.session:
+        if not changeset.change_information:
             request.session['in_change'] = False
             return redirect('/')
-
-        self.clear_session(request)
 
         return res
 
@@ -329,6 +323,8 @@ class ReactivateView(View):
         obj.user = request.user
         obj.updated = datetime.now()
         obj.save()
+
+        request.session['in_change'] = True
 
         return redirect('/')
 

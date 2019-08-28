@@ -258,6 +258,9 @@ class FieldChangeMiddleware(object):
                 # tells them that their session has timed out.
                 messages.warning(request, "Your change session timed out.")
                 request.session['in_change'] = False
+                c.active = False
+                c.revert()
+                c.save()
 
         # That is all we need to do if we are in a change.
         #
