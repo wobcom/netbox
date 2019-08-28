@@ -1,5 +1,6 @@
 import io
 import json
+from datetime import datetime
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -15,7 +16,6 @@ from django.views.generic.edit import CreateView
 from rest_framework.decorators import action
 from rest_framework.viewsets import ViewSet
 import gitlab
-import requests
 
 from netbox import configuration
 from utilities.views import ObjectListView
@@ -306,6 +306,28 @@ class RejectView(View):
             return HttpResponseForbidden('Change was already accepted!')
 
         obj.status = REJECTED
+        obj.save()
+
+        return redirect('/')
+
+
+@method_decorator(login_required, name='dispatch')
+class ReactivateView(View):
+    model = ChangeSet
+
+    def get(self, request, pk=None):
+        """
+        This view is triggered when the change is reactivated by the operator.
+        The object is marked as active, updated, and assigned to the operator.
+        """
+        obj = get_object_or_404(self.model, pk=pk)
+
+        if obj.status != DRAFT:
+            return HttpResponseForbidden('Change cannot be reactivated!')
+
+        obj.active = True
+        obj.user = request.user
+        obj.updated = datetime.now()
         obj.save()
 
         return redirect('/')
