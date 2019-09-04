@@ -89,7 +89,7 @@ class ToggleView(View):
 
         return changeset
 
-    def clear_session(request):
+    def clear_session(self, request):
         for session_var in self.SESSION_VARS:
             if session_var in request.session:
                 del request.session[session_var]
