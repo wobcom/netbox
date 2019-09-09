@@ -68,4 +68,33 @@
     {% endif %}
   </div>
 </div>
+
+<script>
+window.onload = () => {
+  $('#change-accept').click(() => {
+    let e = document.createElement("div");
+    e.classList.add('loader');
+    document.body.appendChild(e);
+  });
+};
+</script>
+
+<style>
+.loader {
+  border: 2vw solid #f3f3f3; /* Light grey */
+  border-top: 2vw solid #3498db; /* Blue */
+  border-radius: 50%;
+  width: 10vw;
+  height: 10vw;
+  animation: spin 2s linear infinite;
+  position: absolute;
+  top: 40vh;
+  left: 45vw;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+</style>
 {% endblock %}
