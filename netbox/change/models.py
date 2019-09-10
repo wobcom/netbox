@@ -25,6 +25,9 @@ from dcim.constants import *
 from configuration.models import RouteMap, BGPCommunity, BGPCommunityList
 
 DEVICE_ROLE_TOPOLOGY_WHITELIST = ['leaf', 'spine', 'superspine']
+NO_CHANGE = 0
+OWN_CHANGE = 1
+FOREIGN_CHANGE = 2
 
 class ChangeInformation(models.Model):
     """Meta information about a change."""
@@ -129,6 +132,22 @@ class ChangeSet(models.Model):
             (FAILED, 'Failed'),
         )
     )
+
+    @staticmethod
+    def change_state(user=None):
+        """
+        Get actual change state
+        :param user: user for which the state should be checked, maybe None
+        :return: integer value corresponding to *_CHANGE constants
+        """
+        try:
+            c = ChangeSet.objects.get(active=True)
+            if c.user == user:
+                return OWN_CHANGE
+            else:
+                return FOREIGN_CHANGE
+        except ChangeSet.DoesNotExist:
+            return NO_CHANGE
 
     def yamlify_extra_fields(self, instance):
         res = {}

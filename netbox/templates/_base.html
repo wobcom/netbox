@@ -76,15 +76,6 @@
         loading.hide();
     });
 </script>
-<script type="text/javascript">
-{% if request.session.foreign_change or not request.session.in_change and settings.NEED_CHANGE_FOR_WRITE %}
-  $(".btn-warning,.btn-danger,.btn-info,.btn-primary").map((_,elem) => {
-    if (elem.classList.contains("btn-primary") && (elem.type == "submit" || elem.innerHTML.includes("Refine search")) || elem.id == 'change-accept') return;
-    elem.style.pointerEvents = "none";
-    elem.style.opacity = "0.7";
-  });
-{% endif %}
-</script>
 {% block javascript %}{% endblock %}
 </body>
 </html>
