@@ -16,7 +16,6 @@ from rest_framework.viewsets import ViewSet
 import gitlab
 import requests
 
-from dcim.models import Device
 from netbox import configuration
 from utilities.views import ObjectListView
 from . import tables
@@ -179,17 +178,10 @@ def check_branch_exists(project, branch_name):
 
 
 def open_gitlab_mr(o, delete_branch=False):
-    devices = Device.objects.prefetch_related(
-        'interfaces__untagged_vlans',
-        'interfaces__tagged_vlan',
-        'interfaces__overlay_network',
-        'device_type')\
-                            .filter(primary_ip4__isnull=False)
-
     gl = gitlab.Gitlab(configuration.GITLAB_URL, configuration.GITLAB_TOKEN)
     info = o.change_information
     project = gl.projects.get(configuration.GITLAB_PROJECT_ID)
-    actions = o.to_actions(devices)
+    actions = o.to_actions()
     mr_txt = MR_TXT.format(o.id, o.user, o.executive_summary())
     emergency_label = ['emergency'] if info.is_emergency else []
     branch_name = 'change_{}'.format(o.id)
@@ -207,8 +199,8 @@ def open_gitlab_mr(o, delete_branch=False):
         'ref': 'master'
     })
     actions = check_actions(project, actions, branch_name)
-    actions.append(o.create_inventory(devices))
-    actions.append(o.create_topology_graph(devices))
+    actions.append(o.create_inventory())
+    actions.append(o.create_topology_graph())
     project.commits.create({
         'id': project.id,
         'branch': branch_name,
