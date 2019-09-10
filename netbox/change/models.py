@@ -381,7 +381,7 @@ class ChangeSet(models.Model):
                 "function": device.device_role.name,
                 "os" : self.map_platform_to_vagrant_box(device.platform)
             }
-            graph.node(device.slug, **attributes)
+            graph.node(device.name, **attributes)
             seen_devices.append(device)
             for interface in device.interfaces.all():
                 if interface.form_factor in NONCONNECTABLE_IFACE_TYPES + AGGREGATABLE_IFACE_TYPES:
@@ -400,10 +400,10 @@ class ChangeSet(models.Model):
                 elif peer_interface.device.device_role.name not in DEVICE_ROLE_TOPOLOGY_WHITELIST:
                     continue
                 graph.edge(
-                    "{}:{}".format(device.slug, interface.slug),
+                    "{}:{}".format(device.name, interface.name),
                     "{}:{}".format(
-                        peer_interface.device.slug,
-                        peer_interface.slug
+                        peer_interface.device.name,
+                        peer_interface.name
                     )
                 )
         self.revert()
@@ -418,13 +418,13 @@ class ChangeSet(models.Model):
             res.write("\n{} ansible_host={}".format(device.name, str(device.primary_ip4.address.ip)))
             if device.device_role:
                 if device.status == DEVICE_STATUS_PLANNED:
-                    device.device_role.slug += "_planned"
-                groups[device.device_role.slug].append(device.slug)
+                    device.device_role.name += "_planned"
+                groups[device.device_role.name].append(device.name)
             res.write("\n")
         for vm in VirtualMachine.objects.filter(primary_ip4__isnull=False):
-            res.write("\n{} ansible_host={}".format(vm.slug, str(vm.primary_ip4.address.ip)))
+            res.write("\n{} ansible_host={}".format(vm.name, str(vm.primary_ip4.address.ip)))
             if vm.role:
-                groups[vm.role.slug].append(vm.slug)
+                groups[vm.role.name].append(vm.name)
             res.write("\n")
         for group, entries in groups.items():
             res.write("\n\n[{}]".format(group))
