@@ -424,6 +424,8 @@ class ChangeSet(models.Model):
         for vm in VirtualMachine.objects.filter(primary_ip4__isnull=False):
             res.write("\n{} ansible_host={}".format(vm.name, str(vm.primary_ip4.address.ip)))
             if vm.role:
+                if vm.status == DEVICE_STATUS_STAGED:
+                    vm.role.name += "_staged"
                 groups[vm.role.name].append(vm.name)
             res.write("\n")
         for group, entries in groups.items():
