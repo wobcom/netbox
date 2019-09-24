@@ -79,6 +79,10 @@ NEED_CHANGE_FOR_WRITE = getattr(configuration, 'NEED_CHANGE_FOR_WRITE', False)
 
 CSRF_TRUSTED_ORIGINS = ALLOWED_HOSTS
 
+AUTHENTICATION_BACKENDS = [
+    'change.backends.model.ProxyBackend',
+]
+
 # Attempt to import LDAP configuration if it has been defined
 LDAP_IGNORE_CERT_ERRORS = False
 try:
@@ -94,8 +98,8 @@ if LDAP_CONFIGURED:
         import django_auth_ldap
         # Prepend LDAPBackend to the default ModelBackend
         AUTHENTICATION_BACKENDS = [
-            'django_auth_ldap.backend.LDAPBackend',
-            'django.contrib.auth.backends.ModelBackend',
+            'change.backends.ldap.ProxyBackend',
+            'change.backends.model.ProxyBackend',
         ]
         # Optionally disable strict certificate checking
         if LDAP_IGNORE_CERT_ERRORS:
