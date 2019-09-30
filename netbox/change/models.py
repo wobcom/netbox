@@ -71,6 +71,12 @@ class ChangeInformation(models.Model):
                 if change.is_business:
                     res.write(md.bold(' (Business Customer)'))
                 res.write(": {}\n".format(change.products_affected))
+
+        if self.depends_on.exists():
+            res.write(md.h3('This change depends on the following changes\n'))
+            for depends in self.depends_on.all():
+                res.write('- {}\n'.format(depends))
+
         return res.getvalue()
 
 
