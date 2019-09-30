@@ -3,6 +3,7 @@ import json
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.db import models
 from django.http import HttpResponse, HttpResponseForbidden, \
     HttpResponseServerError
@@ -19,23 +20,27 @@ import requests
 from netbox import configuration
 from utilities.views import ObjectListView
 from . import tables
-from .forms import AffectedCustomerInlineFormSet
+from .forms import AffectedCustomerInlineFormSet, ChangeInformationForm
 from .models import ChangeInformation, ChangeSet, \
     DRAFT, IN_REVIEW, ACCEPTED, REJECTED, IMPLEMENTED, FAILED
 from .utilities import redirect_to_referer
 
 
-
-@method_decorator(login_required, name='dispatch')
-class ChangeFormView(CreateView):
+class ChangeFormView(PermissionRequiredMixin, CreateView):
     model = ChangeInformation
-    fields = '__all__'
+    form_class = ChangeInformationForm
     success_url = '/'
+    permission_required = 'change.add_change'
 
     def get(self, request, *args, **kwargs):
         if not request.session.get('in_change'):
             return redirect('/')
-        return super(CreateView, self).get(request, *args, **kwargs)
+        return super(ChangeFormView, self).get(request, *args, **kwargs)
+
+    def get_initial(self):
+        return {
+            'depends_on': ChangeSet.objects.filter(status=IN_REVIEW)
+        }
 
     def form_valid(self, form):
         result = super(ChangeFormView, self).form_valid(form)
