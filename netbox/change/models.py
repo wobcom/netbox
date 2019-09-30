@@ -133,6 +133,9 @@ class ChangeSet(models.Model):
         )
     )
 
+    def __init__(self):
+        self.vlan_cache = {}  # stores used VLANs for a given device
+
     @staticmethod
     def change_state(user=None):
         """
@@ -148,6 +151,22 @@ class ChangeSet(models.Model):
                 return FOREIGN_CHANGE
         except ChangeSet.DoesNotExist:
             return NO_CHANGE
+
+    def collect_vids(self, device):
+        """
+        Collects VLAN IDs that are used on the device's interfaces, in order to expand
+        the ONTEP interface to only those VTEPs that are actually required.
+        This avoids unnecessary BUM traffic in the fabric.
+        """
+        if device in self.vlan_cache:
+            return self.vlan_cache[device]
+        for interface in device.interfaces.all():
+            if interface.form_factor == IFACE_FF_ONTEP:
+                continue
+            self.vlan_cache[device] = interface.tagged_vlans.values_list('vid', flat=True)
+            if interface.untagged_vlan != None:
+                self.vlan_cache[device].append(interface.untagged_vlan.vid)
+        return self.vlan_cache[device]
 
     def yamlify_extra_fields(self, instance):
         res = {}
@@ -190,8 +209,10 @@ class ChangeSet(models.Model):
             if child_interface.form_factor == IFACE_FF_ONTEP:
                 if not child_interface.overlay_network:
                     continue
-                # expand ONTEP to VTEPs
-                for vlan in child_interface.overlay_network.vlans.all():
+                # expand ONTEP to VTEPs (but only for those VLANs that are actually used on switchports)
+                for vlan in child_interface.overlay_network.vlans.filter(
+                        vid__in=self.collect_vids(interface.device)
+                    ):
                     res.append(child_interface.name + '_' + self.concat_vxlan_vlan(child_interface.overlay_network.vxlan_prefix, vlan.vid))
             else:
                 res.append(child_interface.name)
@@ -201,7 +222,9 @@ class ChangeSet(models.Model):
         res = []
         if not interface.overlay_network:
             return res
-        for vlan in interface.overlay_network.vlans.all():
+        for vlan in interface.overlay_network.vlans.filter(
+                vid__in=self.collect_vids(interface.device)
+            ):
             res.append({
                 'name': interface.name + '_' + self.concat_vxlan_vlan(interface.overlay_network.vxlan_prefix, vlan.vid),
                 'enabled': True,
