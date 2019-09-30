@@ -51,7 +51,8 @@ class ChangeInformation(models.Model):
 
     depends_on = models.ManyToManyField(
         'ChangeSet',
-        related_name='dependants'
+        related_name='dependants',
+        blank=True,
     )
 
     def executive_summary(self, no_markdown=True):

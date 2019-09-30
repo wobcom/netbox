@@ -55,7 +55,7 @@ class ChangeFormView(PermissionRequiredMixin, CreateView):
 
         self.request.session['change_information'] = self.object.id
 
-        for depends in result.depends_on.all():
+        for depends in self.object.depends_on.all():
             depends.apply()
 
         return result
@@ -96,7 +96,7 @@ class ToggleView(View):
         changeset.revert()
 
         if change_information:
-            for depends in change_information.all():
+            for depends in change_information.depends_on.all():
                 depends.apply()
 
         return changeset
