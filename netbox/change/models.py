@@ -37,9 +37,22 @@ class ChangeInformation(models.Model):
     affects_customer = models.BooleanField(verbose_name="Customers are affected")
     change_implications = models.TextField()
     ignore_implications = models.TextField()
-    change_type = models.SmallIntegerField(choices=[(1, 'Standard Change (vorabgenehmigt)')], default=1)
+    change_type = models.SmallIntegerField(choices=[
+        (1, 'Standard Change (vorabgenehmigt)')], default=1)
     category = models.SmallIntegerField(choices=[(1, 'Netzwerk')], default=1)
-    subcategory = models.SmallIntegerField(choices=[(0, '------------'), (1, 'Routing/Switching'), (2, 'Firewall'), (3, 'CPE'), (4, 'Access Netz'), (5, 'Extern')], default=0)
+    subcategory = models.SmallIntegerField(choices=[
+        (0, '------------'),
+        (1, 'Routing/Switching'),
+        (2, 'Firewall'),
+        (3, 'CPE'),
+        (4, 'Access Netz'),
+        (5, 'Extern')
+    ], default=0)
+
+    depends_on = models.ManyToManyField(
+        'ChangeSet',
+        related_name='dependants'
+    )
 
     def executive_summary(self, no_markdown=True):
         md = Markdownify(no_markdown=no_markdown)
@@ -61,6 +74,12 @@ class ChangeInformation(models.Model):
                 if change.is_business:
                     res.write(md.bold(' (Business Customer)'))
                 res.write(": {}\n".format(change.products_affected))
+
+        if self.depends_on.exists():
+            res.write(md.h3('This change depends on the following changes\n'))
+            for depends in self.depends_on.all():
+                res.write('- {}\n'.format(depends))
+
         return res.getvalue()
 
 
@@ -91,7 +110,6 @@ class ChangeSet(models.Model):
     A change set always refers to a ticket, has a set of changes, and can be
     serialized to YAML.
     """
-    ticket_id = models.UUIDField(null=True)
     active = models.BooleanField(default=False)
     change_information = models.ForeignKey(
         to=ChangeInformation,
@@ -107,7 +125,6 @@ class ChangeSet(models.Model):
         auto_now_add=True,
         editable=False
     )
-
     user = models.ForeignKey(
         to=User,
         on_delete=models.SET_NULL,
@@ -115,7 +132,6 @@ class ChangeSet(models.Model):
         blank=True,
         null=True
     )
-
     provision_log = JSONField(
         blank=True,
         null=True
@@ -473,6 +489,9 @@ class ChangeSet(models.Model):
         change_objects = list(self.changedobject_set.all())
         change_fields = list(self.changedfield_set.all())
         changes = sorted(change_objects + change_fields, key=lambda x: x.time)
+        if self.change_information:
+            for change in self.change_information.depends_on.all():
+                change.apply()
         for change in changes:
             change.apply()
 
@@ -483,6 +502,10 @@ class ChangeSet(models.Model):
         changes = sorted(
             change_objects + change_fields, key=lambda x: x.time, reverse=True
         )
+        if self.change_information:
+            for change in self.change_information.depends_on.all():
+                if change.status != IMPLEMENTED:
+                    change.revert()
         for change in changes:
             change.revert()
 
@@ -491,6 +514,9 @@ class ChangeSet(models.Model):
         before = timezone.now() - threshold
 
         return self.updated > before
+
+    def __str__(self):
+        return '#{}: {}'.format(self.id, self.change_information.name if self.change_information else '')
 
 
 class ChangedField(models.Model):
