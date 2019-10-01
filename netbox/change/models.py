@@ -150,7 +150,8 @@ class ChangeSet(models.Model):
         )
     )
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        super(ChangeSet, self).__init__(*args, **kwargs)
         self.vlan_cache = {}  # stores used VLANs for a given device
 
     @staticmethod
