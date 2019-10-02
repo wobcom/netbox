@@ -7,6 +7,7 @@ from django.urls import reverse
 from dcim.models import Device, DeviceRole, DeviceType, Manufacturer, Site
 from ipam.constants import IP_PROTOCOL_TCP
 from ipam.models import Aggregate, IPAddress, Prefix, RIR, Role, Service, VLAN, VLANGroup, VRF
+from tenancy.models import Tenant
 from utilities.testing import create_test_user
 
 
@@ -218,10 +219,12 @@ class VLANTestCase(TestCase):
         vlangroup = VLANGroup(name='VLAN Group 1', slug='vlan-group-1')
         vlangroup.save()
 
+        tenant = Tenant.objects.create(name='My Tenant', slug='mytenant')
+
         VLAN.objects.bulk_create([
-            VLAN(group=vlangroup, vid=101, name='VLAN101'),
-            VLAN(group=vlangroup, vid=102, name='VLAN102'),
-            VLAN(group=vlangroup, vid=103, name='VLAN103'),
+            VLAN(group=vlangroup, vid=101, name='VLAN101', tenant=tenant),
+            VLAN(group=vlangroup, vid=102, name='VLAN102', tenant=tenant),
+            VLAN(group=vlangroup, vid=103, name='VLAN103', tenant=tenant),
         ])
 
     def test_vlan_list(self):

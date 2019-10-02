@@ -8,11 +8,12 @@ NAT3 = r"CAST(SUBSTRING({}.{} FROM '(\d{{1,9}})$') AS integer)"
 
 class BaseManager(Manager):
     def bulk_create(self, objs, **kwargs):
+        objs = list(objs)
         for i in objs:
-            pre_save.send(i.__class__, instance=i, created=True)
-        a = super().bulk_create(objs,**kwargs)
+            pre_save.send(i.__class__, instance=i, created=True, using=None)
+        a = super().bulk_create(objs, **kwargs)
         for i in objs:
-            post_save.send(i.__class__, instance=i, created=True)
+            post_save.send(i.__class__, instance=i, created=True, using=None)
         return a
 
 

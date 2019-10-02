@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.forms.array import SimpleArrayField
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import Q
+from django.db.models import Q, Count
 from mptt.forms import TreeNodeChoiceField
 from netaddr import EUI
 from netaddr.core import AddrFormatError

@@ -3,6 +3,7 @@ from rest_framework import status
 
 from dcim.models import Region, Site
 from ipam.models import VLAN
+from tenancy.models import Tenant
 from utilities.testing import APITestCase
 
 
@@ -18,6 +19,7 @@ class WritableNestedSerializerTest(APITestCase):
         self.region_a = Region.objects.create(name='Region A', slug='region-a')
         self.site1 = Site.objects.create(region=self.region_a, name='Site 1', slug='site-1')
         self.site2 = Site.objects.create(region=self.region_a, name='Site 2', slug='site-2')
+        self.tenant = Tenant.objects.create(name='My Tenant', slug='mytenant')
 
     def test_related_by_pk(self):
 
@@ -25,6 +27,9 @@ class WritableNestedSerializerTest(APITestCase):
             'vid': 100,
             'name': 'Test VLAN 100',
             'site': self.site1.pk,
+            'tenant': {
+                'id': self.tenant.id
+            },
         }
 
         url = reverse('ipam-api:vlan-list')
@@ -41,6 +46,9 @@ class WritableNestedSerializerTest(APITestCase):
             'vid': 100,
             'name': 'Test VLAN 100',
             'site': 999,
+            'tenant': {
+                'id': self.tenant.id
+            },
         }
 
         url = reverse('ipam-api:vlan-list')
@@ -57,6 +65,9 @@ class WritableNestedSerializerTest(APITestCase):
             'name': 'Test VLAN 100',
             'site': {
                 'name': 'Site 1'
+            },
+            'tenant': {
+                'id': self.tenant.id,
             },
         }
 
@@ -75,6 +86,9 @@ class WritableNestedSerializerTest(APITestCase):
             'name': 'Test VLAN 100',
             'site': {
                 'name': 'Site X'
+            },
+            'tenant': {
+                'id': self.tenant.id
             },
         }
 
@@ -95,6 +109,9 @@ class WritableNestedSerializerTest(APITestCase):
                     "name": "Region A",
                 },
             },
+            'tenant': {
+                'id': self.tenant.id
+            },
         }
 
         url = reverse('ipam-api:vlan-list')
@@ -110,6 +127,9 @@ class WritableNestedSerializerTest(APITestCase):
             'vid': 100,
             'name': 'Test VLAN 100',
             'site': 'XXX',
+            'tenant': {
+                'id': self.tenant.id
+            },
         }
 
         url = reverse('ipam-api:vlan-list')

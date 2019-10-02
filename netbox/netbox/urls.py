@@ -44,7 +44,7 @@ _patterns = [
     path(r'virtualization/', include('virtualization.urls')),
 
     # API
-    path(r'api/$', APIRootView.as_view(), name='api-root'),
+    path(r'api/', APIRootView.as_view(), name='api-root'),
     path(r'api/change/', include('change.api.urls')),
     path(r'api/circuits/', include('circuits.api.urls')),
     path(r'api/dcim/', include('dcim.api.urls')),
@@ -53,9 +53,9 @@ _patterns = [
     path(r'api/secrets/', include('secrets.api.urls')),
     path(r'api/tenancy/', include('tenancy.api.urls')),
     path(r'api/virtualization/', include('virtualization.api.urls')),
-    path(r'api/docs/$', schema_view.with_ui('swagger'), name='api_docs'),
-    path(r'api/redoc/$', schema_view.with_ui('redoc'), name='api_redocs'),
-    path(r'api/swagger(?P<format>.json|.yaml)$', schema_view.without_ui(), name='schema_swagger'),
+    path(r'api/docs/', schema_view.with_ui('swagger'), name='api_docs'),
+    path(r'api/redoc/', schema_view.with_ui('redoc'), name='api_redocs'),
+    re_path(r'api/swagger(?P<format>.json|.yaml)', schema_view.without_ui(), name='schema_swagger'),
 
     # Serving static media in Django to pipe it through LoginRequiredMiddleware
     path(r'media/<path:path>', serve, {'document_root': settings.MEDIA_ROOT}),

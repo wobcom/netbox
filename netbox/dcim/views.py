@@ -1446,12 +1446,6 @@ class InterfaceBulkDeleteSingleView(PermissionRequiredMixin, BulkDeleteView):
     default_return_url = 'dcim:interface_list'
 
 
-class InterfaceAssignVLANsView(PermissionRequiredMixin, ObjectEditView):
-    permission_required = 'dcim.change_interface'
-    model = Interface
-    model_form = forms.InterfaceAssignVLANsForm
-
-
 class InterfaceDeleteView(PermissionRequiredMixin, ObjectDeleteView):
     permission_required = 'dcim.delete_interface'
     model = Interface

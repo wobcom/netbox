@@ -160,10 +160,10 @@ urlpatterns = [
     path(r'devices/<int:object_id>/images/add/', ImageAttachmentEditView.as_view(), name='device_add_image', kwargs={'model': Device}),
 
     # Device Licenses
-    url(r'^devices/licenses/$', views.DeviceLicenseListView.as_view(), name='device_license_list'),
-    url(r'^devices/licenses/add/$', views.DeviceLicenseCreateView.as_view(), name='device_license_add'),
-    url(r'^devices/licenses/(?P<pk>\d+)/delete/$', views.DeviceLicenseDeleteView.as_view(), name='device_license_delete'),
-    url(r'^devices/licenses/delete/$', views.DeviceLicenseBulkDeleteView.as_view(), name='device_license_bulk_delete'),
+    path(r'devices/licenses/', views.DeviceLicenseListView.as_view(), name='device_license_list'),
+    path(r'devices/licenses/add/', views.DeviceLicenseCreateView.as_view(), name='device_license_add'),
+    path(r'devices/licenses/<int:pk>/delete/', views.DeviceLicenseDeleteView.as_view(), name='device_license_delete'),
+    path(r'devices/licenses/delete/', views.DeviceLicenseBulkDeleteView.as_view(), name='device_license_bulk_delete'),
 
     # Console ports
     path(r'devices/console-ports/add/', views.DeviceBulkAddConsolePortView.as_view(), name='device_bulk_add_consoleport'),

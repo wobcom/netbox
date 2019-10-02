@@ -237,7 +237,7 @@ TEMPLATES = [
 
 # Authentication
 AUTHENTICATION_BACKENDS = [
-    'utilities.auth_backends.ViewExemptModelBackend',
+    'change.backends.model.ProxyBackend',
 ]
 
 # Internationalization
@@ -334,7 +334,7 @@ if LDAP_CONFIG is not None:
         ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, ldap.OPT_X_TLS_NEVER)
 
     # Prepend LDAPBackend to the authentication backends list
-    AUTHENTICATION_BACKENDS.insert(0, 'django_auth_ldap.backend.LDAPBackend')
+    AUTHENTICATION_BACKENDS.insert(0, 'change.backends.ldap.ProxyBackend')
 
     # Enable logging for django_auth_ldap
     ldap_logger = logging.getLogger('django_auth_ldap')

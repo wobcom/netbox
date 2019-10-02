@@ -73,13 +73,13 @@ urlpatterns = [
     path(r'ip-addresses/<int:pk>/delete/', views.IPAddressDeleteView.as_view(), name='ipaddress_delete'),
 
     # Overlay Network groups
-    url(r'^overlay-network-groups/$', views.OverlayNetworkGroupListView.as_view(), name='overlay_networkgroup_list'),
-    url(r'^overlay-network-groups/add/$', views.OverlayNetworkGroupCreateView.as_view(), name='overlay_networkgroup_add'),
-    url(r'^overlay-network-groups/import/$', views.OverlayNetworkGroupBulkImportView.as_view(), name='overlay_networkgroup_import'),
-    url(r'^overlay-network-groups/delete/$', views.OverlayNetworkGroupBulkDeleteView.as_view(), name='overlay_networkgroup_bulk_delete'),
-    url(r'^overlay-network-groups/(?P<pk>\d+)/edit/$', views.OverlayNetworkGroupEditView.as_view(), name='overlay_networkgroup_edit'),
-    url(r'^overlay-network-groups/(?P<pk>\d+)/overlay_networks/$', views.OverlayNetworkGroupOverlayNetworksView.as_view(), name='overlay_networkgroup_overlay_networks'),
-    url(r'^overlay-network-groups/(?P<pk>\d+)/changelog/$', ObjectChangeLogView.as_view(), name='overlay_networkgroup_changelog', kwargs={'model': OverlayNetworkGroup}),
+    path(r'overlay-network-groups/', views.OverlayNetworkGroupListView.as_view(), name='overlay_networkgroup_list'),
+    path(r'overlay-network-groups/add/', views.OverlayNetworkGroupCreateView.as_view(), name='overlay_networkgroup_add'),
+    path(r'overlay-network-groups/import/', views.OverlayNetworkGroupBulkImportView.as_view(), name='overlay_networkgroup_import'),
+    path(r'overlay-network-groups/delete/', views.OverlayNetworkGroupBulkDeleteView.as_view(), name='overlay_networkgroup_bulk_delete'),
+    path(r'overlay-network-groups/<int:pk>/edit/', views.OverlayNetworkGroupEditView.as_view(), name='overlay_networkgroup_edit'),
+    path(r'overlay-network-groups/<int:pk>/overlay_networks/', views.OverlayNetworkGroupOverlayNetworksView.as_view(), name='overlay_networkgroup_overlay_networks'),
+    path(r'overlay-network-groups/<int:pk>/changelog/', ObjectChangeLogView.as_view(), name='overlay_networkgroup_changelog', kwargs={'model': OverlayNetworkGroup}),
 
     # VLAN groups
     path(r'vlan-groups/', views.VLANGroupListView.as_view(), name='vlangroup_list'),
@@ -91,16 +91,16 @@ urlpatterns = [
     path(r'vlan-groups/<int:pk>/changelog/', ObjectChangeLogView.as_view(), name='vlangroup_changelog', kwargs={'model': VLANGroup}),
 
     # Overlay Networks
-    url(r'^overlay_networks/$', views.OverlayNetworkListView.as_view(), name='overlay_network_list'),
-    url(r'^overlay_networks/add/$', views.OverlayNetworkCreateView.as_view(), name='overlay_network_add'),
-    url(r'^overlay_networks/import/$', views.OverlayNetworkBulkImportView.as_view(), name='overlay_network_import'),
-    url(r'^overlay_networks/edit/$', views.OverlayNetworkBulkEditView.as_view(), name='overlay_network_bulk_edit'),
-    url(r'^overlay_networks/delete/$', views.OverlayNetworkBulkDeleteView.as_view(), name='overlay_network_bulk_delete'),
-    url(r'^overlay_networks/(?P<pk>\d+)/$', views.OverlayNetworkView.as_view(), name='overlay_network'),
-    url(r'^overlay_networks/(?P<pk>\d+)/members/$', views.OverlayNetworkMembersView.as_view(), name='overlay_network_members'),
-    url(r'^overlay_networks/(?P<pk>\d+)/edit/$', views.OverlayNetworkEditView.as_view(), name='overlay_network_edit'),
-    url(r'^overlay_networks/(?P<pk>\d+)/delete/$', views.OverlayNetworkDeleteView.as_view(), name='overlay_network_delete'),
-    url(r'^overlay_networks/(?P<pk>\d+)/changelog/$', ObjectChangeLogView.as_view(), name='overlay_network_changelog', kwargs={'model': OverlayNetwork}),
+    path(r'overlay_networks/', views.OverlayNetworkListView.as_view(), name='overlay_network_list'),
+    path(r'overlay_networks/add/', views.OverlayNetworkCreateView.as_view(), name='overlay_network_add'),
+    path(r'overlay_networks/import/', views.OverlayNetworkBulkImportView.as_view(), name='overlay_network_import'),
+    path(r'overlay_networks/edit/', views.OverlayNetworkBulkEditView.as_view(), name='overlay_network_bulk_edit'),
+    path(r'overlay_networks/delete/', views.OverlayNetworkBulkDeleteView.as_view(), name='overlay_network_bulk_delete'),
+    path(r'overlay_networks/<int:pk>/', views.OverlayNetworkView.as_view(), name='overlay_network'),
+    path(r'overlay_networks/<int:pk>/members/', views.OverlayNetworkMembersView.as_view(), name='overlay_network_members'),
+    path(r'overlay_networks/<int:pk>/edit/', views.OverlayNetworkEditView.as_view(), name='overlay_network_edit'),
+    path(r'overlay_networks/<int:pk>/delete/', views.OverlayNetworkDeleteView.as_view(), name='overlay_network_delete'),
+    path(r'overlay_networks/<int:pk>/changelog/', ObjectChangeLogView.as_view(), name='overlay_network_changelog', kwargs={'model': OverlayNetwork}),
 
     # VLANs
     path(r'vlans/', views.VLANListView.as_view(), name='vlan_list'),

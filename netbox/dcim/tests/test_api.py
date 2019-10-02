@@ -14,6 +14,7 @@ from ipam.models import IPAddress, VLAN
 from extras.models import Graph, GRAPH_TYPE_INTERFACE, GRAPH_TYPE_SITE
 from utilities.testing import APITestCase
 from virtualization.models import Cluster, ClusterType
+from tenancy.models import Tenant
 
 
 class RegionTest(APITestCase):
@@ -2402,9 +2403,11 @@ class InterfaceTest(APITestCase):
         self.interface2 = Interface.objects.create(device=self.device, name='Test Interface 2')
         self.interface3 = Interface.objects.create(device=self.device, name='Test Interface 3')
 
-        self.vlan1 = VLAN.objects.create(name="Test VLAN 1", vid=1)
-        self.vlan2 = VLAN.objects.create(name="Test VLAN 2", vid=2)
-        self.vlan3 = VLAN.objects.create(name="Test VLAN 3", vid=3)
+        self.tenant = Tenant.objects.create(name="Test Tenant 1", slug="test-tenant-1")
+
+        self.vlan1 = VLAN.objects.create(name="Test VLAN 1", vid=1, tenant=self.tenant)
+        self.vlan2 = VLAN.objects.create(name="Test VLAN 2", vid=2, tenant=self.tenant)
+        self.vlan3 = VLAN.objects.create(name="Test VLAN 3", vid=3, tenant=self.tenant)
 
     def test_get_interface(self):
 

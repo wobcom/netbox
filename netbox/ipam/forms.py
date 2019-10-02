@@ -1,6 +1,7 @@
 from django import forms
 from django.core.exceptions import MultipleObjectsReturned
 from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db.models import Count
 from taggit.forms import TagField
 
 from dcim.models import Site, Rack, Device, Interface

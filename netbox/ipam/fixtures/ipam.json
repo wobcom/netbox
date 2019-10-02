@@ -314,6 +314,14 @@
     }
 },
 {
+    "model": "tenancy.tenant",
+    "pk": 1,
+    "fields": {
+        "name": "My Tenant",
+        "slug": "mytenant"
+    }
+},
+{
     "model": "ipam.vlan",
     "pk": 1,
     "fields": {
@@ -323,7 +331,8 @@
         "vid": 999,
         "name": "TEST",
         "status": 1,
-        "role": 1
+        "role": 1,
+        "tenant": 1
     }
 }
 ]

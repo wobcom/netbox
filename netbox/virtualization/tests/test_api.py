@@ -5,6 +5,7 @@ from rest_framework import status
 from dcim.constants import IFACE_TYPE_VIRTUAL, IFACE_MODE_TAGGED
 from dcim.models import Interface
 from ipam.models import IPAddress, VLAN
+from tenancy.models import Tenant
 from utilities.testing import APITestCase
 from virtualization.models import Cluster, ClusterGroup, ClusterType, VirtualMachine
 
@@ -501,10 +502,11 @@ class InterfaceTest(APITestCase):
             name='Test Interface 3',
             type=IFACE_TYPE_VIRTUAL
         )
+        tenant = Tenant.objects.create(name='My Tenant', slug='mytenant')
 
-        self.vlan1 = VLAN.objects.create(name="Test VLAN 1", vid=1)
-        self.vlan2 = VLAN.objects.create(name="Test VLAN 2", vid=2)
-        self.vlan3 = VLAN.objects.create(name="Test VLAN 3", vid=3)
+        self.vlan1 = VLAN.objects.create(name="Test VLAN 1", vid=1, tenant=tenant)
+        self.vlan2 = VLAN.objects.create(name="Test VLAN 2", vid=2, tenant=tenant)
+        self.vlan3 = VLAN.objects.create(name="Test VLAN 3", vid=3, tenant=tenant)
 
     def test_get_interface(self):
 

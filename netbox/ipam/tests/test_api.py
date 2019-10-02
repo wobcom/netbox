@@ -7,6 +7,7 @@ from rest_framework import status
 from dcim.models import Device, DeviceRole, DeviceType, Manufacturer, Site
 from ipam.constants import IP_PROTOCOL_TCP, IP_PROTOCOL_UDP
 from ipam.models import Aggregate, IPAddress, Prefix, RIR, Role, Service, VLAN, VLANGroup, VRF
+from tenancy.models import Tenant
 from utilities.testing import APITestCase
 
 
@@ -431,7 +432,8 @@ class PrefixTest(APITestCase):
 
         self.site1 = Site.objects.create(name='Test Site 1', slug='test-site-1')
         self.vrf1 = VRF.objects.create(name='Test VRF 1', rd='65000:1')
-        self.vlan1 = VLAN.objects.create(vid=1, name='Test VLAN 1')
+        self.tenant = Tenant.objects.create(name='My Tenant', slug='mytenant')
+        self.vlan1 = VLAN.objects.create(vid=1, name='Test VLAN 1', tenant=self.tenant)
         self.role1 = Role.objects.create(name='Test Role 1', slug='test-role-1')
         self.prefix1 = Prefix.objects.create(prefix=IPNetwork('192.168.1.0/24'))
         self.prefix2 = Prefix.objects.create(prefix=IPNetwork('192.168.2.0/24'))
@@ -868,9 +870,10 @@ class VLANTest(APITestCase):
 
         super().setUp()
 
-        self.vlan1 = VLAN.objects.create(vid=1, name='Test VLAN 1')
-        self.vlan2 = VLAN.objects.create(vid=2, name='Test VLAN 2')
-        self.vlan3 = VLAN.objects.create(vid=3, name='Test VLAN 3')
+        self.tenant = Tenant.objects.create(name='My Tenant', slug='mytenant')
+        self.vlan1 = VLAN.objects.create(vid=1, name='Test VLAN 1', tenant=self.tenant)
+        self.vlan2 = VLAN.objects.create(vid=2, name='Test VLAN 2', tenant=self.tenant)
+        self.vlan3 = VLAN.objects.create(vid=3, name='Test VLAN 3', tenant=self.tenant)
 
         self.prefix1 = Prefix.objects.create(prefix=IPNetwork('192.168.1.0/24'))
 
@@ -903,6 +906,9 @@ class VLANTest(APITestCase):
         data = {
             'vid': 4,
             'name': 'Test VLAN 4',
+            'tenant': {
+                'id': self.tenant.id
+            },
         }
 
         url = reverse('ipam-api:vlan-list')
@@ -920,14 +926,23 @@ class VLANTest(APITestCase):
             {
                 'vid': 4,
                 'name': 'Test VLAN 4',
+                'tenant': {
+                    'id': self.tenant.id
+                },
             },
             {
                 'vid': 5,
                 'name': 'Test VLAN 5',
+                'tenant': {
+                    'id': self.tenant.id
+                },
             },
             {
                 'vid': 6,
                 'name': 'Test VLAN 6',
+                'tenant': {
+                    'id': self.tenant.id
+                },
             },
         ]
 
