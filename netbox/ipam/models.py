@@ -1,20 +1,22 @@
 import netaddr
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericRelation
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from django.db.models import Q
+from django.db.models import F, Q
 from django.db.models.expressions import RawSQL
 from django.urls import reverse
 from taggit.managers import TaggableManager
 
 from dcim.models import Interface
-from extras.models import CustomFieldModel
+from extras.models import CustomFieldModel, ObjectChange, TaggedItem
 from utilities.models import ChangeLoggedModel
+from utilities.utils import serialize_object
 from .constants import *
 from .fields import IPNetworkField, IPAddressField
 from .querysets import PrefixQuerySet
+from .validators import DNSValidator
 
 
 class VRF(ChangeLoggedModel, CustomFieldModel):
@@ -29,6 +31,8 @@ class VRF(ChangeLoggedModel, CustomFieldModel):
     rd = models.CharField(
         max_length=21,
         unique=True,
+        blank=True,
+        null=True,
         verbose_name='Route distinguisher'
     )
     tenant = models.ForeignKey(
@@ -59,7 +63,7 @@ class VRF(ChangeLoggedModel, CustomFieldModel):
         blank=True
     )
 
-    tags = TaggableManager()
+    tags = TaggableManager(through=TaggedItem)
 
     csv_headers = ['name', 'rd', 'tenant', 'enforce_unique', 'description']
 
@@ -85,9 +89,9 @@ class VRF(ChangeLoggedModel, CustomFieldModel):
 
     @property
     def display_name(self):
-        if self.name and self.rd:
+        if self.rd:
             return "{} ({})".format(self.name, self.rd)
-        return None
+        return self.name
 
 
 class RIR(ChangeLoggedModel):
@@ -158,7 +162,7 @@ class Aggregate(ChangeLoggedModel, CustomFieldModel):
         object_id_field='obj_id'
     )
 
-    tags = TaggableManager()
+    tags = TaggableManager(through=TaggedItem)
 
     csv_headers = ['prefix', 'rir', 'date_added', 'description']
 
@@ -328,14 +332,14 @@ class Prefix(ChangeLoggedModel, CustomFieldModel):
     )
 
     objects = PrefixQuerySet.as_manager()
-    tags = TaggableManager()
+    tags = TaggableManager(through=TaggedItem)
 
     csv_headers = [
         'prefix', 'vrf', 'tenant', 'site', 'vlan_group', 'vlan_vid', 'status', 'role', 'is_pool', 'description',
     ]
 
     class Meta:
-        ordering = ['vrf', 'family', 'prefix']
+        ordering = [F('vrf').asc(nulls_first=True), 'family', 'prefix']
         verbose_name_plural = 'prefixes'
 
     def __str__(self):
@@ -370,17 +374,21 @@ class Prefix(ChangeLoggedModel, CustomFieldModel):
                     })
 
     def save(self, *args, **kwargs):
-        if self.prefix:
+
+        if isinstance(self.prefix, netaddr.IPNetwork):
+
             # Clear host bits from prefix
             self.prefix = self.prefix.cidr
-            # Infer address family from IPNetwork object
+
+            # Record address family
             self.family = self.prefix.version
+
         super().save(*args, **kwargs)
 
     def to_csv(self):
         return (
             self.prefix,
-            self.vrf.rd if self.vrf else None,
+            self.vrf.name if self.vrf else None,
             self.tenant.name if self.tenant else None,
             self.site.name if self.site else None,
             self.vlan.group.name if self.vlan and self.vlan.group else None,
@@ -444,12 +452,23 @@ class Prefix(ChangeLoggedModel, CustomFieldModel):
         child_ips = netaddr.IPSet([ip.address.ip for ip in self.get_child_ips()])
         available_ips = prefix - child_ips
 
-        # Remove unusable IPs from non-pool prefixes
-        if not self.is_pool:
-            available_ips -= netaddr.IPSet([
-                netaddr.IPAddress(self.prefix.first),
-                netaddr.IPAddress(self.prefix.last),
-            ])
+        # All IP addresses within a pool are considered usable
+        if self.is_pool:
+            return available_ips
+
+        # All IP addresses within a point-to-point prefix (IPv4 /31 or IPv6 /127) are considered usable
+        if (
+            self.family == 4 and self.prefix.prefixlen == 31  # RFC 3021
+        ) or (
+            self.family == 6 and self.prefix.prefixlen == 127  # RFC 6164
+        ):
+            return available_ips
+
+        # Omit first and last IP address from the available set
+        available_ips -= netaddr.IPSet([
+            netaddr.IPAddress(self.prefix.first),
+            netaddr.IPAddress(self.prefix.last),
+        ])
 
         return available_ips
 
@@ -565,6 +584,13 @@ class IPAddress(ChangeLoggedModel, CustomFieldModel):
         verbose_name='NAT (Inside)',
         help_text='The IP for which this address is the "outside" IP'
     )
+    dns_name = models.CharField(
+        max_length=255,
+        blank=True,
+        validators=[DNSValidator],
+        verbose_name='DNS Name',
+        help_text='Hostname or FQDN (not case-sensitive)'
+    )
     description = models.CharField(
         max_length=100,
         blank=True
@@ -576,11 +602,11 @@ class IPAddress(ChangeLoggedModel, CustomFieldModel):
     )
 
     objects = IPAddressManager()
-    tags = TaggableManager()
+    tags = TaggableManager(through=TaggedItem)
 
     csv_headers = [
         'address', 'vrf', 'tenant', 'status', 'role', 'device', 'virtual_machine', 'interface_name', 'is_primary',
-        'description',
+        'dns_name', 'description',
     ]
 
     class Meta:
@@ -617,15 +643,35 @@ class IPAddress(ChangeLoggedModel, CustomFieldModel):
                     })
 
     def save(self, *args, **kwargs):
-        if self.address:
-            # Infer address family from IPAddress object
+
+        # Record address family
+        if isinstance(self.address, netaddr.IPNetwork):
             self.family = self.address.version
+
+        # Force dns_name to lowercase
+        self.dns_name = self.dns_name.lower()
+
         super().save(*args, **kwargs)
+
+    def to_objectchange(self, action):
+        # Annotate the assigned Interface (if any)
+        try:
+            parent_obj = self.interface
+        except ObjectDoesNotExist:
+            parent_obj = None
+
+        return ObjectChange(
+            changed_object=self,
+            object_repr=str(self),
+            action=action,
+            related_object=parent_obj,
+            object_data=serialize_object(self)
+        )
 
     def to_csv(self):
         return (
             self.address,
-            self.vrf.rd if self.vrf else None,
+            self.vrf.name if self.vrf else None,
             self.tenant.name if self.tenant else None,
             self.get_status_display(),
             self.get_role_display(),
@@ -633,6 +679,7 @@ class IPAddress(ChangeLoggedModel, CustomFieldModel):
             self.virtual_machine.name if self.virtual_machine else None,
             self.interface.name if self.interface else None,
             self.is_primary,
+            self.dns_name,
             self.description,
         )
 
@@ -937,7 +984,7 @@ class VLAN(ChangeLoggedModel, CustomFieldModel):
         object_id_field='obj_id'
     )
 
-    tags = TaggableManager()
+    tags = TaggableManager(through=TaggedItem)
 
     csv_headers = ['site', 'group_name', 'vid', 'name', 'tenant', 'status', 'role', 'description']
 
@@ -1039,7 +1086,7 @@ class Service(ChangeLoggedModel, CustomFieldModel):
         object_id_field='obj_id'
     )
 
-    tags = TaggableManager()
+    tags = TaggableManager(through=TaggedItem)
 
     csv_headers = ['device', 'virtual_machine', 'name', 'protocol', 'description']
 

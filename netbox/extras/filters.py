@@ -1,12 +1,11 @@
 import django_filters
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
-from taggit.models import Tag
 
 from dcim.models import DeviceRole, Platform, Region, Site
 from tenancy.models import Tenant, TenantGroup
 from .constants import CF_FILTER_DISABLED, CF_FILTER_EXACT, CF_TYPE_BOOLEAN, CF_TYPE_SELECT
-from .models import ConfigContext, CustomField, Graph, ExportTemplate, ObjectChange, TopologyMap
+from .models import ConfigContext, CustomField, Graph, ExportTemplate, ObjectChange, Tag, TopologyMap
 
 
 class CustomFieldFilter(django_filters.Filter):
@@ -82,7 +81,7 @@ class ExportTemplateFilter(django_filters.FilterSet):
 
     class Meta:
         model = ExportTemplate
-        fields = ['content_type', 'name']
+        fields = ['content_type', 'name', 'template_language']
 
 
 class TagFilter(django_filters.FilterSet):
@@ -208,6 +207,20 @@ class ConfigContextFilter(django_filters.FilterSet):
         )
 
 
+#
+# Filter for Local Config Context Data
+#
+
+class LocalConfigContextFilter(django_filters.FilterSet):
+    local_context_data = django_filters.BooleanFilter(
+        method='_local_context_data',
+        label='Has local config context data',
+    )
+
+    def _local_context_data(self, queryset, name, value):
+        return queryset.exclude(local_context_data__isnull=value)
+
+
 class ObjectChangeFilter(django_filters.FilterSet):
     q = django_filters.CharFilter(
         method='search',
@@ -217,7 +230,9 @@ class ObjectChangeFilter(django_filters.FilterSet):
 
     class Meta:
         model = ObjectChange
-        fields = ['user', 'user_name', 'request_id', 'action', 'changed_object_type', 'object_repr']
+        fields = [
+            'user', 'user_name', 'request_id', 'action', 'changed_object_type', 'changed_object_id', 'object_repr',
+        ]
 
     def search(self, queryset, name, value):
         if not value.strip():

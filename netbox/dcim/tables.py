@@ -6,8 +6,9 @@ from utilities.tables import BaseTable, BooleanColumn, ColorColumn, ToggleColumn
 from .models import (
     Cable, ConsolePort, ConsolePortTemplate, ConsoleServerPort, ConsoleServerPortTemplate, Device, DeviceLicense, DeviceBay,
     DeviceBayTemplate, DeviceRole, DeviceType, FrontPort, FrontPortTemplate, Interface, InterfaceTemplate,
-    InventoryItem, Manufacturer, Platform, PowerOutlet, PowerOutletTemplate, PowerPort, PowerPortTemplate, Rack,
-    RackGroup, RackReservation, RackRole, RearPort, RearPortTemplate, Region, Site, VirtualChassis,
+    InventoryItem, Manufacturer, Platform, PowerFeed, PowerOutlet, PowerOutletTemplate, PowerPanel, PowerPort,
+    PowerPortTemplate, Rack, RackGroup, RackReservation, RackRole, RearPort, RearPortTemplate, Region, Site,
+    VirtualChassis,
 )
 
 REGION_LINK = """
@@ -44,7 +45,7 @@ REGION_ACTIONS = """
     <i class="fa fa-history"></i>
 </a>
 {% if perms.dcim.change_region %}
-    <a href="{% url 'dcim:region_edit' pk=record.pk %}" class="btn btn-xs btn-warning"><i class="glyphicon glyphicon-pencil" aria-hidden="true"></i></a>
+    <a href="{% url 'dcim:region_edit' pk=record.pk %}?return_url={{ request.path }}" class="btn btn-xs btn-warning"><i class="glyphicon glyphicon-pencil" aria-hidden="true"></i></a>
 {% endif %}
 """
 
@@ -56,7 +57,7 @@ RACKGROUP_ACTIONS = """
     <i class="fa fa-eye"></i>
 </a>
 {% if perms.dcim.change_rackgroup %}
-    <a href="{% url 'dcim:rackgroup_edit' pk=record.pk %}" class="btn btn-xs btn-warning" title="Edit">
+    <a href="{% url 'dcim:rackgroup_edit' pk=record.pk %}?return_url={{ request.path }}" class="btn btn-xs btn-warning" title="Edit">
         <i class="glyphicon glyphicon-pencil"></i>
     </a>
 {% endif %}
@@ -67,13 +68,14 @@ RACKROLE_ACTIONS = """
     <i class="fa fa-history"></i>
 </a>
 {% if perms.dcim.change_rackrole %}
-    <a href="{% url 'dcim:rackrole_edit' pk=record.pk %}" class="btn btn-xs btn-warning"><i class="glyphicon glyphicon-pencil" aria-hidden="true"></i></a>
+    <a href="{% url 'dcim:rackrole_edit' pk=record.pk %}?return_url={{ request.path }}" class="btn btn-xs btn-warning"><i class="glyphicon glyphicon-pencil" aria-hidden="true"></i></a>
 {% endif %}
 """
 
 RACK_ROLE = """
 {% if record.role %}
-    <label class="label" style="background-color: #{{ record.role.color }}">{{ value }}</label>
+    {% load helpers %}
+    <label class="label" style="color: {{ record.role.color|fgcolor }}; background-color: #{{ record.role.color }}">{{ value }}</label>
 {% else %}
     &mdash;
 {% endif %}
@@ -88,7 +90,7 @@ RACKRESERVATION_ACTIONS = """
     <i class="fa fa-history"></i>
 </a>
 {% if perms.dcim.change_rackreservation %}
-    <a href="{% url 'dcim:rackreservation_edit' pk=record.pk %}" class="btn btn-xs btn-warning"><i class="glyphicon glyphicon-pencil" aria-hidden="true"></i></a>
+    <a href="{% url 'dcim:rackreservation_edit' pk=record.pk %}?return_url={{ request.path }}" class="btn btn-xs btn-warning"><i class="glyphicon glyphicon-pencil" aria-hidden="true"></i></a>
 {% endif %}
 """
 
@@ -97,7 +99,7 @@ MANUFACTURER_ACTIONS = """
     <i class="fa fa-history"></i>
 </a>
 {% if perms.dcim.change_manufacturer %}
-    <a href="{% url 'dcim:manufacturer_edit' slug=record.slug %}" class="btn btn-xs btn-warning"><i class="glyphicon glyphicon-pencil" aria-hidden="true"></i></a>
+    <a href="{% url 'dcim:manufacturer_edit' slug=record.slug %}?return_url={{ request.path }}" class="btn btn-xs btn-warning"><i class="glyphicon glyphicon-pencil" aria-hidden="true"></i></a>
 {% endif %}
 """
 
@@ -106,7 +108,7 @@ DEVICEROLE_ACTIONS = """
     <i class="fa fa-history"></i>
 </a>
 {% if perms.dcim.change_devicerole %}
-    <a href="{% url 'dcim:devicerole_edit' slug=record.slug %}" class="btn btn-xs btn-warning"><i class="glyphicon glyphicon-pencil" aria-hidden="true"></i></a>
+    <a href="{% url 'dcim:devicerole_edit' slug=record.slug %}?return_url={{ request.path }}" class="btn btn-xs btn-warning"><i class="glyphicon glyphicon-pencil" aria-hidden="true"></i></a>
 {% endif %}
 """
 
@@ -131,16 +133,21 @@ PLATFORM_ACTIONS = """
     <i class="fa fa-history"></i>
 </a>
 {% if perms.dcim.change_platform %}
-    <a href="{% url 'dcim:platform_edit' slug=record.slug %}" class="btn btn-xs btn-warning"><i class="glyphicon glyphicon-pencil" aria-hidden="true"></i></a>
+    <a href="{% url 'dcim:platform_edit' slug=record.slug %}?return_url={{ request.path }}" class="btn btn-xs btn-warning"><i class="glyphicon glyphicon-pencil" aria-hidden="true"></i></a>
 {% endif %}
 """
 
 DEVICE_ROLE = """
-<label class="label" style="background-color: #{{ record.device_role.color }}">{{ value }}</label>
+{% load helpers %}
+<label class="label" style="color: {{ record.device_role.color|fgcolor }}; background-color: #{{ record.device_role.color }}">{{ value }}</label>
 """
 
 STATUS_LABEL = """
 <span class="label label-{{ record.get_status_class }}">{{ record.get_status_display }}</span>
+"""
+
+TYPE_LABEL = """
+<span class="label label-{{ record.get_type_class }}">{{ record.get_type_display }}</span>
 """
 
 DEVICE_PRIMARY_IP = """
@@ -167,7 +174,7 @@ VIRTUALCHASSIS_ACTIONS = """
     <i class="fa fa-history"></i>
 </a>
 {% if perms.dcim.change_virtualchassis %}
-    <a href="{% url 'dcim:virtualchassis_edit' pk=record.pk %}" class="btn btn-xs btn-warning"><i class="glyphicon glyphicon-pencil" aria-hidden="true"></i></a>
+    <a href="{% url 'dcim:virtualchassis_edit' pk=record.pk %}?return_url={{ request.path }}" class="btn btn-xs btn-warning"><i class="glyphicon glyphicon-pencil" aria-hidden="true"></i></a>
 {% endif %}
 """
 
@@ -183,6 +190,10 @@ CABLE_LENGTH = """
 {% if record.length %}{{ record.length }} {{ record.get_length_unit_display }}{% else %}&mdash;{% endif %}
 """
 
+POWERPANEL_POWERFEED_COUNT = """
+<a href="{% url 'dcim:powerfeed_list' %}?power_panel_id={{ record.pk }}">{{ value }}</a>
+"""
+
 
 #
 # Regions
@@ -195,7 +206,7 @@ class RegionTable(BaseTable):
     slug = tables.Column(verbose_name='Slug')
     actions = tables.TemplateColumn(
         template_code=REGION_ACTIONS,
-        attrs={'td': {'class': 'text-right'}},
+        attrs={'td': {'class': 'text-right noprint'}},
         verbose_name=''
     )
 
@@ -238,7 +249,7 @@ class RackGroupTable(BaseTable):
     slug = tables.Column()
     actions = tables.TemplateColumn(
         template_code=RACKGROUP_ACTIONS,
-        attrs={'td': {'class': 'text-right'}},
+        attrs={'td': {'class': 'text-right noprint'}},
         verbose_name=''
     )
 
@@ -257,7 +268,7 @@ class RackRoleTable(BaseTable):
     rack_count = tables.Column(verbose_name='Racks')
     color = tables.TemplateColumn(COLOR_LABEL, verbose_name='Color')
     slug = tables.Column(verbose_name='Slug')
-    actions = tables.TemplateColumn(template_code=RACKROLE_ACTIONS, attrs={'td': {'class': 'text-right'}},
+    actions = tables.TemplateColumn(template_code=RACKROLE_ACTIONS, attrs={'td': {'class': 'text-right noprint'}},
                                     verbose_name='')
 
     class Meta(BaseTable.Meta):
@@ -289,12 +300,21 @@ class RackDetailTable(RackTable):
         template_code=RACK_DEVICE_COUNT,
         verbose_name='Devices'
     )
-    get_utilization = tables.TemplateColumn(UTILIZATION_GRAPH, orderable=False, verbose_name='Utilization')
+    get_utilization = tables.TemplateColumn(
+        template_code=UTILIZATION_GRAPH,
+        orderable=False,
+        verbose_name='Space'
+    )
+    get_power_utilization = tables.TemplateColumn(
+        template_code=UTILIZATION_GRAPH,
+        orderable=False,
+        verbose_name='Power'
+    )
 
     class Meta(RackTable.Meta):
         fields = (
             'pk', 'name', 'site', 'group', 'status', 'facility_id', 'tenant', 'role', 'u_height', 'device_count',
-            'get_utilization',
+            'get_utilization', 'get_power_utilization',
         )
 
 
@@ -304,16 +324,21 @@ class RackDetailTable(RackTable):
 
 class RackReservationTable(BaseTable):
     pk = ToggleColumn()
-    tenant = tables.LinkColumn('tenancy:tenant', args=[Accessor('tenant.slug')])
+    site = tables.LinkColumn(
+        viewname='dcim:site',
+        accessor=Accessor('rack.site'),
+        args=[Accessor('rack.site.slug')],
+    )
+    tenant = tables.TemplateColumn(template_code=COL_TENANT)
     rack = tables.LinkColumn('dcim:rack', args=[Accessor('rack.pk')])
     unit_list = tables.Column(orderable=False, verbose_name='Units')
     actions = tables.TemplateColumn(
-        template_code=RACKRESERVATION_ACTIONS, attrs={'td': {'class': 'text-right'}}, verbose_name=''
+        template_code=RACKRESERVATION_ACTIONS, attrs={'td': {'class': 'text-right noprint'}}, verbose_name=''
     )
 
     class Meta(BaseTable.Meta):
         model = RackReservation
-        fields = ('pk', 'rack', 'unit_list', 'user', 'created', 'tenant', 'description', 'actions')
+        fields = ('pk', 'site', 'rack', 'unit_list', 'user', 'created', 'tenant', 'description', 'actions')
 
 
 #
@@ -322,16 +347,26 @@ class RackReservationTable(BaseTable):
 
 class ManufacturerTable(BaseTable):
     pk = ToggleColumn()
-    name = tables.LinkColumn(verbose_name='Name')
-    devicetype_count = tables.Column(verbose_name='Device Types')
-    platform_count = tables.Column(verbose_name='Platforms')
-    slug = tables.Column(verbose_name='Slug')
-    actions = tables.TemplateColumn(template_code=MANUFACTURER_ACTIONS, attrs={'td': {'class': 'text-right'}},
-                                    verbose_name='')
+    name = tables.LinkColumn()
+    devicetype_count = tables.Column(
+        verbose_name='Device Types'
+    )
+    inventoryitem_count = tables.Column(
+        verbose_name='Inventory Items'
+    )
+    platform_count = tables.Column(
+        verbose_name='Platforms'
+    )
+    slug = tables.Column()
+    actions = tables.TemplateColumn(
+        template_code=MANUFACTURER_ACTIONS,
+        attrs={'td': {'class': 'text-right noprint'}},
+        verbose_name=''
+    )
 
     class Meta(BaseTable.Meta):
         model = Manufacturer
-        fields = ('pk', 'name', 'devicetype_count', 'platform_count', 'slug', 'actions')
+        fields = ('pk', 'name', 'devicetype_count', 'inventoryitem_count', 'platform_count', 'slug', 'actions')
 
 
 #
@@ -390,7 +425,7 @@ class PowerPortTemplateTable(BaseTable):
 
     class Meta(BaseTable.Meta):
         model = PowerPortTemplate
-        fields = ('pk', 'name')
+        fields = ('pk', 'name', 'maximum_draw', 'allocated_draw')
         empty_text = "None"
 
 
@@ -399,7 +434,7 @@ class PowerOutletTemplateTable(BaseTable):
 
     class Meta(BaseTable.Meta):
         model = PowerOutletTemplate
-        fields = ('pk', 'name')
+        fields = ('pk', 'name', 'power_port', 'feed_leg')
         empty_text = "None"
 
 
@@ -409,7 +444,7 @@ class InterfaceTemplateTable(BaseTable):
 
     class Meta(BaseTable.Meta):
         model = InterfaceTemplate
-        fields = ('pk', 'name', 'mgmt_only', 'form_factor')
+        fields = ('pk', 'name', 'mgmt_only', 'type')
         empty_text = "None"
 
 
@@ -462,7 +497,7 @@ class DeviceRoleTable(BaseTable):
     slug = tables.Column(verbose_name='Slug')
     actions = tables.TemplateColumn(
         template_code=DEVICEROLE_ACTIONS,
-        attrs={'td': {'class': 'text-right'}},
+        attrs={'td': {'class': 'text-right noprint'}},
         verbose_name=''
     )
 
@@ -491,7 +526,7 @@ class PlatformTable(BaseTable):
     )
     actions = tables.TemplateColumn(
         template_code=PLATFORM_ACTIONS,
-        attrs={'td': {'class': 'text-right'}},
+        attrs={'td': {'class': 'text-right noprint'}},
         verbose_name=''
     )
 
@@ -517,7 +552,7 @@ class DeviceTable(BaseTable):
     device_role = tables.TemplateColumn(DEVICE_ROLE, verbose_name='Role')
     device_type = tables.LinkColumn(
         'dcim:devicetype', args=[Accessor('device_type.pk')], verbose_name='Type',
-        text=lambda record: record.device_type.full_name
+        text=lambda record: record.device_type.display_name
     )
 
     class Meta(BaseTable.Meta):
@@ -574,7 +609,7 @@ class ConsoleServerPortTable(BaseTable):
 
     class Meta(BaseTable.Meta):
         model = ConsoleServerPort
-        fields = ('name',)
+        fields = ('name', 'description')
 
 
 class PowerPortTable(BaseTable):
@@ -588,14 +623,14 @@ class PowerOutletTable(BaseTable):
 
     class Meta(BaseTable.Meta):
         model = PowerOutlet
-        fields = ('name',)
+        fields = ('name', 'description')
 
 
 class InterfaceTable(BaseTable):
 
     class Meta(BaseTable.Meta):
         model = Interface
-        fields = ('name', 'form_factor', 'lag', 'enabled', 'mgmt_only', 'description')
+        fields = ('name', 'type', 'lag', 'enabled', 'mgmt_only', 'description')
 
 
 class InterfacePKTable(BaseTable):
@@ -667,6 +702,9 @@ class CableTable(BaseTable):
         orderable=False,
         verbose_name=''
     )
+    status = tables.TemplateColumn(
+        template_code=STATUS_LABEL
+    )
     length = tables.TemplateColumn(
         template_code=CABLE_LENGTH,
         order_by='_abs_length'
@@ -713,9 +751,11 @@ class PowerConnectionTable(BaseTable):
         viewname='dcim:device',
         accessor=Accessor('connected_endpoint.device'),
         args=[Accessor('connected_endpoint.device.pk')],
+        order_by='_connected_poweroutlet__device',
         verbose_name='PDU'
     )
-    connected_endpoint = tables.Column(
+    outlet = tables.Column(
+        accessor=Accessor('_connected_poweroutlet'),
         verbose_name='Outlet'
     )
     device = tables.LinkColumn(
@@ -728,7 +768,7 @@ class PowerConnectionTable(BaseTable):
 
     class Meta(BaseTable.Meta):
         model = PowerPort
-        fields = ('pdu', 'connected_endpoint', 'device', 'name', 'connection_status')
+        fields = ('pdu', 'outlet', 'device', 'name', 'connection_status')
 
 
 class InterfaceConnectionTable(BaseTable):
@@ -750,18 +790,18 @@ class InterfaceConnectionTable(BaseTable):
     )
     device_b = tables.LinkColumn(
         viewname='dcim:device',
-        accessor=Accessor('connected_endpoint.device'),
-        args=[Accessor('connected_endpoint.device.pk')],
+        accessor=Accessor('_connected_interface.device'),
+        args=[Accessor('_connected_interface.device.pk')],
         verbose_name='Device B'
     )
     interface_b = tables.LinkColumn(
         viewname='dcim:interface',
-        accessor=Accessor('connected_endpoint.name'),
-        args=[Accessor('connected_endpoint.pk')],
+        accessor=Accessor('_connected_interface'),
+        args=[Accessor('_connected_interface.pk')],
         verbose_name='Interface B'
     )
     description_b = tables.Column(
-        accessor=Accessor('connected_endpoint.description'),
+        accessor=Accessor('_connected_interface.description'),
         verbose_name='Description'
     )
 
@@ -796,10 +836,58 @@ class VirtualChassisTable(BaseTable):
     member_count = tables.Column(verbose_name='Members')
     actions = tables.TemplateColumn(
         template_code=VIRTUALCHASSIS_ACTIONS,
-        attrs={'td': {'class': 'text-right'}},
+        attrs={'td': {'class': 'text-right noprint'}},
         verbose_name=''
     )
 
     class Meta(BaseTable.Meta):
         model = VirtualChassis
         fields = ('pk', 'master', 'domain', 'member_count', 'actions')
+
+
+#
+# Power panels
+#
+
+class PowerPanelTable(BaseTable):
+    pk = ToggleColumn()
+    name = tables.LinkColumn()
+    site = tables.LinkColumn(
+        viewname='dcim:site',
+        args=[Accessor('site.slug')]
+    )
+    powerfeed_count = tables.TemplateColumn(
+        template_code=POWERPANEL_POWERFEED_COUNT,
+        verbose_name='Feeds'
+    )
+
+    class Meta(BaseTable.Meta):
+        model = PowerPanel
+        fields = ('pk', 'name', 'site', 'rack_group', 'powerfeed_count')
+
+
+#
+# Power feeds
+#
+
+class PowerFeedTable(BaseTable):
+    pk = ToggleColumn()
+    name = tables.LinkColumn()
+    power_panel = tables.LinkColumn(
+        viewname='dcim:powerpanel',
+        args=[Accessor('power_panel.pk')],
+    )
+    rack = tables.LinkColumn(
+        viewname='dcim:rack',
+        args=[Accessor('rack.pk')]
+    )
+    status = tables.TemplateColumn(
+        template_code=STATUS_LABEL
+    )
+    type = tables.TemplateColumn(
+        template_code=TYPE_LABEL
+    )
+
+    class Meta(BaseTable.Meta):
+        model = PowerFeed
+        fields = ('pk', 'name', 'power_panel', 'rack', 'status', 'type', 'supply', 'voltage', 'amperage', 'phase')

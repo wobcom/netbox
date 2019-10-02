@@ -16,11 +16,11 @@ For real-time discussion, you can join the #netbox Slack channel on [NetworkToCo
 
 ## Reporting Bugs
 
-* First, ensure that you've installed the [latest stable version](https://github.com/digitalocean/netbox/releases)
+* First, ensure that you've installed the [latest stable version](https://github.com/netbox-community/netbox/releases)
 of NetBox. If you're running an older version, it's possible that the bug has
 already been fixed.
 
-* Next, check the GitHub [issues list](https://github.com/digitalocean/netbox/issues)
+* Next, check the GitHub [issues list](https://github.com/netbox-community/netbox/issues)
 to see if the bug you've found has already been reported. If you think you may
 be experiencing a reported issue that hasn't already been resolved, please
 click "add a reaction" in the top right corner of the issue and add a thumbs
@@ -51,7 +51,7 @@ your issue.
 
 ## Feature Requests
 
-* First, check the GitHub [issues list](https://github.com/digitalocean/netbox/issues)
+* First, check the GitHub [issues list](https://github.com/netbox-community/netbox/issues)
 to see if the feature you're requesting is already listed. (Be sure to search
 closed issues as well, since some feature requests have been rejected.) If the
 feature you'd like to see has already been requested and is open, click "add a
@@ -117,3 +117,25 @@ Only comment on an issue if you are sharing a relevant idea or constructive
 feedback. **Do not** comment on an issue just to show your support (give the
 top post a :+1: instead) or ask for an ETA. These comments will be deleted to
 reduce noise in the discussion.
+
+## Maintainer Guidance
+
+* Maintainers are expected to contribute at least four hours per week to the
+  project on average. This can be employer-sponsored or individual time, with
+  the understanding that all contributions are submitted under the Apache 2.0
+  license and that your employer may not make claim to any contributions.
+  Contributions include code work, issue management, and community support. All
+  development must be in accordance with our [development guidance](https://netbox.readthedocs.io/en/stable/development/).
+
+* Maintainers are expected to attend (where feasible) our biweekly ~30-minute
+  sync to review agenda items. This meeting provides opportunity to present and
+  discuss pressing topics. Meetings are held as virtual audio/video conferences.
+
+* Official channels for communication include:
+
+    * GitHub issues/pull requests
+    * The [netbox-discuss](https://groups.google.com/forum/#!forum/netbox-discuss) mailing list
+    * The **#netbox** channel on [NetworkToCode Slack](https://networktocode.slack.com/)
+
+* Maintainers with no substantial recorded activity in a 60-day period will be
+  removed from the project.
