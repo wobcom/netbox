@@ -9,15 +9,9 @@ RUN set -ex \
 
 # Add credentials on build
 
-ARG SSH_PRIVATE_KEY
-
 RUN mkdir /root/.ssh/
 
 # remember to use a temporary variable for this
-
-# This private key shouldn't be saved in env files
-
-RUN echo "${SSH_PRIVATE_KEY}" >> /root/.ssh/id_rsa && chmod 600 /root/.ssh/id_rsa
 
 # make sure your domain is accepted
 
