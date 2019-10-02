@@ -1,26 +1,24 @@
-from __future__ import unicode_literals
-
 import netaddr
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericRelation
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from django.db.models import Q
+from django.db.models import F, Q
 from django.db.models.expressions import RawSQL
 from django.urls import reverse
-from django.utils.encoding import python_2_unicode_compatible
 from taggit.managers import TaggableManager
 
 from dcim.models import Interface
-from extras.models import CustomFieldModel
+from extras.models import CustomFieldModel, ObjectChange, TaggedItem
 from utilities.models import ChangeLoggedModel
+from utilities.utils import serialize_object
 from .constants import *
 from .fields import IPNetworkField, IPAddressField
 from .querysets import PrefixQuerySet
+from .validators import DNSValidator
 
 
-@python_2_unicode_compatible
 class VRF(ChangeLoggedModel, CustomFieldModel):
     """
     A virtual routing and forwarding (VRF) table represents a discrete layer three forwarding domain (e.g. a routing
@@ -33,6 +31,8 @@ class VRF(ChangeLoggedModel, CustomFieldModel):
     rd = models.CharField(
         max_length=21,
         unique=True,
+        blank=True,
+        null=True,
         verbose_name='Route distinguisher'
     )
     tenant = models.ForeignKey(
@@ -57,7 +57,7 @@ class VRF(ChangeLoggedModel, CustomFieldModel):
         object_id_field='obj_id'
     )
 
-    tags = TaggableManager()
+    tags = TaggableManager(through=TaggedItem)
 
     csv_headers = ['name', 'rd', 'tenant', 'enforce_unique', 'description']
 
@@ -67,7 +67,7 @@ class VRF(ChangeLoggedModel, CustomFieldModel):
         verbose_name_plural = 'VRFs'
 
     def __str__(self):
-        return self.display_name or super(VRF, self).__str__()
+        return self.display_name or super().__str__()
 
     def get_absolute_url(self):
         return reverse('ipam:vrf', args=[self.pk])
@@ -83,12 +83,11 @@ class VRF(ChangeLoggedModel, CustomFieldModel):
 
     @property
     def display_name(self):
-        if self.name and self.rd:
+        if self.rd:
             return "{} ({})".format(self.name, self.rd)
-        return None
+        return self.name
 
 
-@python_2_unicode_compatible
 class RIR(ChangeLoggedModel):
     """
     A Regional Internet Registry (RIR) is responsible for the allocation of a large portion of the global IP address
@@ -128,7 +127,6 @@ class RIR(ChangeLoggedModel):
         )
 
 
-@python_2_unicode_compatible
 class Aggregate(ChangeLoggedModel, CustomFieldModel):
     """
     An aggregate exists at the root level of the IP address space hierarchy in NetBox. Aggregates are used to organize
@@ -158,7 +156,7 @@ class Aggregate(ChangeLoggedModel, CustomFieldModel):
         object_id_field='obj_id'
     )
 
-    tags = TaggableManager()
+    tags = TaggableManager(through=TaggedItem)
 
     csv_headers = ['prefix', 'rir', 'date_added', 'description']
 
@@ -204,7 +202,7 @@ class Aggregate(ChangeLoggedModel, CustomFieldModel):
         if self.prefix:
             # Infer address family from IPNetwork object
             self.family = self.prefix.version
-        super(Aggregate, self).save(*args, **kwargs)
+        super().save(*args, **kwargs)
 
     def to_csv(self):
         return (
@@ -223,7 +221,6 @@ class Aggregate(ChangeLoggedModel, CustomFieldModel):
         return int(float(child_prefixes.size) / self.prefix.size * 100)
 
 
-@python_2_unicode_compatible
 class Role(ChangeLoggedModel):
     """
     A Role represents the functional role of a Prefix or VLAN; for example, "Customer," "Infrastructure," or
@@ -256,7 +253,6 @@ class Role(ChangeLoggedModel):
         )
 
 
-@python_2_unicode_compatible
 class Prefix(ChangeLoggedModel, CustomFieldModel):
     """
     A Prefix represents an IPv4 or IPv6 network, including mask length. Prefixes can optionally be assigned to Sites and
@@ -330,14 +326,14 @@ class Prefix(ChangeLoggedModel, CustomFieldModel):
     )
 
     objects = PrefixQuerySet.as_manager()
-    tags = TaggableManager()
+    tags = TaggableManager(through=TaggedItem)
 
     csv_headers = [
         'prefix', 'vrf', 'tenant', 'site', 'vlan_group', 'vlan_vid', 'status', 'role', 'is_pool', 'description',
     ]
 
     class Meta:
-        ordering = ['vrf', 'family', 'prefix']
+        ordering = [F('vrf').asc(nulls_first=True), 'family', 'prefix']
         verbose_name_plural = 'prefixes'
 
     def __str__(self):
@@ -372,17 +368,21 @@ class Prefix(ChangeLoggedModel, CustomFieldModel):
                     })
 
     def save(self, *args, **kwargs):
-        if self.prefix:
+
+        if isinstance(self.prefix, netaddr.IPNetwork):
+
             # Clear host bits from prefix
             self.prefix = self.prefix.cidr
-            # Infer address family from IPNetwork object
+
+            # Record address family
             self.family = self.prefix.version
-        super(Prefix, self).save(*args, **kwargs)
+
+        super().save(*args, **kwargs)
 
     def to_csv(self):
         return (
             self.prefix,
-            self.vrf.rd if self.vrf else None,
+            self.vrf.name if self.vrf else None,
             self.tenant.name if self.tenant else None,
             self.site.name if self.site else None,
             self.vlan.group.name if self.vlan and self.vlan.group else None,
@@ -392,6 +392,15 @@ class Prefix(ChangeLoggedModel, CustomFieldModel):
             self.is_pool,
             self.description,
         )
+
+    def _set_prefix_length(self, value):
+        """
+        Expose the IPNetwork object's prefixlen attribute on the parent model so that it can be manipulated directly,
+        e.g. for bulk editing.
+        """
+        if self.prefix is not None:
+            self.prefix.prefixlen = value
+    prefix_length = property(fset=_set_prefix_length)
 
     def get_status_class(self):
         return STATUS_CHOICE_CLASSES[self.status]
@@ -437,12 +446,23 @@ class Prefix(ChangeLoggedModel, CustomFieldModel):
         child_ips = netaddr.IPSet([ip.address.ip for ip in self.get_child_ips()])
         available_ips = prefix - child_ips
 
-        # Remove unusable IPs from non-pool prefixes
-        if not self.is_pool:
-            available_ips -= netaddr.IPSet([
-                netaddr.IPAddress(self.prefix.first),
-                netaddr.IPAddress(self.prefix.last),
-            ])
+        # All IP addresses within a pool are considered usable
+        if self.is_pool:
+            return available_ips
+
+        # All IP addresses within a point-to-point prefix (IPv4 /31 or IPv6 /127) are considered usable
+        if (
+            self.family == 4 and self.prefix.prefixlen == 31  # RFC 3021
+        ) or (
+            self.family == 6 and self.prefix.prefixlen == 127  # RFC 6164
+        ):
+            return available_ips
+
+        # Omit first and last IP address from the available set
+        available_ips -= netaddr.IPSet([
+            netaddr.IPAddress(self.prefix.first),
+            netaddr.IPAddress(self.prefix.last),
+        ])
 
         return available_ips
 
@@ -492,11 +512,10 @@ class IPAddressManager(models.Manager):
         then re-cast this value to INET() so that records will be ordered properly. We are essentially re-casting each
         IP address as a /32 or /128.
         """
-        qs = super(IPAddressManager, self).get_queryset()
+        qs = super().get_queryset()
         return qs.annotate(host=RawSQL('INET(HOST(ipam_ipaddress.address))', [])).order_by('family', 'host')
 
 
-@python_2_unicode_compatible
 class IPAddress(ChangeLoggedModel, CustomFieldModel):
     """
     An IPAddress represents an individual IPv4 or IPv6 address and its mask. The mask length should match what is
@@ -559,6 +578,13 @@ class IPAddress(ChangeLoggedModel, CustomFieldModel):
         verbose_name='NAT (Inside)',
         help_text='The IP for which this address is the "outside" IP'
     )
+    dns_name = models.CharField(
+        max_length=255,
+        blank=True,
+        validators=[DNSValidator],
+        verbose_name='DNS Name',
+        help_text='Hostname or FQDN (not case-sensitive)'
+    )
     description = models.CharField(
         max_length=100,
         blank=True
@@ -570,11 +596,11 @@ class IPAddress(ChangeLoggedModel, CustomFieldModel):
     )
 
     objects = IPAddressManager()
-    tags = TaggableManager()
+    tags = TaggableManager(through=TaggedItem)
 
     csv_headers = [
         'address', 'vrf', 'tenant', 'status', 'role', 'device', 'virtual_machine', 'interface_name', 'is_primary',
-        'description',
+        'dns_name', 'description',
     ]
 
     class Meta:
@@ -611,10 +637,30 @@ class IPAddress(ChangeLoggedModel, CustomFieldModel):
                     })
 
     def save(self, *args, **kwargs):
-        if self.address:
-            # Infer address family from IPAddress object
+
+        # Record address family
+        if isinstance(self.address, netaddr.IPNetwork):
             self.family = self.address.version
-        super(IPAddress, self).save(*args, **kwargs)
+
+        # Force dns_name to lowercase
+        self.dns_name = self.dns_name.lower()
+
+        super().save(*args, **kwargs)
+
+    def to_objectchange(self, action):
+        # Annotate the assigned Interface (if any)
+        try:
+            parent_obj = self.interface
+        except ObjectDoesNotExist:
+            parent_obj = None
+
+        return ObjectChange(
+            changed_object=self,
+            object_repr=str(self),
+            action=action,
+            related_object=parent_obj,
+            object_data=serialize_object(self)
+        )
 
     def to_csv(self):
 
@@ -628,7 +674,7 @@ class IPAddress(ChangeLoggedModel, CustomFieldModel):
 
         return (
             self.address,
-            self.vrf.rd if self.vrf else None,
+            self.vrf.name if self.vrf else None,
             self.tenant.name if self.tenant else None,
             self.get_status_display(),
             self.get_role_display(),
@@ -636,8 +682,18 @@ class IPAddress(ChangeLoggedModel, CustomFieldModel):
             self.virtual_machine.name if self.virtual_machine else None,
             self.interface.name if self.interface else None,
             is_primary,
+            self.dns_name,
             self.description,
         )
+
+    def _set_mask_length(self, value):
+        """
+        Expose the IPNetwork object's prefixlen attribute on the parent model so that it can be manipulated directly,
+        e.g. for bulk editing.
+        """
+        if self.address is not None:
+            self.address.prefixlen = value
+    mask_length = property(fset=_set_mask_length)
 
     @property
     def device(self):
@@ -658,7 +714,6 @@ class IPAddress(ChangeLoggedModel, CustomFieldModel):
         return ROLE_CHOICE_CLASSES[self.role]
 
 
-@python_2_unicode_compatible
 class VLANGroup(ChangeLoggedModel):
     """
     A VLAN group is an arbitrary collection of VLANs within which VLAN IDs and names must be unique.
@@ -710,7 +765,6 @@ class VLANGroup(ChangeLoggedModel):
         return None
 
 
-@python_2_unicode_compatible
 class VLAN(ChangeLoggedModel, CustomFieldModel):
     """
     A VLAN is a distinct layer two forwarding domain identified by a 12-bit integer (1-4094). Each VLAN must be assigned
@@ -770,7 +824,7 @@ class VLAN(ChangeLoggedModel, CustomFieldModel):
         object_id_field='obj_id'
     )
 
-    tags = TaggableManager()
+    tags = TaggableManager(through=TaggedItem)
 
     csv_headers = ['site', 'group_name', 'vid', 'name', 'tenant', 'status', 'role', 'description']
 
@@ -784,7 +838,7 @@ class VLAN(ChangeLoggedModel, CustomFieldModel):
         verbose_name_plural = 'VLANs'
 
     def __str__(self):
-        return self.display_name or super(VLAN, self).__str__()
+        return self.display_name or super().__str__()
 
     def get_absolute_url(self):
         return reverse('ipam:vlan', args=[self.pk])
@@ -823,10 +877,9 @@ class VLAN(ChangeLoggedModel, CustomFieldModel):
         return Interface.objects.filter(
             Q(untagged_vlan_id=self.pk) |
             Q(tagged_vlans=self.pk)
-        )
+        ).distinct()
 
 
-@python_2_unicode_compatible
 class Service(ChangeLoggedModel, CustomFieldModel):
     """
     A Service represents a layer-four service (e.g. HTTP or SSH) running on a Device or VirtualMachine. A Service may
@@ -873,7 +926,7 @@ class Service(ChangeLoggedModel, CustomFieldModel):
         object_id_field='obj_id'
     )
 
-    tags = TaggableManager()
+    tags = TaggableManager(through=TaggedItem)
 
     csv_headers = ['device', 'virtual_machine', 'name', 'protocol', 'description']
 

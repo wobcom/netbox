@@ -1,13 +1,10 @@
-from __future__ import unicode_literals
-
 from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from rest_framework import status
-from taggit.models import Tag
 
 from dcim.models import Device, DeviceRole, DeviceType, Manufacturer, Platform, Region, Site
 from extras.constants import GRAPH_TYPE_SITE
-from extras.models import ConfigContext, Graph, ExportTemplate
+from extras.models import ConfigContext, Graph, ExportTemplate, Tag
 from tenancy.models import Tenant, TenantGroup
 from utilities.testing import APITestCase
 
@@ -16,7 +13,7 @@ class GraphTest(APITestCase):
 
     def setUp(self):
 
-        super(GraphTest, self).setUp()
+        super().setUp()
 
         self.graph1 = Graph.objects.create(
             type=GRAPH_TYPE_SITE, name='Test Graph 1', source='http://example.com/graphs.py?site={{ obj.name }}&foo=1'
@@ -120,7 +117,7 @@ class ExportTemplateTest(APITestCase):
 
     def setUp(self):
 
-        super(ExportTemplateTest, self).setUp()
+        super().setUp()
 
         self.content_type = ContentType.objects.get_for_model(Device)
         self.exporttemplate1 = ExportTemplate.objects.create(
@@ -227,7 +224,7 @@ class TagTest(APITestCase):
 
     def setUp(self):
 
-        super(TagTest, self).setUp()
+        super().setUp()
 
         self.tag1 = Tag.objects.create(name='Test Tag 1', slug='test-tag-1')
         self.tag2 = Tag.objects.create(name='Test Tag 2', slug='test-tag-2')
@@ -318,7 +315,7 @@ class ConfigContextTest(APITestCase):
 
     def setUp(self):
 
-        super(ConfigContextTest, self).setUp()
+        super().setUp()
 
         self.configcontext1 = ConfigContext.objects.create(
             name='Test Config Context 1',

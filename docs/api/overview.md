@@ -1,5 +1,3 @@
-NetBox v2.0 and later includes a full-featured REST API that allows its data model to be read and manipulated externally.
-
 # What is a REST API?
 
 REST stands for [representational state transfer](https://en.wikipedia.org/wiki/Representational_state_transfer). It's a particular type of API which employs HTTP to create, retrieve, update, and delete objects from a database. (This set of operations is commonly referred to as CRUD.) Each type of operation is associated with a particular HTTP verb:
@@ -33,6 +31,10 @@ $ curl -s http://localhost:8000/api/ipam/ip-addresses/2954/ | jq '.'
 ```
 
 Each attribute of the NetBox object is expressed as a field in the dictionary. Fields may include their own nested objects, as in the case of the `status` field above. Every object includes a primary key named `id` which uniquely identifies it in the database.
+
+# Interactive Documentation
+
+Comprehensive, interactive documentation of all API endpoints is available on a running NetBox instance at `/api/docs/`. This interface provides a convenient sandbox for researching and experimenting with NetBox's various API endpoints and different request types.
 
 # URL Hierarchy
 
@@ -104,23 +106,82 @@ The base serializer is used to represent the default view of a model. This inclu
 }
 ```
 
-Related objects (e.g. `ForeignKey` fields) are represented using a nested serializer. A nested serializer provides a minimal representation of an object, including only its URL and enough information to construct its name. When performing write api actions (`POST`, `PUT`, and `PATCH`), any `ForeignKey` relationships do not use the nested serializer, instead you will pass just the integer ID of the related model.  
+## Related Objects
 
-When a base serializer includes one or more nested serializers, the hierarchical structure precludes it from being used for write operations. Thus, a flat representation of an object may be provided using a writable serializer. This serializer includes only raw database values and is not typically used for retrieval, except as part of the response to the creation or updating of an object.
+Related objects (e.g. `ForeignKey` fields) are represented using a nested serializer. A nested serializer provides a minimal representation of an object, including only its URL and enough information to display the object to a user. When performing write API actions (`POST`, `PUT`, and `PATCH`), related objects may be specified by either numeric ID (primary key), or by a set of attributes sufficiently unique to return the desired object.
+
+For example, when creating a new device, its rack can be specified by NetBox ID (PK):
 
 ```
 {
-    "id": 1201,
-    "site": 7,
-    "group": 4,
-    "vid": 102,
-    "name": "Users-Floor2",
-    "tenant": null,
-    "status": 1,
-    "role": 9,
-    "description": ""
+    "name": "MyNewDevice",
+    "rack": 123,
+    ...
 }
 ```
+
+Or by a set of nested attributes used to identify the rack:
+
+```
+{
+    "name": "MyNewDevice",
+    "rack": {
+        "site": {
+            "name": "Equinix DC6"
+        },
+        "name": "R204"
+    },
+    ...
+}
+```
+
+Note that if the provided parameters do not return exactly one object, a validation error is raised.
+
+## Brief Format
+
+Most API endpoints support an optional "brief" format, which returns only a minimal representation of each object in the response. This is useful when you need only a list of the objects themselves without any related data, such as when populating a drop-down list in a form.
+
+For example, the default (complete) format of an IP address looks like this:
+
+```
+GET /api/ipam/prefixes/13980/
+
+{
+    "id": 13980,
+    "family": 4,
+    "prefix": "192.0.2.0/24",
+    "site": null,
+    "vrf": null,
+    "tenant": null,
+    "vlan": null,
+    "status": {
+        "value": 1,
+        "label": "Active"
+    },
+    "role": null,
+    "is_pool": false,
+    "description": "",
+    "tags": [],
+    "custom_fields": {},
+    "created": "2018-12-11",
+    "last_updated": "2018-12-11T16:27:55.073174-05:00"
+}
+```
+
+The brief format is much more terse, but includes a link to the object's full representation:
+
+```
+GET /api/ipam/prefixes/13980/?brief=1
+
+{
+    "id": 13980,
+    "url": "https://netbox/api/ipam/prefixes/13980/",
+    "family": 4,
+    "prefix": "192.0.2.0/24"
+}
+```
+
+The brief format is supported for both lists and individual objects.
 
 ## Static Choice Fields
 
@@ -215,11 +276,30 @@ A list of objects retrieved via the API can be filtered by passing one or more q
 GET /api/ipam/prefixes/?status=1
 ```
 
-The same filter can be incldued multiple times. These will effect a logical OR and return objects matching any of the given values. For example, the following will return all active and reserved prefixes:
+The choices available for fixed choice fields such as `status` are exposed in the API under a special `_choices` endpoint for each NetBox app. For example, the available choices for `Prefix.status` are listed at `/api/ipam/_choices/` under the key `prefix:status`:
 
 ```
-GET /api/ipam/prefixes/?status=1&status=2
+"prefix:status": [
+    {
+        "label": "Container",
+        "value": 0
+    },
+    {
+        "label": "Active",
+        "value": 1
+    },
+    {
+        "label": "Reserved",
+        "value": 2
+    },
+    {
+        "label": "Deprecated",
+        "value": 3
+    }
+],
 ```
+
+For most fields, when a filter is passed multiple times, objects matching _any_ of the provided values will be returned. For example, `GET /api/dcim/sites/?name=Foo&name=Bar` will return all sites named "Foo" _or_ "Bar". The exception to this rule is ManyToManyFields which may have multiple values assigned. Tags are the most common example of a ManyToManyField. For example, `GET /api/dcim/sites/?tag=foo&tag=bar` will return only sites tagged with both "foo" _and_ "bar".
 
 ## Custom Fields
 

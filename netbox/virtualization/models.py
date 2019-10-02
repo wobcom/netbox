@@ -1,15 +1,12 @@
-from __future__ import unicode_literals
-
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericRelation
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.urls import reverse
-from django.utils.encoding import python_2_unicode_compatible
 from taggit.managers import TaggableManager
 
 from dcim.models import Device
-from extras.models import ConfigContextModel, CustomFieldModel
+from extras.models import ConfigContextModel, CustomFieldModel, TaggedItem
 from utilities.models import ChangeLoggedModel
 from .constants import DEVICE_STATUS_ACTIVE, VM_STATUS_CHOICES, VM_STATUS_CLASSES
 
@@ -18,7 +15,6 @@ from .constants import DEVICE_STATUS_ACTIVE, VM_STATUS_CHOICES, VM_STATUS_CLASSE
 # Cluster types
 #
 
-@python_2_unicode_compatible
 class ClusterType(ChangeLoggedModel):
     """
     A type of Cluster.
@@ -53,7 +49,6 @@ class ClusterType(ChangeLoggedModel):
 # Cluster groups
 #
 
-@python_2_unicode_compatible
 class ClusterGroup(ChangeLoggedModel):
     """
     An organizational group of Clusters.
@@ -88,7 +83,6 @@ class ClusterGroup(ChangeLoggedModel):
 # Clusters
 #
 
-@python_2_unicode_compatible
 class Cluster(ChangeLoggedModel, CustomFieldModel):
     """
     A cluster of VirtualMachines. Each Cluster may optionally be associated with one or more Devices.
@@ -125,7 +119,7 @@ class Cluster(ChangeLoggedModel, CustomFieldModel):
         object_id_field='obj_id'
     )
 
-    tags = TaggableManager()
+    tags = TaggableManager(through=TaggedItem)
 
     csv_headers = ['name', 'type', 'group', 'site', 'comments']
 
@@ -164,7 +158,6 @@ class Cluster(ChangeLoggedModel, CustomFieldModel):
 # Virtual machines
 #
 
-@python_2_unicode_compatible
 class VirtualMachine(ChangeLoggedModel, ConfigContextModel, CustomFieldModel):
     """
     A virtual machine which runs inside a Cluster.
@@ -245,7 +238,7 @@ class VirtualMachine(ChangeLoggedModel, ConfigContextModel, CustomFieldModel):
         object_id_field='obj_id'
     )
 
-    tags = TaggableManager()
+    tags = TaggableManager(through=TaggedItem)
 
     csv_headers = [
         'name', 'status', 'role', 'cluster', 'tenant', 'platform', 'vcpus', 'memory', 'disk', 'comments',

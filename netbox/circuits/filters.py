@@ -1,29 +1,30 @@
-from __future__ import unicode_literals
-
 import django_filters
 from django.db.models import Q
 
-from dcim.models import Site
+from dcim.models import Region, Site
 from extras.filters import CustomFieldFilterSet
-from tenancy.models import Tenant
-from utilities.filters import NumericInFilter, TagFilter
+from tenancy.filtersets import TenancyFilterSet
+from utilities.filters import NameSlugSearchFilterSet, NumericInFilter, TagFilter, TreeNodeMultipleChoiceFilter
 from .constants import CIRCUIT_STATUS_CHOICES
 from .models import Provider, Circuit, CircuitTermination, CircuitType
 
 
-class ProviderFilter(CustomFieldFilterSet, django_filters.FilterSet):
-    id__in = NumericInFilter(name='id', lookup_expr='in')
+class ProviderFilter(CustomFieldFilterSet):
+    id__in = NumericInFilter(
+        field_name='id',
+        lookup_expr='in'
+    )
     q = django_filters.CharFilter(
         method='search',
         label='Search',
     )
     site_id = django_filters.ModelMultipleChoiceFilter(
-        name='circuits__terminations__site',
+        field_name='circuits__terminations__site',
         queryset=Site.objects.all(),
         label='Site',
     )
     site = django_filters.ModelMultipleChoiceFilter(
-        name='circuits__terminations__site__slug',
+        field_name='circuits__terminations__site__slug',
         queryset=Site.objects.all(),
         to_field_name='slug',
         label='Site (slug)',
@@ -46,15 +47,18 @@ class ProviderFilter(CustomFieldFilterSet, django_filters.FilterSet):
         )
 
 
-class CircuitTypeFilter(django_filters.FilterSet):
+class CircuitTypeFilter(NameSlugSearchFilterSet):
 
     class Meta:
         model = CircuitType
-        fields = ['name', 'slug']
+        fields = ['id', 'name', 'slug']
 
 
-class CircuitFilter(CustomFieldFilterSet, django_filters.FilterSet):
-    id__in = NumericInFilter(name='id', lookup_expr='in')
+class CircuitFilter(CustomFieldFilterSet, TenancyFilterSet):
+    id__in = NumericInFilter(
+        field_name='id',
+        lookup_expr='in'
+    )
     q = django_filters.CharFilter(
         method='search',
         label='Search',
@@ -64,7 +68,7 @@ class CircuitFilter(CustomFieldFilterSet, django_filters.FilterSet):
         label='Provider (ID)',
     )
     provider = django_filters.ModelMultipleChoiceFilter(
-        name='provider__slug',
+        field_name='provider__slug',
         queryset=Provider.objects.all(),
         to_field_name='slug',
         label='Provider (slug)',
@@ -74,7 +78,7 @@ class CircuitFilter(CustomFieldFilterSet, django_filters.FilterSet):
         label='Circuit type (ID)',
     )
     type = django_filters.ModelMultipleChoiceFilter(
-        name='type__slug',
+        field_name='type__slug',
         queryset=CircuitType.objects.all(),
         to_field_name='slug',
         label='Circuit type (slug)',
@@ -83,26 +87,27 @@ class CircuitFilter(CustomFieldFilterSet, django_filters.FilterSet):
         choices=CIRCUIT_STATUS_CHOICES,
         null_value=None
     )
-    tenant_id = django_filters.ModelMultipleChoiceFilter(
-        queryset=Tenant.objects.all(),
-        label='Tenant (ID)',
-    )
-    tenant = django_filters.ModelMultipleChoiceFilter(
-        name='tenant__slug',
-        queryset=Tenant.objects.all(),
-        to_field_name='slug',
-        label='Tenant (slug)',
-    )
     site_id = django_filters.ModelMultipleChoiceFilter(
-        name='terminations__site',
+        field_name='terminations__site',
         queryset=Site.objects.all(),
         label='Site (ID)',
     )
     site = django_filters.ModelMultipleChoiceFilter(
-        name='terminations__site__slug',
+        field_name='terminations__site__slug',
         queryset=Site.objects.all(),
         to_field_name='slug',
         label='Site (slug)',
+    )
+    region_id = TreeNodeMultipleChoiceFilter(
+        queryset=Region.objects.all(),
+        field_name='terminations__site__region__in',
+        label='Region (ID)',
+    )
+    region = TreeNodeMultipleChoiceFilter(
+        queryset=Region.objects.all(),
+        field_name='terminations__site__region__in',
+        to_field_name='slug',
+        label='Region (slug)',
     )
     tag = TagFilter()
 
@@ -117,6 +122,7 @@ class CircuitFilter(CustomFieldFilterSet, django_filters.FilterSet):
             Q(cid__icontains=value) |
             Q(terminations__xconnect_id__icontains=value) |
             Q(terminations__pp_info__icontains=value) |
+            Q(terminations__description__icontains=value) |
             Q(description__icontains=value) |
             Q(comments__icontains=value)
         ).distinct()
@@ -136,7 +142,7 @@ class CircuitTerminationFilter(django_filters.FilterSet):
         label='Site (ID)',
     )
     site = django_filters.ModelMultipleChoiceFilter(
-        name='site__slug',
+        field_name='site__slug',
         queryset=Site.objects.all(),
         to_field_name='slug',
         label='Site (slug)',
@@ -152,5 +158,6 @@ class CircuitTerminationFilter(django_filters.FilterSet):
         return queryset.filter(
             Q(circuit__cid__icontains=value) |
             Q(xconnect_id__icontains=value) |
-            Q(pp_info__icontains=value)
+            Q(pp_info__icontains=value) |
+            Q(description__icontains=value)
         ).distinct()

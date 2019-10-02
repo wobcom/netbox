@@ -1,11 +1,14 @@
-from __future__ import unicode_literals
-
 import datetime
 import json
+import re
 
 from django import template
 from django.utils.safestring import mark_safe
 from markdown import markdown
+
+from utilities.forms import unpack_grouped_choices
+from utilities.utils import foreground_color
+
 
 register = template.Library()
 
@@ -19,7 +22,19 @@ def oneline(value):
     """
     Replace each line break with a single space
     """
+    value = value.replace('\r', '')
     return value.replace('\n', ' ')
+
+
+@register.filter()
+def placeholder(value):
+    """
+    Render a muted placeholder if value equates to False.
+    """
+    if value:
+        return value
+    placeholder = '<span class="text-muted">&mdash;</span>'
+    return mark_safe(placeholder)
 
 
 @register.filter()
@@ -96,6 +111,8 @@ def humanize_speed(speed):
         100000 => "100 Mbps"
         10000000 => "10 Gbps"
     """
+    if not speed:
+        return ''
     if speed >= 1000000000 and speed % 1000000000 == 0:
         return '{} Tbps'.format(int(speed / 1000000000))
     elif speed >= 1000000 and speed % 1000000 == 0:
@@ -115,14 +132,16 @@ def example_choices(field, arg=3):
     """
     examples = []
     if hasattr(field, 'queryset'):
-        choices = [(obj.pk, getattr(obj, field.to_field_name)) for obj in field.queryset[:arg + 1]]
+        choices = [
+            (obj.pk, getattr(obj, field.to_field_name)) for obj in field.queryset[:arg + 1]
+        ]
     else:
         choices = field.choices
-    for id, label in choices:
+    for value, label in unpack_grouped_choices(choices):
         if len(examples) == arg:
             examples.append('etc.')
             break
-        if not id or not label:
+        if not value or not label:
             continue
         examples.append(label)
     return ', '.join(examples) or 'None'
@@ -134,6 +153,37 @@ def tzoffset(value):
     Returns the hour offset of a given time zone using the current time.
     """
     return datetime.datetime.now(value).strftime('%z')
+
+
+@register.filter()
+def fgcolor(value):
+    """
+    Return black (#000000) or white (#ffffff) given an arbitrary background color in RRGGBB format.
+    """
+    value = value.lower().strip('#')
+    if not re.match('^[0-9a-f]{6}$', value):
+        return ''
+    return '#{}'.format(foreground_color(value))
+
+
+@register.filter()
+def divide(x, y):
+    """
+    Return x/y (rounded).
+    """
+    if x is None or y is None:
+        return None
+    return round(x / y)
+
+
+@register.filter()
+def percentage(x, y):
+    """
+    Return x/y as a percentage.
+    """
+    if x is None or y is None:
+        return None
+    return round(x / y * 100)
 
 
 #
@@ -148,7 +198,7 @@ def querystring(request, **kwargs):
     querydict = request.GET.copy()
     for k, v in kwargs.items():
         if v is not None:
-            querydict[k] = v
+            querydict[k] = str(v)
         elif k in querydict:
             querydict.pop(k)
     querystring = querydict.urlencode(safe='/')

@@ -1,26 +1,28 @@
-from __future__ import unicode_literals
-
 from collections import OrderedDict
-import pytz
 
+import pytz
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import ManyToManyField
+from django.core.exceptions import FieldError, MultipleObjectsReturned, ObjectDoesNotExist
+from django.db.models import ManyToManyField, ProtectedError
 from django.http import Http404
 from rest_framework.exceptions import APIException
 from rest_framework.permissions import BasePermission
-from rest_framework.relations import PrimaryKeyRelatedField
+from rest_framework.relations import PrimaryKeyRelatedField, RelatedField
 from rest_framework.response import Response
 from rest_framework.serializers import Field, ModelSerializer, ValidationError
 from rest_framework.viewsets import ModelViewSet as _ModelViewSet, ViewSet
 
-from .utils import dynamic_import
+from .utils import dict_to_filter_params, dynamic_import
 
 
 class ServiceUnavailable(APIException):
     status_code = 503
     default_detail = "Service temporarily unavailable, please try again later."
+
+
+class SerializerNotFound(Exception):
+    pass
 
 
 def get_serializer_for_model(model, prefix=''):
@@ -34,7 +36,9 @@ def get_serializer_for_model(model, prefix=''):
     try:
         return dynamic_import(serializer_name)
     except AttributeError:
-        return None
+        raise SerializerNotFound(
+            "Could not determine serializer for {}.{} with prefix '{}'".format(app_name, model_name, prefix)
+        )
 
 
 #
@@ -68,34 +72,68 @@ class ChoiceField(Field):
                     self._choices[k2] = v2
             else:
                 self._choices[k] = v
-        super(ChoiceField, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
     def to_representation(self, obj):
-        return {'value': obj, 'label': self._choices[obj]}
-
-    def to_internal_value(self, data):
-        # Hotwiring boolean values
-        if hasattr(data, 'lower'):
-            if data.lower() == 'true':
-                return True
-            if data.lower() == 'false':
-                return False
+        if obj is '':
+            return None
+        data = OrderedDict([
+            ('value', obj),
+            ('label', self._choices[obj])
+        ])
         return data
 
+    def to_internal_value(self, data):
 
-class ContentTypeField(Field):
+        # Provide an explicit error message if the request is trying to write a dict or list
+        if isinstance(data, (dict, list)):
+            raise ValidationError('Value must be passed directly (e.g. "foo": 123); do not use a dictionary or list.')
+
+        # Check for string representations of boolean/integer values
+        if hasattr(data, 'lower'):
+            if data.lower() == 'true':
+                data = True
+            elif data.lower() == 'false':
+                data = False
+            else:
+                try:
+                    data = int(data)
+                except ValueError:
+                    pass
+
+        try:
+            if data in self._choices:
+                return data
+        except TypeError:  # Input is an unhashable type
+            pass
+
+        raise ValidationError("{} is not a valid choice.".format(data))
+
+    @property
+    def choices(self):
+        return self._choices
+
+
+class ContentTypeField(RelatedField):
     """
     Represent a ContentType as '<app_label>.<model>'
     """
-    def to_representation(self, obj):
-        return "{}.{}".format(obj.app_label, obj.model)
+    default_error_messages = {
+        "does_not_exist": "Invalid content type: {content_type}",
+        "invalid": "Invalid value. Specify a content type as '<app_label>.<model_name>'.",
+    }
 
     def to_internal_value(self, data):
-        app_label, model = data.split('.')
         try:
+            app_label, model = data.split('.')
             return ContentType.objects.get_by_natural_key(app_label=app_label, model=model)
-        except ContentType.DoesNotExist:
-            raise ValidationError("Invalid content type")
+        except ObjectDoesNotExist:
+            self.fail('does_not_exist', content_type=data)
+        except (TypeError, ValueError):
+            self.fail('invalid')
+
+    def to_representation(self, obj):
+        return "{}.{}".format(obj.app_label, obj.model)
 
 
 class TimeZoneField(Field):
@@ -121,7 +159,7 @@ class SerializedPKRelatedField(PrimaryKeyRelatedField):
     def __init__(self, serializer, **kwargs):
         self.serializer = serializer
         self.pk_field = kwargs.pop('pk_field', None)
-        super(SerializedPKRelatedField, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
     def to_representation(self, value):
         return self.serializer(value, context={'request': self.context['request']}).data
@@ -165,15 +203,48 @@ class WritableNestedSerializer(ModelSerializer):
     """
     Returns a nested representation of an object on read, but accepts only a primary key on write.
     """
+
     def to_internal_value(self, data):
+
         if data is None:
             return None
+
+        # Dictionary of related object attributes
+        if isinstance(data, dict):
+            params = dict_to_filter_params(data)
+            try:
+                return self.Meta.model.objects.get(**params)
+            except ObjectDoesNotExist:
+                raise ValidationError(
+                    "Related object not found using the provided attributes: {}".format(params)
+                )
+            except MultipleObjectsReturned:
+                raise ValidationError(
+                    "Multiple objects match the provided attributes: {}".format(params)
+                )
+            except FieldError as e:
+                raise ValidationError(e)
+
+        # Integer PK of related object
+        if isinstance(data, int):
+            pk = data
+        else:
+            try:
+                # PK might have been mistakenly passed as a string
+                pk = int(data)
+            except (TypeError, ValueError):
+                raise ValidationError(
+                    "Related objects must be referenced by numeric ID or by dictionary of attributes. Received an "
+                    "unrecognized value: {}".format(data)
+                )
+
+        # Look up object by PK
         try:
             return self.Meta.model.objects.get(pk=int(data))
-        except (TypeError, ValueError):
-            raise ValidationError("Primary key must be an integer")
         except ObjectDoesNotExist:
-            raise ValidationError("Invalid ID")
+            raise ValidationError(
+                "Related object not found using the provided numeric ID: {}".format(pk)
+            )
 
 
 #
@@ -190,7 +261,7 @@ class ModelViewSet(_ModelViewSet):
         if isinstance(kwargs.get('data', {}), list):
             kwargs['many'] = True
 
-        return super(ModelViewSet, self).get_serializer(*args, **kwargs)
+        return super().get_serializer(*args, **kwargs)
 
     def get_serializer_class(self):
 
@@ -198,12 +269,38 @@ class ModelViewSet(_ModelViewSet):
         # exists
         request = self.get_serializer_context()['request']
         if request.query_params.get('brief', False):
-            serializer_class = get_serializer_for_model(self.queryset.model, prefix='Nested')
-            if serializer_class is not None:
-                return serializer_class
+            try:
+                return get_serializer_for_model(self.queryset.model, prefix='Nested')
+            except SerializerNotFound:
+                pass
 
         # Fall back to the hard-coded serializer class
         return self.serializer_class
+
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            return super().dispatch(request, *args, **kwargs)
+        except ProtectedError as e:
+            models = ['{} ({})'.format(o, o._meta) for o in e.protected_objects.all()]
+            msg = 'Unable to delete object. The following dependent objects were found: {}'.format(', '.join(models))
+            return self.finalize_response(
+                request,
+                Response({'detail': msg}, status=409),
+                *args,
+                **kwargs
+            )
+
+    def list(self, *args, **kwargs):
+        """
+        Call to super to allow for caching
+        """
+        return super().list(*args, **kwargs)
+
+    def retrieve(self, *args, **kwargs):
+        """
+        Call to super to allow for caching
+        """
+        return super().retrieve(*args, **kwargs)
 
 
 class FieldChoicesViewSet(ViewSet):
@@ -214,16 +311,20 @@ class FieldChoicesViewSet(ViewSet):
     fields = []
 
     def __init__(self, *args, **kwargs):
-        super(FieldChoicesViewSet, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # Compile a dict of all fields in this view
         self._fields = OrderedDict()
         for cls, field_list in self.fields:
             for field_name in field_list:
+
                 model_name = cls._meta.verbose_name.lower().replace(' ', '-')
                 key = ':'.join([model_name, field_name])
+
+                serializer = get_serializer_for_model(cls)()
                 choices = []
-                for k, v in cls._meta.get_field(field_name).choices:
+
+                for k, v in serializer.get_fields()[field_name].choices.items():
                     if type(v) in [list, tuple]:
                         for k2, v2 in v:
                             choices.append({

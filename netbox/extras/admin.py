@@ -1,12 +1,9 @@
-from __future__ import unicode_literals
-
 from django import forms
 from django.contrib import admin
-from django.utils.safestring import mark_safe
 
 from netbox.admin import admin_site
 from utilities.forms import LaxURLField
-from .models import CustomField, CustomFieldChoice, Graph, ExportTemplate, TopologyMap, UserAction, Webhook
+from .models import CustomField, CustomFieldChoice, CustomLink, Graph, ExportTemplate, TopologyMap, Webhook
 
 
 def order_content_types(field):
@@ -31,9 +28,10 @@ class WebhookForm(forms.ModelForm):
         exclude = []
 
     def __init__(self, *args, **kwargs):
-        super(WebhookForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
-        order_content_types(self.fields['obj_type'])
+        if 'obj_type' in self.fields:
+            order_content_types(self.fields['obj_type'])
 
 
 @admin.register(Webhook, site=admin_site)
@@ -59,7 +57,7 @@ class CustomFieldForm(forms.ModelForm):
         exclude = []
 
     def __init__(self, *args, **kwargs):
-        super(CustomFieldForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         order_content_types(self.fields['obj_type'])
 
@@ -77,6 +75,35 @@ class CustomFieldAdmin(admin.ModelAdmin):
 
     def models(self, obj):
         return ', '.join([ct.name for ct in obj.obj_type.all()])
+
+
+#
+# Custom links
+#
+
+class CustomLinkForm(forms.ModelForm):
+
+    class Meta:
+        model = CustomLink
+        exclude = []
+        help_texts = {
+            'text': 'Jinja2 template code for the link text. Reference the object as <code>{{ obj }}</code>. Links '
+                    'which render as empty text will not be displayed.',
+            'url': 'Jinja2 template code for the link URL. Reference the object as <code>{{ obj }}</code>.',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Format ContentType choices
+        order_content_types(self.fields['content_type'])
+        self.fields['content_type'].choices.insert(0, ('', '---------'))
+
+
+@admin.register(CustomLink, site=admin_site)
+class CustomLinkAdmin(admin.ModelAdmin):
+    list_display = ['name', 'content_type', 'group_name', 'weight']
+    form = CustomLinkForm
 
 
 #
@@ -99,7 +126,7 @@ class ExportTemplateForm(forms.ModelForm):
         exclude = []
 
     def __init__(self, *args, **kwargs):
-        super(ExportTemplateForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # Format ContentType choices
         order_content_types(self.fields['content_type'])
@@ -122,16 +149,3 @@ class TopologyMapAdmin(admin.ModelAdmin):
     prepopulated_fields = {
         'slug': ['name'],
     }
-
-
-#
-# User actions
-#
-
-@admin.register(UserAction, site=admin_site)
-class UserActionAdmin(admin.ModelAdmin):
-    actions = None
-    list_display = ['user', 'action', 'content_type', 'object_id', '_message']
-
-    def _message(self, obj):
-        return mark_safe(obj.message)

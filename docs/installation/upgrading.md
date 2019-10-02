@@ -4,12 +4,12 @@ As with the initial installation, you can upgrade NetBox by either downloading t
 
 ## Option A: Download a Release
 
-Download the [latest stable release](https://github.com/digitalocean/netbox/releases) from GitHub as a tarball or ZIP archive. Extract it to your desired path. In this example, we'll use `/opt/netbox`.
+Download the [latest stable release](https://github.com/netbox-community/netbox/releases) from GitHub as a tarball or ZIP archive. Extract it to your desired path. In this example, we'll use `/opt/netbox`.
 
 Download and extract the latest version:
 
 ```no-highlight
-# wget https://github.com/digitalocean/netbox/archive/vX.Y.Z.tar.gz
+# wget https://github.com/netbox-community/netbox/archive/vX.Y.Z.tar.gz
 # tar -xzf vX.Y.Z.tar.gz -C /opt
 # cd /opt/
 # ln -sfn netbox-X.Y.Z/ netbox
@@ -62,13 +62,6 @@ Once the new code is in place, run the upgrade script (which may need to be run 
 
 ```no-highlight
 # ./upgrade.sh
-```
-
-!!! warning
-    The upgrade script will prefer Python3 and pip3 if both executables are available. To force it to use Python2 and pip, use the `-2` argument as below. Note that Python 2 will no longer be supported in NetBox v2.5.
-
-```no-highlight
-# ./upgrade.sh -2
 ```
 
 This script:

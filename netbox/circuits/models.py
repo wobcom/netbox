@@ -1,20 +1,17 @@
-from __future__ import unicode_literals
-
 from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
 from django.urls import reverse
-from django.utils.encoding import python_2_unicode_compatible
 from taggit.managers import TaggableManager
 
-from dcim.constants import STATUS_CLASSES
+from dcim.constants import CONNECTION_STATUS_CHOICES, STATUS_CLASSES
 from dcim.fields import ASNField
-from extras.models import CustomFieldModel, ObjectChange
+from dcim.models import CableTermination
+from extras.models import CustomFieldModel, ObjectChange, TaggedItem
 from utilities.models import ChangeLoggedModel
 from utilities.utils import serialize_object
 from .constants import CIRCUIT_STATUS_ACTIVE, CIRCUIT_STATUS_CHOICES, TERM_SIDE_CHOICES
 
 
-@python_2_unicode_compatible
 class Provider(ChangeLoggedModel, CustomFieldModel):
     """
     Each Circuit belongs to a Provider. This is usually a telecommunications company or similar organization. This model
@@ -58,7 +55,7 @@ class Provider(ChangeLoggedModel, CustomFieldModel):
         object_id_field='obj_id'
     )
 
-    tags = TaggableManager()
+    tags = TaggableManager(through=TaggedItem)
 
     csv_headers = ['name', 'slug', 'asn', 'account', 'portal_url', 'noc_contact', 'admin_contact', 'comments']
 
@@ -84,7 +81,6 @@ class Provider(ChangeLoggedModel, CustomFieldModel):
         )
 
 
-@python_2_unicode_compatible
 class CircuitType(ChangeLoggedModel):
     """
     Circuits can be organized by their functional role. For example, a user might wish to define CircuitTypes named
@@ -116,12 +112,11 @@ class CircuitType(ChangeLoggedModel):
         )
 
 
-@python_2_unicode_compatible
 class Circuit(ChangeLoggedModel, CustomFieldModel):
     """
     A communications circuit connects two points. Each Circuit belongs to a Provider; Providers may have multiple
-    circuits. Each circuit is also assigned a CircuitType and a Site. A Circuit may be terminated to a specific device
-    interface, but this is not required. Circuit port speed and commit rate are measured in Kbps.
+    circuits. Each circuit is also assigned a CircuitType and a Site.  Circuit port speed and commit rate are measured
+    in Kbps.
     """
     cid = models.CharField(
         max_length=50,
@@ -170,7 +165,7 @@ class Circuit(ChangeLoggedModel, CustomFieldModel):
         object_id_field='obj_id'
     )
 
-    tags = TaggableManager()
+    tags = TaggableManager(through=TaggedItem)
 
     csv_headers = [
         'cid', 'provider', 'type', 'status', 'tenant', 'install_date', 'commit_rate', 'description', 'comments',
@@ -181,7 +176,7 @@ class Circuit(ChangeLoggedModel, CustomFieldModel):
         unique_together = ['provider', 'cid']
 
     def __str__(self):
-        return '{} {}'.format(self.provider, self.cid)
+        return self.cid
 
     def get_absolute_url(self):
         return reverse('circuits:circuit', args=[self.pk])
@@ -217,8 +212,7 @@ class Circuit(ChangeLoggedModel, CustomFieldModel):
         return self._get_termination('Z')
 
 
-@python_2_unicode_compatible
-class CircuitTermination(models.Model):
+class CircuitTermination(CableTermination):
     circuit = models.ForeignKey(
         to='circuits.Circuit',
         on_delete=models.CASCADE,
@@ -234,12 +228,16 @@ class CircuitTermination(models.Model):
         on_delete=models.PROTECT,
         related_name='circuit_terminations'
     )
-    interface = models.OneToOneField(
+    connected_endpoint = models.OneToOneField(
         to='dcim.Interface',
-        on_delete=models.PROTECT,
-        related_name='circuit_termination',
+        on_delete=models.SET_NULL,
+        related_name='+',
         blank=True,
         null=True
+    )
+    connection_status = models.NullBooleanField(
+        choices=CONNECTION_STATUS_CHOICES,
+        blank=True
     )
     port_speed = models.PositiveIntegerField(
         verbose_name='Port speed (Kbps)'
@@ -260,30 +258,41 @@ class CircuitTermination(models.Model):
         blank=True,
         verbose_name='Patch panel/port(s)'
     )
+    description = models.CharField(
+        max_length=100,
+        blank=True
+    )
 
     class Meta:
         ordering = ['circuit', 'term_side']
         unique_together = ['circuit', 'term_side']
 
     def __str__(self):
-        return '{} (Side {})'.format(self.circuit, self.get_term_side_display())
+        return 'Side {}'.format(self.get_term_side_display())
 
-    def log_change(self, user, request_id, action):
-        """
-        Reference the parent circuit when recording the change.
-        """
-        ObjectChange(
-            user=user,
-            request_id=request_id,
+    def to_objectchange(self, action):
+        # Annotate the parent Circuit
+        try:
+            related_object = self.circuit
+        except Circuit.DoesNotExist:
+            # Parent circuit has been deleted
+            related_object = None
+
+        return ObjectChange(
             changed_object=self,
-            related_object=self.circuit,
+            object_repr=str(self),
             action=action,
+            related_object=related_object,
             object_data=serialize_object(self)
-        ).save()
+        )
+
+    @property
+    def parent(self):
+        return self.circuit
 
     def get_peer_termination(self):
         peer_side = 'Z' if self.term_side == 'A' else 'A'
         try:
-            return CircuitTermination.objects.select_related('site').get(circuit=self.circuit, term_side=peer_side)
+            return CircuitTermination.objects.prefetch_related('site').get(circuit=self.circuit, term_side=peer_side)
         except CircuitTermination.DoesNotExist:
             return None

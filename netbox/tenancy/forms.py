@@ -1,12 +1,10 @@
-from __future__ import unicode_literals
-
 from django import forms
-from django.db.models import Count
 from taggit.forms import TagField
 
 from extras.forms import AddRemoveTagsForm, CustomFieldForm, CustomFieldBulkEditForm, CustomFieldFilterForm
 from utilities.forms import (
-    APISelect, BootstrapMixin, ChainedFieldsMixin, ChainedModelChoiceField, CommentField, FilterChoiceField, SlugField,
+    APISelect, APISelectMultiple, BootstrapMixin, ChainedFieldsMixin, ChainedModelChoiceField, CommentField,
+    FilterChoiceField, SlugField,
 )
 from .models import Tenant, TenantGroup
 
@@ -20,7 +18,9 @@ class TenantGroupForm(BootstrapMixin, forms.ModelForm):
 
     class Meta:
         model = TenantGroup
-        fields = ['name', 'slug']
+        fields = [
+            'name', 'slug',
+        ]
 
 
 class TenantGroupCSVForm(forms.ModelForm):
@@ -41,11 +41,20 @@ class TenantGroupCSVForm(forms.ModelForm):
 class TenantForm(BootstrapMixin, CustomFieldForm):
     slug = SlugField()
     comments = CommentField()
-    tags = TagField(required=False)
+    tags = TagField(
+        required=False
+    )
 
     class Meta:
         model = Tenant
-        fields = ['name', 'slug', 'group', 'description', 'comments', 'tags']
+        fields = [
+            'name', 'slug', 'group', 'description', 'comments', 'tags',
+        ]
+        widgets = {
+            'group': APISelect(
+                api_url="/api/tenancy/tenant-groups/"
+            )
+        }
 
 
 class TenantCSVForm(forms.ModelForm):
@@ -70,33 +79,58 @@ class TenantCSVForm(forms.ModelForm):
 
 
 class TenantBulkEditForm(BootstrapMixin, AddRemoveTagsForm, CustomFieldBulkEditForm):
-    pk = forms.ModelMultipleChoiceField(queryset=Tenant.objects.all(), widget=forms.MultipleHiddenInput)
-    group = forms.ModelChoiceField(queryset=TenantGroup.objects.all(), required=False)
+    pk = forms.ModelMultipleChoiceField(
+        queryset=Tenant.objects.all(),
+        widget=forms.MultipleHiddenInput()
+    )
+    group = forms.ModelChoiceField(
+        queryset=TenantGroup.objects.all(),
+        required=False,
+        widget=APISelect(
+            api_url="/api/tenancy/tenant-groups/"
+        )
+    )
 
     class Meta:
-        nullable_fields = ['group']
+        nullable_fields = [
+            'group',
+        ]
 
 
 class TenantFilterForm(BootstrapMixin, CustomFieldFilterForm):
     model = Tenant
-    q = forms.CharField(required=False, label='Search')
+    q = forms.CharField(
+        required=False,
+        label='Search'
+    )
     group = FilterChoiceField(
-        queryset=TenantGroup.objects.annotate(filter_count=Count('tenants')),
+        queryset=TenantGroup.objects.all(),
         to_field_name='slug',
-        null_label='-- None --'
+        null_label='-- None --',
+        widget=APISelectMultiple(
+            api_url="/api/tenancy/tenant-groups/",
+            value_field="slug",
+            null_option=True,
+        )
     )
 
 
 #
-# Tenancy form extension
+# Form extensions
 #
 
 class TenancyForm(ChainedFieldsMixin, forms.Form):
     tenant_group = forms.ModelChoiceField(
         queryset=TenantGroup.objects.all(),
         required=False,
-        widget=forms.Select(
-            attrs={'filter-for': 'tenant', 'nullable': 'true'}
+        widget=APISelect(
+            api_url="/api/tenancy/tenant-groups/",
+            filter_for={
+                'tenant': 'group_id',
+            },
+            attrs={
+                'nullable': 'true',
+            }
         )
     )
     tenant = ChainedModelChoiceField(
@@ -106,7 +140,7 @@ class TenancyForm(ChainedFieldsMixin, forms.Form):
         ),
         required=False,
         widget=APISelect(
-            api_url='/api/tenancy/tenants/?group_id={{tenant_group}}'
+            api_url='/api/tenancy/tenants/'
         )
     )
 
@@ -119,4 +153,30 @@ class TenancyForm(ChainedFieldsMixin, forms.Form):
             initial['tenant_group'] = instance.tenant.group
             kwargs['initial'] = initial
 
-        super(TenancyForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
+
+
+class TenancyFilterForm(forms.Form):
+    tenant_group = FilterChoiceField(
+        queryset=TenantGroup.objects.all(),
+        to_field_name='slug',
+        null_label='-- None --',
+        widget=APISelectMultiple(
+            api_url="/api/tenancy/tenant-groups/",
+            value_field="slug",
+            null_option=True,
+            filter_for={
+                'tenant': 'group'
+            }
+        )
+    )
+    tenant = FilterChoiceField(
+        queryset=Tenant.objects.all(),
+        to_field_name='slug',
+        null_label='-- None --',
+        widget=APISelectMultiple(
+            api_url="/api/tenancy/tenants/",
+            value_field="slug",
+            null_option=True,
+        )
+    )

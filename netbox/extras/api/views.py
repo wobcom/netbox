@@ -1,4 +1,4 @@
-from __future__ import unicode_literals
+from collections import OrderedDict
 
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Count
@@ -8,12 +8,11 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.viewsets import ReadOnlyModelViewSet, ViewSet
-from taggit.models import Tag
 
 from extras import filters
 from extras.models import (
-    ConfigContext, CustomField, ExportTemplate, Graph, ImageAttachment, ObjectChange, ReportResult, TopologyMap,
-    UserAction,
+    ConfigContext, CustomFieldChoice, ExportTemplate, Graph, ImageAttachment, ObjectChange, ReportResult, TopologyMap,
+    Tag,
 )
 from extras.reports import get_report, get_reports
 from utilities.api import FieldChoicesViewSet, IsAuthenticatedOrLoginNotRequired, ModelViewSet
@@ -26,9 +25,40 @@ from . import serializers
 
 class ExtrasFieldChoicesViewSet(FieldChoicesViewSet):
     fields = (
-        (CustomField, ['type']),
+        (ExportTemplate, ['template_language']),
         (Graph, ['type']),
+        (ObjectChange, ['action']),
     )
+
+
+#
+# Custom field choices
+#
+
+class CustomFieldChoicesViewSet(ViewSet):
+    """
+    """
+    permission_classes = [IsAuthenticatedOrLoginNotRequired]
+
+    def __init__(self, *args, **kwargs):
+        super(CustomFieldChoicesViewSet, self).__init__(*args, **kwargs)
+
+        self._fields = OrderedDict()
+
+        for cfc in CustomFieldChoice.objects.all():
+            self._fields.setdefault(cfc.field.name, {})
+            self._fields[cfc.field.name][cfc.value] = cfc.pk
+
+    def list(self, request):
+        return Response(self._fields)
+
+    def retrieve(self, request, pk):
+        if pk not in self._fields:
+            raise Http404
+        return Response(self._fields[pk])
+
+    def get_view_name(self):
+        return "Custom Field choices"
 
 
 #
@@ -53,7 +83,7 @@ class CustomFieldModelViewSet(ModelViewSet):
                 custom_field_choices[cfc.id] = cfc.value
         custom_field_choices = custom_field_choices
 
-        context = super(CustomFieldModelViewSet, self).get_serializer_context()
+        context = super().get_serializer_context()
         context.update({
             'custom_fields': custom_fields,
             'custom_field_choices': custom_field_choices,
@@ -62,7 +92,7 @@ class CustomFieldModelViewSet(ModelViewSet):
 
     def get_queryset(self):
         # Prefetch custom field values
-        return super(CustomFieldModelViewSet, self).get_queryset().prefetch_related('custom_field_values__field')
+        return super().get_queryset().prefetch_related('custom_field_values__field')
 
 
 #
@@ -72,7 +102,7 @@ class CustomFieldModelViewSet(ModelViewSet):
 class GraphViewSet(ModelViewSet):
     queryset = Graph.objects.all()
     serializer_class = serializers.GraphSerializer
-    filter_class = filters.GraphFilter
+    filterset_class = filters.GraphFilter
 
 
 #
@@ -82,7 +112,7 @@ class GraphViewSet(ModelViewSet):
 class ExportTemplateViewSet(ModelViewSet):
     queryset = ExportTemplate.objects.all()
     serializer_class = serializers.ExportTemplateSerializer
-    filter_class = filters.ExportTemplateFilter
+    filterset_class = filters.ExportTemplateFilter
 
 
 #
@@ -90,9 +120,9 @@ class ExportTemplateViewSet(ModelViewSet):
 #
 
 class TopologyMapViewSet(ModelViewSet):
-    queryset = TopologyMap.objects.select_related('site')
+    queryset = TopologyMap.objects.prefetch_related('site')
     serializer_class = serializers.TopologyMapSerializer
-    filter_class = filters.TopologyMapFilter
+    filterset_class = filters.TopologyMapFilter
 
     @action(detail=True)
     def render(self, request, pk):
@@ -102,10 +132,9 @@ class TopologyMapViewSet(ModelViewSet):
 
         try:
             data = tmap.render(img_format=img_format)
-        except Exception:
+        except Exception as e:
             return HttpResponse(
-                "There was an error generating the requested graph. Ensure that the GraphViz executables have been "
-                "installed correctly."
+                "There was an error generating the requested graph: %s" % e
             )
 
         response = HttpResponse(data, content_type='image/{}'.format(img_format))
@@ -119,9 +148,11 @@ class TopologyMapViewSet(ModelViewSet):
 #
 
 class TagViewSet(ModelViewSet):
-    queryset = Tag.objects.annotate(tagged_items=Count('taggit_taggeditem_items'))
+    queryset = Tag.objects.annotate(
+        tagged_items=Count('extras_taggeditem_items', distinct=True)
+    )
     serializer_class = serializers.TagSerializer
-    filter_class = filters.TagFilter
+    filterset_class = filters.TagFilter
 
 
 #
@@ -142,7 +173,7 @@ class ConfigContextViewSet(ModelViewSet):
         'regions', 'sites', 'roles', 'platforms', 'tenant_groups', 'tenants',
     )
     serializer_class = serializers.ConfigContextSerializer
-    filter_class = filters.ConfigContextFilter
+    filterset_class = filters.ConfigContextFilter
 
 
 #
@@ -229,19 +260,6 @@ class ObjectChangeViewSet(ReadOnlyModelViewSet):
     """
     Retrieve a list of recent changes.
     """
-    queryset = ObjectChange.objects.select_related('user')
+    queryset = ObjectChange.objects.prefetch_related('user')
     serializer_class = serializers.ObjectChangeSerializer
-    filter_class = filters.ObjectChangeFilter
-
-
-#
-# User activity
-#
-
-class RecentActivityViewSet(ReadOnlyModelViewSet):
-    """
-    DEPRECATED: List all UserActions to provide a log of recent activity.
-    """
-    queryset = UserAction.objects.all()
-    serializer_class = serializers.UserActionSerializer
-    filter_class = filters.UserActionFilter
+    filterset_class = filters.ObjectChangeFilter

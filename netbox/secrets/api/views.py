@@ -1,8 +1,7 @@
-from __future__ import unicode_literals
-
 import base64
 
 from Crypto.PublicKey import RSA
+from django.db.models import Count
 from django.http import HttpResponseBadRequest
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
@@ -34,10 +33,12 @@ class SecretsFieldChoicesViewSet(FieldChoicesViewSet):
 #
 
 class SecretRoleViewSet(ModelViewSet):
-    queryset = SecretRole.objects.all()
+    queryset = SecretRole.objects.annotate(
+        secret_count=Count('secrets')
+    )
     serializer_class = serializers.SecretRoleSerializer
     permission_classes = [IsAuthenticated]
-    filter_class = filters.SecretRoleFilter
+    filterset_class = filters.SecretRoleFilter
 
 
 #
@@ -45,27 +46,25 @@ class SecretRoleViewSet(ModelViewSet):
 #
 
 class SecretViewSet(ModelViewSet):
-    queryset = Secret.objects.select_related(
-        'device__primary_ip4', 'device__primary_ip6', 'role',
-    ).prefetch_related(
-        'role__users', 'role__groups', 'tags',
+    queryset = Secret.objects.prefetch_related(
+        'device__primary_ip4', 'device__primary_ip6', 'role', 'role__users', 'role__groups', 'tags',
     )
     serializer_class = serializers.SecretSerializer
-    filter_class = filters.SecretFilter
+    filterset_class = filters.SecretFilter
 
     master_key = None
 
     def get_serializer_context(self):
 
         # Make the master key available to the serializer for encrypting plaintext values
-        context = super(SecretViewSet, self).get_serializer_context()
+        context = super().get_serializer_context()
         context['master_key'] = self.master_key
 
         return context
 
     def initial(self, request, *args, **kwargs):
 
-        super(SecretViewSet, self).initial(request, *args, **kwargs)
+        super().initial(request, *args, **kwargs)
 
         if request.user.is_authenticated:
 

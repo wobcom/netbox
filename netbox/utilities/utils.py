@@ -1,11 +1,12 @@
-from __future__ import unicode_literals
+from collections import OrderedDict
 
 import datetime
 import json
-import six
 
 from django.core.serializers import serialize
-from django.http import HttpResponse
+from django.db.models import Count, OuterRef, Subquery
+
+from dcim.constants import LENGTH_UNIT_CENTIMETER, LENGTH_UNIT_FOOT, LENGTH_UNIT_INCH, LENGTH_UNIT_METER
 
 
 def csv_format(data):
@@ -25,7 +26,7 @@ def csv_format(data):
             value = value.isoformat()
 
         # Force conversion to string first so we can check for any commas
-        if not isinstance(value, six.string_types):
+        if not isinstance(value, str):
             value = '{}'.format(value)
 
         # Double-quote the value if it contains a comma
@@ -35,32 +36,6 @@ def csv_format(data):
             csv.append('{}'.format(value))
 
     return ','.join(csv)
-
-
-def queryset_to_csv(queryset):
-    """
-    Export a queryset of objects as CSV, using the model's to_csv() method.
-    """
-    output = []
-
-    # Start with the column headers
-    headers = ','.join(queryset.model.csv_headers)
-    output.append(headers)
-
-    # Iterate through the queryset
-    for obj in queryset:
-        data = csv_format(obj.to_csv())
-        output.append(data)
-
-    # Build the HTTP response
-    response = HttpResponse(
-        '\n'.join(output),
-        content_type='text/csv'
-    )
-    filename = 'netbox_{}.csv'.format(queryset.model._meta.verbose_name_plural)
-    response['Content-Disposition'] = 'attachment; filename="{}"'.format(filename)
-
-    return response
 
 
 def foreground_color(bg_color):
@@ -86,6 +61,34 @@ def dynamic_import(name):
     return mod
 
 
+def model_names_to_filter_dict(names):
+    """
+    Accept a list of content types in the format ['<app>.<model>', '<app>.<model>', ...] and return a dictionary
+    suitable for QuerySet filtering.
+    """
+    # TODO: This should match on the app_label as well as the model name to avoid potential duplicate names
+    return {
+        'model__in': [model.split('.')[1] for model in names],
+    }
+
+
+def get_subquery(model, field):
+    """
+    Return a Subquery suitable for annotating a child object count.
+    """
+    subquery = Subquery(
+        model.objects.filter(
+            **{field: OuterRef('pk')}
+        ).order_by().values(
+            field
+        ).annotate(
+            c=Count('*')
+        ).values('c')
+    )
+
+    return subquery
+
+
 def serialize_object(obj, extra=None):
     """
     Return a generic JSON representation of an object using Django's built-in serializer. (This is used for things like
@@ -109,3 +112,66 @@ def serialize_object(obj, extra=None):
         data.update(extra)
 
     return data
+
+
+def dict_to_filter_params(d, prefix=''):
+    """
+    Translate a dictionary of attributes to a nested set of parameters suitable for QuerySet filtering. For example:
+
+        {
+            "name": "Foo",
+            "rack": {
+                "facility_id": "R101"
+            }
+        }
+
+    Becomes:
+
+        {
+            "name": "Foo",
+            "rack__facility_id": "R101"
+        }
+
+    And can be employed as filter parameters:
+
+        Device.objects.filter(**dict_to_filter(attrs_dict))
+    """
+    params = {}
+    for key, val in d.items():
+        k = prefix + key
+        if isinstance(val, dict):
+            params.update(dict_to_filter_params(val, k + '__'))
+        else:
+            params[k] = val
+    return params
+
+
+def deepmerge(original, new):
+    """
+    Deep merge two dictionaries (new into original) and return a new dict
+    """
+    merged = OrderedDict(original)
+    for key, val in new.items():
+        if key in original and isinstance(original[key], dict) and isinstance(val, dict):
+            merged[key] = deepmerge(original[key], val)
+        else:
+            merged[key] = val
+    return merged
+
+
+def to_meters(length, unit):
+    """
+    Convert the given length to meters.
+    """
+    length = int(length)
+    if length < 0:
+        raise ValueError("Length must be a positive integer")
+    if unit == LENGTH_UNIT_METER:
+        return length
+    if unit == LENGTH_UNIT_CENTIMETER:
+        return length / 100
+    if unit == LENGTH_UNIT_FOOT:
+        return length * 0.3048
+    if unit == LENGTH_UNIT_INCH:
+        return length * 0.3048 * 12
+    raise ValueError("Unknown unit {}. Must be 'm', 'cm', 'ft', or 'in'.".format(unit))

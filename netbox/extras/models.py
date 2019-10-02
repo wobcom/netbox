@@ -1,24 +1,23 @@
-from __future__ import unicode_literals
-
 from collections import OrderedDict
 from datetime import date
 
-import graphviz
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields import JSONField
 from django.core.validators import ValidationError
 from django.db import models
-from django.db.models import Q
+from django.db.models import F, Q
 from django.http import HttpResponse
 from django.template import Template, Context
 from django.urls import reverse
-from django.utils.encoding import python_2_unicode_compatible
-from django.utils.safestring import mark_safe
+import graphviz
+from jinja2 import Environment
+from taggit.models import TagBase, GenericTaggedItemBase
 
 from dcim.constants import CONNECTION_STATUS_CONNECTED
-from utilities.utils import foreground_color
+from utilities.fields import ColorField
+from utilities.utils import deepmerge, foreground_color, model_names_to_filter_dict
 from .constants import *
 from .querysets import ConfigContextQuerySet
 
@@ -27,7 +26,10 @@ from .querysets import ConfigContextQuerySet
 # Webhooks
 #
 
-@python_2_unicode_compatible
+def get_webhook_models():
+    return model_names_to_filter_dict(WEBHOOK_MODELS)
+
+
 class Webhook(models.Model):
     """
     A Webhook defines a request that will be sent to a remote application when an object is created, updated, and/or
@@ -39,7 +41,7 @@ class Webhook(models.Model):
         to=ContentType,
         related_name='webhooks',
         verbose_name='Object types',
-        limit_choices_to={'model__in': WEBHOOK_MODELS},
+        limit_choices_to=get_webhook_models,
         help_text="The object(s) to which this Webhook applies."
     )
     name = models.CharField(
@@ -106,17 +108,22 @@ class Webhook(models.Model):
 #
 
 class CustomFieldModel(models.Model):
+    _cf = None
 
     class Meta:
         abstract = True
 
+    @property
     def cf(self):
         """
         Name-based CustomFieldValue accessor for use in templates
         """
-        if not hasattr(self, 'get_custom_fields'):
-            return dict()
-        return {field.name: value for field, value in self.get_custom_fields().items()}
+        if self._cf is None:
+            # Cache all custom field values for this instance
+            self._cf = {
+                field.name: value for field, value in self.get_custom_fields().items()
+            }
+        return self._cf
 
     def get_custom_fields(self):
         """
@@ -129,20 +136,23 @@ class CustomFieldModel(models.Model):
 
         # If the object exists, populate its custom fields with values
         if hasattr(self, 'pk'):
-            values = CustomFieldValue.objects.filter(obj_type=content_type, obj_id=self.pk).select_related('field')
+            values = self.custom_field_values.all()
             values_dict = {cfv.field_id: cfv.value for cfv in values}
             return OrderedDict([(field, values_dict.get(field.pk)) for field in fields])
         else:
             return OrderedDict([(field, None) for field in fields])
 
 
-@python_2_unicode_compatible
+def get_custom_field_models():
+    return model_names_to_filter_dict(CUSTOMFIELD_MODELS)
+
+
 class CustomField(models.Model):
     obj_type = models.ManyToManyField(
         to=ContentType,
         related_name='custom_fields',
         verbose_name='Object(s)',
-        limit_choices_to={'model__in': CUSTOMFIELD_MODELS},
+        limit_choices_to=get_custom_field_models,
         help_text='The object(s) to which this field applies.'
     )
     type = models.PositiveSmallIntegerField(
@@ -227,7 +237,6 @@ class CustomField(models.Model):
         return serialized_value
 
 
-@python_2_unicode_compatible
 class CustomFieldValue(models.Model):
     field = models.ForeignKey(
         to='extras.CustomField',
@@ -268,10 +277,9 @@ class CustomFieldValue(models.Model):
         if self.pk and self.value is None:
             self.delete()
         else:
-            super(CustomFieldValue, self).save(*args, **kwargs)
+            super().save(*args, **kwargs)
 
 
-@python_2_unicode_compatible
 class CustomFieldChoice(models.Model):
     field = models.ForeignKey(
         to='extras.CustomField',
@@ -301,15 +309,70 @@ class CustomFieldChoice(models.Model):
     def delete(self, using=None, keep_parents=False):
         # When deleting a CustomFieldChoice, delete all CustomFieldValues which point to it
         pk = self.pk
-        super(CustomFieldChoice, self).delete(using, keep_parents)
+        super().delete(using, keep_parents)
         CustomFieldValue.objects.filter(field__type=CF_TYPE_SELECT, serialized_value=str(pk)).delete()
+
+
+#
+# Custom links
+#
+
+def get_custom_link_models():
+    return model_names_to_filter_dict(CUSTOMLINK_MODELS)
+
+
+class CustomLink(models.Model):
+    """
+    A custom link to an external representation of a NetBox object. The link text and URL fields accept Jinja2 template
+    code to be rendered with an object as context.
+    """
+    content_type = models.ForeignKey(
+        to=ContentType,
+        on_delete=models.CASCADE,
+        limit_choices_to=get_custom_link_models
+    )
+    name = models.CharField(
+        max_length=100,
+        unique=True
+    )
+    text = models.CharField(
+        max_length=500,
+        help_text="Jinja2 template code for link text"
+    )
+    url = models.CharField(
+        max_length=500,
+        verbose_name='URL',
+        help_text="Jinja2 template code for link URL"
+    )
+    weight = models.PositiveSmallIntegerField(
+        default=100
+    )
+    group_name = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Links with the same group will appear as a dropdown menu"
+    )
+    button_class = models.CharField(
+        max_length=30,
+        choices=BUTTON_CLASS_CHOICES,
+        default=BUTTON_CLASS_DEFAULT,
+        help_text="The class of the first link in a group will be used for the dropdown button"
+    )
+    new_window = models.BooleanField(
+        help_text="Force link to open in a new window"
+    )
+
+    class Meta:
+        ordering = ['group_name', 'weight', 'name']
+
+    def __str__(self):
+        return self.name
 
 
 #
 # Graphs
 #
 
-@python_2_unicode_compatible
 class Graph(models.Model):
     type = models.PositiveSmallIntegerField(
         choices=GRAPH_TYPE_CHOICES
@@ -351,12 +414,15 @@ class Graph(models.Model):
 # Export templates
 #
 
-@python_2_unicode_compatible
+def get_export_template_models():
+    return model_names_to_filter_dict(EXPORTTEMPLATE_MODELS)
+
+
 class ExportTemplate(models.Model):
     content_type = models.ForeignKey(
         to=ContentType,
         on_delete=models.CASCADE,
-        limit_choices_to={'model__in': EXPORTTEMPLATE_MODELS}
+        limit_choices_to=get_export_template_models
     )
     name = models.CharField(
         max_length=100
@@ -365,14 +431,23 @@ class ExportTemplate(models.Model):
         max_length=200,
         blank=True
     )
-    template_code = models.TextField()
+    template_language = models.PositiveSmallIntegerField(
+        choices=TEMPLATE_LANGUAGE_CHOICES,
+        default=TEMPLATE_LANGUAGE_JINJA2
+    )
+    template_code = models.TextField(
+        help_text='The list of objects being exported is passed as a context variable named <code>queryset</code>.'
+    )
     mime_type = models.CharField(
-        max_length=15,
-        blank=True
+        max_length=50,
+        blank=True,
+        verbose_name='MIME type',
+        help_text='Defaults to <code>text/plain</code>'
     )
     file_extension = models.CharField(
         max_length=15,
-        blank=True
+        blank=True,
+        help_text='Extension to append to the rendered filename'
     )
 
     class Meta:
@@ -384,16 +459,36 @@ class ExportTemplate(models.Model):
     def __str__(self):
         return '{}: {}'.format(self.content_type, self.name)
 
+    def render(self, queryset):
+        """
+        Render the contents of the template.
+        """
+        context = {
+            'queryset': queryset
+        }
+
+        if self.template_language == TEMPLATE_LANGUAGE_DJANGO:
+            template = Template(self.template_code)
+            output = template.render(Context(context))
+
+        elif self.template_language == TEMPLATE_LANGUAGE_JINJA2:
+            template = Environment().from_string(source=self.template_code)
+            output = template.render(**context)
+
+        else:
+            return None
+
+        # Replace CRLF-style line terminators
+        output = output.replace('\r\n', '\n')
+
+        return output
+
     def render_to_response(self, queryset):
         """
         Render the template to an HTTP response, delivered as a named file attachment
         """
-        template = Template(self.template_code)
+        output = self.render(queryset)
         mime_type = 'text/plain' if not self.mime_type else self.mime_type
-        output = template.render(Context({'queryset': queryset}))
-
-        # Replace CRLF-style line terminators
-        output = output.replace('\r\n', '\n')
 
         # Build the response
         response = HttpResponse(output, content_type=mime_type)
@@ -410,7 +505,6 @@ class ExportTemplate(models.Model):
 # Topology maps
 #
 
-@python_2_unicode_compatible
 class TopologyMap(models.Model):
     name = models.CharField(
         max_length=50,
@@ -480,7 +574,7 @@ class TopologyMap(models.Model):
             # Add each device to the graph
             devices = []
             for query in device_set.strip(';').split(';'):  # Split regexes on semicolons
-                devices += Device.objects.filter(name__regex=query).select_related('device_role')
+                devices += Device.objects.filter(name__regex=query).prefetch_related('device_role')
             # Remove duplicate devices
             devices = [d for d in devices if d.id not in seen]
             seen.update([d.id for d in devices])
@@ -515,18 +609,22 @@ class TopologyMap(models.Model):
     def add_network_connections(self, devices):
 
         from circuits.models import CircuitTermination
-        from dcim.models import InterfaceConnection
+        from dcim.models import Interface
 
         # Add all interface connections to the graph
-        connections = InterfaceConnection.objects.filter(
-            interface_a__device__in=devices, interface_b__device__in=devices
+        connected_interfaces = Interface.objects.prefetch_related(
+            '_connected_interface__device'
+        ).filter(
+            Q(device__in=devices) | Q(_connected_interface__device__in=devices),
+            _connected_interface__isnull=False,
+            pk__lt=F('_connected_interface')
         )
-        for c in connections:
-            style = 'solid' if c.connection_status == CONNECTION_STATUS_CONNECTED else 'dashed'
-            self.graph.edge(c.interface_a.device.name, c.interface_b.device.name, style=style)
+        for interface in connected_interfaces:
+            style = 'solid' if interface.connection_status == CONNECTION_STATUS_CONNECTED else 'dashed'
+            self.graph.edge(interface.device.name, interface.connected_endpoint.device.name, style=style)
 
         # Add all circuits to the graph
-        for termination in CircuitTermination.objects.filter(term_side='A', interface__device__in=devices):
+        for termination in CircuitTermination.objects.filter(term_side='A', connected_endpoint__device__in=devices):
             peer_termination = termination.get_peer_termination()
             if (peer_termination is not None and peer_termination.interface is not None and
                     peer_termination.interface.device in devices):
@@ -537,20 +635,18 @@ class TopologyMap(models.Model):
         from dcim.models import ConsolePort
 
         # Add all console connections to the graph
-        console_ports = ConsolePort.objects.filter(device__in=devices, cs_port__device__in=devices)
-        for cp in console_ports:
+        for cp in ConsolePort.objects.filter(device__in=devices, connected_endpoint__device__in=devices):
             style = 'solid' if cp.connection_status == CONNECTION_STATUS_CONNECTED else 'dashed'
-            self.graph.edge(cp.cs_port.device.name, cp.device.name, style=style)
+            self.graph.edge(cp.connected_endpoint.device.name, cp.device.name, style=style)
 
     def add_power_connections(self, devices):
 
         from dcim.models import PowerPort
 
         # Add all power connections to the graph
-        power_ports = PowerPort.objects.filter(device__in=devices, power_outlet__device__in=devices)
-        for pp in power_ports:
+        for pp in PowerPort.objects.filter(device__in=devices, _connected_poweroutlet__device__in=devices):
             style = 'solid' if pp.connection_status == CONNECTION_STATUS_CONNECTED else 'dashed'
-            self.graph.edge(pp.power_outlet.device.name, pp.device.name, style=style)
+            self.graph.edge(pp.connected_endpoint.device.name, pp.device.name, style=style)
 
 
 #
@@ -571,7 +667,6 @@ def image_upload(instance, filename):
     return '{}{}_{}_{}'.format(path, instance.content_type.name, instance.object_id, filename)
 
 
-@python_2_unicode_compatible
 class ImageAttachment(models.Model):
     """
     An uploaded image which is associated with an object.
@@ -613,7 +708,7 @@ class ImageAttachment(models.Model):
 
         _name = self.image.name
 
-        super(ImageAttachment, self).delete(*args, **kwargs)
+        super().delete(*args, **kwargs)
 
         # Delete file from disk
         self.image.delete(save=False)
@@ -727,13 +822,28 @@ class ConfigContextModel(models.Model):
         # Compile all config data, overwriting lower-weight values with higher-weight values where a collision occurs
         data = OrderedDict()
         for context in ConfigContext.objects.get_for_object(self):
-            data.update(context.data)
+            data = deepmerge(data, context.data)
 
-        # If the object has local config context data defined, that data overwrites all rendered data
-        if self.local_context_data is not None:
-            data.update(self.local_context_data)
+        # If the object has local config context data defined, merge it last
+        if self.local_context_data:
+            data = deepmerge(data, self.local_context_data)
 
         return data
+
+
+#
+# Custom scripts
+#
+
+class Script(models.Model):
+    """
+    Dummy model used to generate permissions for custom scripts. Does not exist in the database.
+    """
+    class Meta:
+        managed = False
+        permissions = (
+            ('run_script', 'Can run script'),
+        )
 
 
 #
@@ -769,7 +879,6 @@ class ReportResult(models.Model):
 # Change logging
 #
 
-@python_2_unicode_compatible
 class ObjectChange(models.Model):
     """
     Record a change to an object and the user account associated with that change. A change record may optionally
@@ -778,7 +887,8 @@ class ObjectChange(models.Model):
     """
     time = models.DateTimeField(
         auto_now_add=True,
-        editable=False
+        editable=False,
+        db_index=True
     )
     user = models.ForeignKey(
         to=User,
@@ -849,10 +959,12 @@ class ObjectChange(models.Model):
     def save(self, *args, **kwargs):
 
         # Record the user's name and the object's representation as static strings
-        self.user_name = self.user.username
-        self.object_repr = str(self.changed_object)
+        if not self.user_name:
+            self.user_name = self.user.username
+        if not self.object_repr:
+            self.object_repr = str(self.changed_object)
 
-        return super(ObjectChange, self).save(*args, **kwargs)
+        return super().save(*args, **kwargs)
 
     def get_absolute_url(self):
         return reverse('extras:objectchange', args=[self.pk])
@@ -874,98 +986,34 @@ class ObjectChange(models.Model):
 
 
 #
-# User actions
+# Tags
 #
 
-class UserActionManager(models.Manager):
-
-    # Actions affecting a single object
-    def log_action(self, user, obj, action, message):
-        self.model.objects.create(
-            content_type=ContentType.objects.get_for_model(obj),
-            object_id=obj.pk,
-            user=user,
-            action=action,
-            message=message,
-        )
-
-    def log_create(self, user, obj, message=''):
-        self.log_action(user, obj, ACTION_CREATE, message)
-
-    def log_edit(self, user, obj, message=''):
-        self.log_action(user, obj, ACTION_EDIT, message)
-
-    def log_delete(self, user, obj, message=''):
-        self.log_action(user, obj, ACTION_DELETE, message)
-
-    # Actions affecting multiple objects
-    def log_bulk_action(self, user, content_type, action, message):
-        self.model.objects.create(
-            content_type=content_type,
-            user=user,
-            action=action,
-            message=message,
-        )
-
-    def log_import(self, user, content_type, message=''):
-        self.log_bulk_action(user, content_type, ACTION_IMPORT, message)
-
-    def log_bulk_create(self, user, content_type, message=''):
-        self.log_bulk_action(user, content_type, ACTION_BULK_CREATE, message)
-
-    def log_bulk_edit(self, user, content_type, message=''):
-        self.log_bulk_action(user, content_type, ACTION_BULK_EDIT, message)
-
-    def log_bulk_delete(self, user, content_type, message=''):
-        self.log_bulk_action(user, content_type, ACTION_BULK_DELETE, message)
+# TODO: figure out a way around this circular import for ObjectChange
+from utilities.models import ChangeLoggedModel  # noqa: E402
 
 
-# TODO: Remove UserAction, which has been replaced by ObjectChange.
-@python_2_unicode_compatible
-class UserAction(models.Model):
-    """
-    DEPRECATED: A record of an action (add, edit, or delete) performed on an object by a User.
-    """
-    time = models.DateTimeField(
-        auto_now_add=True,
-        editable=False
+class Tag(TagBase, ChangeLoggedModel):
+    color = ColorField(
+        default='9e9e9e'
     )
-    user = models.ForeignKey(
-        to=User,
-        on_delete=models.CASCADE,
-        related_name='actions'
+    comments = models.TextField(
+        blank=True,
+        default=''
     )
-    content_type = models.ForeignKey(
-        to=ContentType,
+
+    def get_absolute_url(self):
+        return reverse('extras:tag', args=[self.slug])
+
+
+class TaggedItem(GenericTaggedItemBase):
+    tag = models.ForeignKey(
+        to=Tag,
+        related_name="%(app_label)s_%(class)s_items",
         on_delete=models.CASCADE
     )
-    object_id = models.PositiveIntegerField(
-        blank=True,
-        null=True
-    )
-    action = models.PositiveSmallIntegerField(
-        choices=ACTION_CHOICES
-    )
-    message = models.TextField(
-        blank=True
-    )
-
-    objects = UserActionManager()
 
     class Meta:
-        ordering = ['-time']
-
-    def __str__(self):
-        if self.message:
-            return '{} {}'.format(self.user, self.message)
-        return '{} {} {}'.format(self.user, self.get_action_display(), self.content_type)
-
-    def icon(self):
-        if self.action in [ACTION_CREATE, ACTION_BULK_CREATE, ACTION_IMPORT]:
-            return mark_safe('<i class="glyphicon glyphicon-plus text-success"></i>')
-        elif self.action in [ACTION_EDIT, ACTION_BULK_EDIT]:
-            return mark_safe('<i class="glyphicon glyphicon-pencil text-warning"></i>')
-        elif self.action in [ACTION_DELETE, ACTION_BULK_DELETE]:
-            return mark_safe('<i class="glyphicon glyphicon-remove text-danger"></i>')
-        else:
-            return ''
+        index_together = (
+            ("content_type", "object_id")
+        )

@@ -1,14 +1,14 @@
-from __future__ import unicode_literals
-
 from Crypto.Cipher import PKCS1_OAEP
 from Crypto.PublicKey import RSA
 from django import forms
-from django.db.models import Count
 from taggit.forms import TagField
 
 from dcim.models import Device
 from extras.forms import AddRemoveTagsForm, CustomFieldBulkEditForm, CustomFieldFilterForm, CustomFieldForm
-from utilities.forms import BootstrapMixin, FilterChoiceField, FlexibleModelChoiceField, SlugField
+from utilities.forms import (
+    APISelect, APISelectMultiple, BootstrapMixin, FilterChoiceField, FlexibleModelChoiceField, SlugField,
+    StaticSelect2Multiple
+)
 from .models import Secret, SecretRole, UserKey
 
 
@@ -41,7 +41,13 @@ class SecretRoleForm(BootstrapMixin, forms.ModelForm):
 
     class Meta:
         model = SecretRole
-        fields = ['name', 'slug', 'users', 'groups']
+        fields = [
+            'name', 'slug', 'users', 'groups',
+        ]
+        widgets = {
+            'users': StaticSelect2Multiple(),
+            'groups': StaticSelect2Multiple(),
+        }
 
 
 class SecretRoleCSVForm(forms.ModelForm):
@@ -64,7 +70,11 @@ class SecretForm(BootstrapMixin, CustomFieldForm):
         max_length=65535,
         required=False,
         label='Plaintext',
-        widget=forms.PasswordInput(attrs={'class': 'requires-session-key'})
+        widget=forms.PasswordInput(
+            attrs={
+                'class': 'requires-session-key',
+            }
+        )
     )
     plaintext2 = forms.CharField(
         max_length=65535,
@@ -72,15 +82,23 @@ class SecretForm(BootstrapMixin, CustomFieldForm):
         label='Plaintext (verify)',
         widget=forms.PasswordInput()
     )
-    tags = TagField(required=False)
+    tags = TagField(
+        required=False
+    )
 
     class Meta:
         model = Secret
-        fields = ['role', 'name', 'plaintext', 'plaintext2', 'tags']
+        fields = [
+            'role', 'name', 'plaintext', 'plaintext2', 'tags',
+        ]
+        widgets = {
+            'role': APISelect(
+                api_url="/api/secrets/secret-roles/"
+            )
+        }
 
     def __init__(self, *args, **kwargs):
-
-        super(SecretForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # A plaintext value is required when creating a new Secret
         if not self.instance.pk:
@@ -124,26 +142,47 @@ class SecretCSVForm(forms.ModelForm):
         }
 
     def save(self, *args, **kwargs):
-        s = super(SecretCSVForm, self).save(*args, **kwargs)
+        s = super().save(*args, **kwargs)
         s.plaintext = str(self.cleaned_data['plaintext'])
         return s
 
 
 class SecretBulkEditForm(BootstrapMixin, AddRemoveTagsForm, CustomFieldBulkEditForm):
-    pk = forms.ModelMultipleChoiceField(queryset=Secret.objects.all(), widget=forms.MultipleHiddenInput)
-    role = forms.ModelChoiceField(queryset=SecretRole.objects.all(), required=False)
-    name = forms.CharField(max_length=100, required=False)
+    pk = forms.ModelMultipleChoiceField(
+        queryset=Secret.objects.all(),
+        widget=forms.MultipleHiddenInput()
+    )
+    role = forms.ModelChoiceField(
+        queryset=SecretRole.objects.all(),
+        required=False,
+        widget=APISelect(
+            api_url="/api/secrets/secret-roles/"
+        )
+    )
+    name = forms.CharField(
+        max_length=100,
+        required=False
+    )
 
     class Meta:
-        nullable_fields = ['name']
+        nullable_fields = [
+            'name',
+        ]
 
 
 class SecretFilterForm(BootstrapMixin, CustomFieldFilterForm):
     model = Secret
-    q = forms.CharField(required=False, label='Search')
+    q = forms.CharField(
+        required=False,
+        label='Search'
+    )
     role = FilterChoiceField(
-        queryset=SecretRole.objects.annotate(filter_count=Count('secrets')),
-        to_field_name='slug'
+        queryset=SecretRole.objects.all(),
+        to_field_name='slug',
+        widget=APISelectMultiple(
+            api_url="/api/secrets/secret-roles/",
+            value_field="slug",
+        )
     )
 
 
@@ -160,6 +199,9 @@ class UserKeyForm(BootstrapMixin, forms.ModelForm):
             'public_key': "Enter your public RSA key. Keep the private one with you; you'll need it for decryption. "
                           "Please note that passphrase-protected keys are not supported.",
         }
+        labels = {
+            'public_key': ''
+        }
 
     def clean_public_key(self):
         key = self.cleaned_data['public_key']
@@ -171,5 +213,15 @@ class UserKeyForm(BootstrapMixin, forms.ModelForm):
 
 
 class ActivateUserKeyForm(forms.Form):
-    _selected_action = forms.ModelMultipleChoiceField(queryset=UserKey.objects.all(), label='User Keys')
-    secret_key = forms.CharField(label='Your private key', widget=forms.Textarea(attrs={'class': 'vLargeTextField'}))
+    _selected_action = forms.ModelMultipleChoiceField(
+        queryset=UserKey.objects.all(),
+        label='User Keys'
+    )
+    secret_key = forms.CharField(
+        widget=forms.Textarea(
+            attrs={
+                'class': 'vLargeTextField',
+            }
+        ),
+        label='Your private key'
+    )

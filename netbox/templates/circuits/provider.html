@@ -1,11 +1,12 @@
 {% extends '_base.html' %}
-{% load static from staticfiles %}
+{% load static %}
+{% load custom_links %}
 {% load helpers %}
 
 {% block title %}{{ provider }}{% endblock %}
 
 {% block header %}
-    <div class="row">
+    <div class="row noprint">
         <div class="col-sm-8 col-md-9">
             <ol class="breadcrumb">
                 <li><a href="{% url 'circuits:provider_list' %}">Providers</a></li>
@@ -25,7 +26,7 @@
             </form>
         </div>
     </div>
-    <div class="pull-right">
+    <div class="pull-right noprint">
         {% if show_graphs %}
             <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#graphs_modal" data-obj="{{ provider.name }}" data-url="{% url 'circuits-api:provider-graphs' pk=provider.pk %}" title="Show graphs">
                 <i class="fa fa-signal" aria-hidden="true"></i>
@@ -47,13 +48,18 @@
     </div>
     <h1>{{ provider }}</h1>
     {% include 'inc/created_updated.html' with obj=provider %}
+    <div class="pull-right noprint">
+        {% custom_links provider %}
+    </div>
     <ul class="nav nav-tabs">
         <li role="presentation"{% if not active_tab %} class="active"{% endif %}>
             <a href="{{ provider.get_absolute_url }}">Provider</a>
         </li>
-        <li role="presentation"{% if active_tab == 'changelog' %} class="active"{% endif %}>
-            <a href="{% url 'circuits:provider_changelog' slug=provider.slug %}">Changelog</a>
-        </li>
+        {% if perms.extras.view_objectchange %}
+            <li role="presentation"{% if active_tab == 'changelog' %} class="active"{% endif %}>
+                <a href="{% url 'circuits:provider_changelog' slug=provider.slug %}">Changelog</a>
+            </li>
+        {% endif %}
     </ul>
 {% endblock %}
 
@@ -67,23 +73,11 @@
             <table class="table table-hover panel-body attr-table">
                 <tr>
                     <td>ASN</td>
-                    <td>
-                        {% if provider.asn %}
-                            {{ provider.asn }}
-                        {% else %}
-                            <span class="text-muted">N/A</span>
-                        {% endif %}
-                    </td>
+                    <td>{{ provider.asn|placeholder }}</td>
                 </tr>
                 <tr>
                     <td>Account</td>
-                    <td>
-                        {% if provider.account %}
-                            {{ provider.account }}
-                        {% else %}
-                            <span class="text-muted">N/A</span>
-                        {% endif %}
-                    </td>
+                    <td>{{ provider.account|placeholder }}</td>
                 </tr>
                 <tr>
                     <td>Customer Portal</td>
@@ -91,29 +85,17 @@
                         {% if provider.portal_url %}
                             <a href="{{ provider.portal_url }}">{{ provider.portal_url }}</a>
                         {% else %}
-                            <span class="text-muted">N/A</span>
+                            <span class="text-muted">&mdash;</span>
                         {% endif %}
                     </td>
                 </tr>
                 <tr>
                     <td>NOC Contact</td>
-                    <td>
-                        {% if provider.noc_contact %}
-                            {{ provider.noc_contact|linebreaksbr }}
-                        {% else %}
-                            <span class="text-muted">N/A</span>
-                        {% endif %}
-                    </td>
+                    <td class="rendered-markdown">{{ provider.noc_contact|gfm|placeholder }}</td>
                 </tr>
                 <tr>
                     <td>Admin Contact</td>
-                    <td>
-                        {% if provider.admin_contact %}
-                            {{ provider.admin_contact|linebreaksbr }}
-                        {% else %}
-                            <span class="text-muted">N/A</span>
-                        {% endif %}
-                    </td>
+                    <td class="rendered-markdown">{{ provider.admin_contact|gfm|placeholder }}</td>
                 </tr>
                 <tr>
                     <td>Circuits</td>
@@ -196,7 +178,7 @@
                 {% endfor %}
             </table>
             {% if perms.circuits.add_circuit %}
-                <div class="panel-footer text-right">
+                <div class="panel-footer text-right noprint">
                     <a href="{% url 'circuits:circuit_add' %}?provider={{ provider.pk }}" class="btn btn-xs btn-primary">
                         <span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Add circuit
                     </a>
@@ -205,7 +187,7 @@
         </div>
     </div>
 </div>
-{% include 'inc/graphs_modal.html' %}
+{% include 'inc/modal.html' with modal_name='graphs' %}
 {% endblock %}
 
 {% block javascript %}

@@ -3,18 +3,18 @@ import datetime
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 
-from extras.models import Webhook
 from extras.constants import OBJECTCHANGE_ACTION_CREATE, OBJECTCHANGE_ACTION_DELETE, OBJECTCHANGE_ACTION_UPDATE
+from extras.models import Webhook
 from utilities.api import get_serializer_for_model
 from .constants import WEBHOOK_MODELS
 
 
-def enqueue_webhooks(instance, action):
+def enqueue_webhooks(instance, user, request_id, action):
     """
     Find Webhook(s) assigned to this instance + action and enqueue them
     to be processed
     """
-    if not settings.WEBHOOKS_ENABLED or instance._meta.model_name not in WEBHOOK_MODELS:
+    if not settings.WEBHOOKS_ENABLED or instance._meta.label.lower() not in WEBHOOK_MODELS:
         return
 
     # Retrieve any applicable Webhooks
@@ -45,7 +45,9 @@ def enqueue_webhooks(instance, action):
                 "extras.webhooks_worker.process_webhook",
                 webhook,
                 serializer.data,
-                instance.__class__,
+                instance._meta.model_name,
                 action,
-                str(datetime.datetime.now())
+                str(datetime.datetime.now()),
+                user.username,
+                request_id
             )

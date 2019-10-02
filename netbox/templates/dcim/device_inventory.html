@@ -1,4 +1,5 @@
 {% extends 'dcim/device.html' %}
+{% load helpers %}
 
 {% block title %}{{ device }} - Inventory{% endblock %}
 
@@ -12,27 +13,15 @@
                 <table class="table table-hover panel-body attr-table">
                     <tr>
                         <td>Model</td>
-                        <td>{{ device.device_type.full_name }}</td>
+                        <td>{{ device.device_type.display_name }}</td>
                     </tr>
                     <tr>
                         <td>Serial Number</td>
-                        <td>
-                            {% if device.serial %}
-                                <span>{{ device.serial }}</span>
-                            {% else %}
-                                <span class="text-muted">N/A</span>
-                            {% endif %}
-                        </td>
+                        <td><span>{{ device.serial|placeholder }}</span></td>
                     </tr>
                     <tr>
                         <td>Asset Tag</td>
-                        <td>
-                            {% if device.asset_tag %}
-                                <span>{{ device.asset_tag }}</span>
-                            {% else %}
-                                <span class="text-muted">N/A</span>
-                            {% endif %}
-                        </td>
+                        <td><span>{{ device.asset_tag|placeholder }}</span></td>
                     </tr>
                 </table>
             </div>
@@ -48,7 +37,7 @@
                             <th>Name</th>
                             <th></th>
                             <th>Manufacturer</th>
-                            <th>Part Number</th>
+                            <th>Part ID</th>
                             <th>Serial Number</th>
                             <th>Asset Tag</th>
                             <th>Description</th>
@@ -64,7 +53,7 @@
                     </tbody>
                 </table>
                 {% if perms.dcim.add_inventoryitem %}
-                    <div class="panel-footer text-right">
+                    <div class="panel-footer text-right noprint">
                         <a href="{% url 'dcim:inventoryitem_add' device=device.pk %}" class="btn btn-primary btn-xs">
                             <span class="fa fa-plus" aria-hidden="true"></span> Add Inventory Item
                         </a>
