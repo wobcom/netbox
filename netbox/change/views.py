@@ -53,7 +53,7 @@ class ChangeFormView(PermissionRequiredMixin, CreateView):
         if customers_formset.is_valid():
             customers = customers_formset.save()
 
-        c = ChangeSet(user=request.user, active=True)
+        c = ChangeSet(user=self.request.user, active=True)
         c.change_information = self.object
         c.save()
 
