@@ -37,9 +37,12 @@ class ChangeFormView(PermissionRequiredMixin, CreateView):
             return redirect('/')
         return super(ChangeFormView, self).get(request, *args, **kwargs)
 
-    def get_initial(self):
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        change_id = self.request.session['change_id']
         return {
-            'depends_on': ChangeSet.objects.filter(status=IN_REVIEW)
+            **kwargs,
+            'change_id': change_id
         }
 
     def form_valid(self, form):
@@ -51,14 +54,14 @@ class ChangeFormView(PermissionRequiredMixin, CreateView):
             prefix='affected_customers'
         )
         if customers_formset.is_valid():
-            customers = customers_formset.save()
-
-        c = ChangeSet(user=self.request.user, active=True)
-        c.change_information = self.object
-        c.save()
+            customers_formset.save()
 
         for depends in self.object.depends_on.all():
             depends.apply()
+
+        c = ChangeSet.objects.get(pk=self.request.session['change_id'])
+        c.change_information = self.object
+        c.save()
 
         return result
 
@@ -94,7 +97,7 @@ class ToggleView(View):
         change_information = changeset.change_information
         if change_information:
             for depends in change_information.depends_on.all():
-                depends.apply()
+                depends.revert()
 
         return changeset
 
