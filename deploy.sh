@@ -22,6 +22,6 @@ cd /opt/netbox
 ## update dependencies, do DB migrations, and collect static files
 venv/bin/pip install -Ur requirements.txt
 venv/bin/python netbox/manage.py migrate
-venv/bin/python netbox/manage.py collectstatic
+venv/bin/python netbox/manage.py collectstatic --noinput
 
 supervisorctl restart all
