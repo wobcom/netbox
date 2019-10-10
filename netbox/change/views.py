@@ -324,7 +324,6 @@ class ReactivateView(View):
             return HttpResponseForbidden('Change cannot be reactivated!')
 
         obj.active = True
-        obj.user = request.user
         obj.updated = datetime.now()
         obj.save()
 
@@ -426,13 +425,3 @@ class DetailView(View):
         """
         changeset = get_object_or_404(ChangeSet, pk=pk)
         return render(request, 'change/detail.html', {'changeset': changeset})
-
-
-@method_decorator(login_required, name='dispatch')
-class ListView(ObjectListView):
-    queryset = ChangeSet.objects.annotate(
-        changedfield_count=models.Count('changedfield', distinct=True),
-        changedobject_count=models.Count('changedobject', distinct=True)
-    )
-    table = tables.ChangeTable
-    template_name = 'change/change_list.html'

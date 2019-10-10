@@ -496,7 +496,7 @@
                 {% if request.user.is_authenticated %}
                     {% if not request.session.foreign_change %}
                     <li>
-                      <form class="navbar-form" action="{% url 'change:change_toggle' %}">
+                      <form class="navbar-form" action="{% url 'change:toggle' %}">
                           <button type="submit" class="btn btn-{% if request.session.in_change %}warning{% else %}primary{% endif %}">
                             <i class="fa fa-{% if request.session.in_change %}stop{% else %}play{% endif %}"></i>
                             Change
