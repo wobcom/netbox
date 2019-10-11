@@ -179,7 +179,7 @@ class ChangeSet(models.Model):
         if device in self.vlan_cache:
             return self.vlan_cache[device]
         for interface in device.interfaces.exclude(type=IFACE_TYPE_ONTEP):
-            self.vlan_cache[device] = interface.tagged_vlans.values_list('vid', flat=True)
+            self.vlan_cache[device] = list(interface.tagged_vlans.values_list('vid', flat=True))
             if interface.untagged_vlan != None:
                 self.vlan_cache[device].append(interface.untagged_vlan.vid)
         return self.vlan_cache[device]
