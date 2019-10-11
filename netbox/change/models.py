@@ -308,7 +308,7 @@ class ChangeSet(models.Model):
                                             for address
                                             in interface.ip_addresses.all()]
             }]
-        if interface:
+        if interface and len(res):
             res[0]['extra_fields'] = self.yamlify_extra_fields(interface)
         return res
 
