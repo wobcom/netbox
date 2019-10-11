@@ -178,7 +178,7 @@ class ChangeSet(models.Model):
         """
         if device in self.vlan_cache:
             return self.vlan_cache[device]
-        for interface in device.interfaces.exclude(form_factor=IFACE_TYPE_ONTEP):
+        for interface in device.interfaces.exclude(type=IFACE_TYPE_ONTEP):
             self.vlan_cache[device] = interface.tagged_vlans.values_list('vid', flat=True)
             if interface.untagged_vlan != None:
                 self.vlan_cache[device].append(interface.untagged_vlan.vid)
@@ -222,7 +222,7 @@ class ChangeSet(models.Model):
     def child_interfaces(self, interface):
         res = []
         for child_interface in Interface.objects.filter(lag=interface):
-            if child_interface.form_factor == IFACE_TYPE_ONTEP:
+            if child_interface.type == IFACE_TYPE_ONTEP:
                 if not child_interface.overlay_network:
                     continue
                 # expand ONTEP to VTEPs (but only for those VLANs that are actually used on switchports)
@@ -273,7 +273,7 @@ class ChangeSet(models.Model):
             }
         tagged_vlans = set()
         for child_interface in Interface.objects.filter(lag=interface):
-            if child_interface.form_factor == IFACE_TYPE_ONTEP:
+            if child_interface.type == IFACE_TYPE_ONTEP:
                 tagged_vlans |= set(child_interface.overlay_network.vlans.all())
             else:
                 tagged_vlans |= set(child_interface.tagged_vlans.all())
@@ -282,9 +282,9 @@ class ChangeSet(models.Model):
 
     def yamlify_interface(self, interface):
         res = None
-        if interface.form_factor == IFACE_TYPE_ONTEP:
+        if interface.type == IFACE_TYPE_ONTEP:
             res = self.yamlify_ontep_interface(interface)
-        elif interface.form_factor == IFACE_TYPE_BRIDGE:
+        elif interface.type == IFACE_TYPE_BRIDGE:
             res = self.yamlify_bridge_interface(interface)
         elif interface:
             res = [{
@@ -303,7 +303,7 @@ class ChangeSet(models.Model):
                 'tagged_vlans': [self.yamlify_vlan(v)
                                             for v
                                             in interface.tagged_vlans.all()],
-                'form_factor': self.convert_form_factor(interface.form_factor),
+                'form_factor': self.convert_form_factor(interface.type),
                 'ip_addresses': [self.yamlify_ip_address(address)
                                             for address
                                             in interface.ip_addresses.all()]
@@ -442,7 +442,7 @@ class ChangeSet(models.Model):
             graph.node(device.name, **attributes)
             seen_devices.append(device)
             for interface in device.interfaces.all():
-                if interface.form_factor in NONCONNECTABLE_IFACE_TYPES + AGGREGATABLE_IFACE_TYPES:
+                if interface.type in NONCONNECTABLE_IFACE_TYPES + AGGREGATABLE_IFACE_TYPES:
                     continue
                 trace = interface.trace()[0]
                 cable = trace[1]
