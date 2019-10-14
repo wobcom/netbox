@@ -34,7 +34,7 @@ class ChangeFormView(PermissionRequiredMixin, CreateView):
 
     def get(self, request, *args, **kwargs):
         if not request.session.get('in_change'):
-            return redirect('/')
+            return redirect('home')
         return super(ChangeFormView, self).get(request, *args, **kwargs)
 
     def get_form_kwargs(self):
@@ -122,7 +122,7 @@ class ToggleView(View):
             c = ChangeSet(user=request.user, active=True)
             c.save()
             request.session['change_id'] = c.id
-            return redirect('/change/form')
+            return redirect('change:form')
 
         # we finished our change. we generate the changeset now
         changeset = self.treat_changeset(request)
@@ -133,7 +133,7 @@ class ToggleView(View):
 
         if not changeset.change_information:
             request.session['in_change'] = False
-            return redirect('/')
+            return redirect('home')
 
         return res
 
@@ -260,7 +260,7 @@ class MRView(View):
         obj.status = ACCEPTED
         obj.save()
 
-        return redirect('/change/list')
+        return redirect('user:changes')
 
 
 @method_decorator(login_required, name='dispatch')
@@ -286,7 +286,7 @@ class AcceptView(View):
         obj.status = IN_REVIEW
         obj.save()
 
-        return redirect('/')
+        return redirect('home')
 
 
 @method_decorator(login_required, name='dispatch')
@@ -306,7 +306,7 @@ class RejectView(View):
         obj.status = REJECTED
         obj.save()
 
-        return redirect('/')
+        return redirect('home')
 
 
 @method_decorator(login_required, name='dispatch')
@@ -329,7 +329,7 @@ class ReactivateView(View):
 
         request.session['in_change'] = True
 
-        return redirect('/')
+        return redirect('home')
 
 
 # needs to be a rest_framework viewset for nextbox... urgh
