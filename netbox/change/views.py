@@ -11,6 +11,7 @@ from django.http import HttpResponse, HttpResponseForbidden, \
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import dateparse, timezone
 from django.utils.decorators import method_decorator
+from django.utils.safestring import mark_safe
 from django.views.generic import View
 from django.views.generic.edit import CreateView
 from rest_framework.decorators import action
@@ -238,9 +239,11 @@ def open_gitlab_mr(o, delete_branch=False):
             approver_ids=[configuration.GITLAB_APPROVER_ID]
         )
 
-    msg = "You can review your merge request at {}/{}/merge_requests/{}!"
-    return msg.format(configuration.GITLAB_URL, project.path_with_namespace,
-                      mr.iid)
+    o.mr_location = "{}/{}/merge_requests/{}".format(
+        configuration.GITLAB_URL, project.path_with_namespace, mr.iid
+    )
+
+    return 'You can review your merge request <a href="{}">here</a>!'.format(o.mr_location)
 
 
 @method_decorator(login_required, name='dispatch')
@@ -256,7 +259,8 @@ class MRView(View):
         """
         obj = get_object_or_404(self.model, pk=pk)
 
-        messages.info(request, open_gitlab_mr(obj, delete_branch=True))
+        safe = mark_safe(open_gitlab_mr(obj, delete_branch=True))
+        messages.info(request, safe)
         obj.status = ACCEPTED
         obj.save()
 
@@ -279,7 +283,8 @@ class AcceptView(View):
             return HttpResponseForbidden('Change was already accepted!')
 
         try:
-            messages.info(request, open_gitlab_mr(obj))
+            safe = mark_safe(open_gitlab_mr(obj))
+            messages.info(request, safe)
         except ConnectionError as e:
             return HttpResponseServerError(str(e))
 
