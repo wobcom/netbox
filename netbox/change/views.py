@@ -1,5 +1,6 @@
 import io
 import json
+from datetime import datetime
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -15,7 +16,6 @@ from django.views.generic.edit import CreateView
 from rest_framework.decorators import action
 from rest_framework.viewsets import ViewSet
 import gitlab
-import requests
 
 from netbox import configuration
 from utilities.views import ObjectListView
@@ -37,9 +37,12 @@ class ChangeFormView(PermissionRequiredMixin, CreateView):
             return redirect('/')
         return super(ChangeFormView, self).get(request, *args, **kwargs)
 
-    def get_initial(self):
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        change_id = self.request.session['change_id']
         return {
-            'depends_on': ChangeSet.objects.filter(status=IN_REVIEW)
+            **kwargs,
+            'change_id': change_id
         }
 
     def form_valid(self, form):
@@ -51,12 +54,14 @@ class ChangeFormView(PermissionRequiredMixin, CreateView):
             prefix='affected_customers'
         )
         if customers_formset.is_valid():
-            customers = customers_formset.save()
-
-        self.request.session['change_information'] = self.object.id
+            customers_formset.save()
 
         for depends in self.object.depends_on.all():
             depends.apply()
+
+        c = ChangeSet.objects.get(pk=self.request.session['change_id'])
+        c.change_information = self.object
+        c.save()
 
         return result
 
@@ -84,20 +89,15 @@ class ToggleView(View):
         if not changeset.active:
             return HttpResponseForbidden('Change timed out!')
 
-        info_id = request.session.get('change_information')
-        change_information = None
-        if info_id:
-            change_information = ChangeInformation.objects.get(pk=info_id)
-            changeset.change_information = change_information
-
         changeset.active = False
         changeset.save()
 
         changeset.revert()
 
+        change_information = changeset.change_information
         if change_information:
             for depends in change_information.depends_on.all():
-                depends.apply()
+                depends.revert()
 
         return changeset
 
@@ -131,11 +131,9 @@ class ToggleView(View):
             'changeset': changeset
         })
 
-        if 'change_information' not in request.session:
+        if not changeset.change_information:
             request.session['in_change'] = False
             return redirect('/')
-
-        self.clear_session(request)
 
         return res
 
@@ -311,6 +309,29 @@ class RejectView(View):
         return redirect('/')
 
 
+@method_decorator(login_required, name='dispatch')
+class ReactivateView(View):
+    model = ChangeSet
+
+    def get(self, request, pk=None):
+        """
+        This view is triggered when the change is reactivated by the operator.
+        The object is marked as active, updated, and assigned to the operator.
+        """
+        obj = get_object_or_404(self.model, pk=pk)
+
+        if obj.status != DRAFT:
+            return HttpResponseForbidden('Change cannot be reactivated!')
+
+        obj.active = True
+        obj.updated = datetime.now()
+        obj.save()
+
+        request.session['in_change'] = True
+
+        return redirect('/')
+
+
 # needs to be a rest_framework viewset for nextbox... urgh
 # TODO: combine to generic workflow endpoint with ReviewedView and RejectedView?
 class ProvisionedView(ViewSet):
@@ -404,13 +425,3 @@ class DetailView(View):
         """
         changeset = get_object_or_404(ChangeSet, pk=pk)
         return render(request, 'change/detail.html', {'changeset': changeset})
-
-
-@method_decorator(login_required, name='dispatch')
-class ListView(ObjectListView):
-    queryset = ChangeSet.objects.annotate(
-        changedfield_count=models.Count('changedfield', distinct=True),
-        changedobject_count=models.Count('changedobject', distinct=True)
-    )
-    table = tables.ChangeTable
-    template_name = 'change/change_list.html'

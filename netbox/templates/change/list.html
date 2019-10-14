@@ -56,10 +56,10 @@
           <li>{{change}}</li>
         {% endfor %}
       </ol>
-      <a href="/change/accept/{{changeset.pk}}" class="btn btn-primary" id="change-accept">
+      <a href="/change/{{changeset.pk}}/accept/" class="btn btn-primary" id="change-accept">
         Accept
       </a>
-      <a href="/change/reject/{{changeset.pk}}" class="btn btn-default">
+      <a href="/change/{{changeset.pk}}/reject/" class="btn btn-default">
         Reject
       </a>
     {% else %}

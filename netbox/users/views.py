@@ -4,6 +4,7 @@ from django.contrib.auth import login as auth_login, logout as auth_logout, upda
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.contrib.auth.models import update_last_login
 from django.contrib.auth.signals import user_logged_in
+from django.db import models
 from django.http import HttpResponseForbidden, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -17,6 +18,9 @@ from secrets.models import SessionKey, UserKey
 from utilities.forms import ConfirmationForm
 from .forms import LoginForm, PasswordChangeForm, TokenForm
 from .models import Token
+
+from change.models import ChangeSet
+from change.tables import ChangeTable
 
 
 #
@@ -304,3 +308,19 @@ class TokenDeleteView(PermissionRequiredMixin, View):
             'form': form,
             'return_url': reverse('user:token_list'),
         })
+
+
+class ChangesView(LoginRequiredMixin, View):
+    template_name = 'users/changes.html'
+
+    def get(self, request):
+        changes = ChangeSet.objects.filter(user=request.user).annotate(
+            changedfield_count=models.Count('changedfield', distinct=True),
+            changedobject_count=models.Count('changedobject', distinct=True)
+        )
+        return render(request, self.template_name, {
+            'table': ChangeTable(changes),
+            'active_tab': 'changes',
+        })
+
+
