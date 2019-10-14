@@ -238,11 +238,11 @@ def open_gitlab_mr(o, delete_branch=False):
             approver_ids=[configuration.GITLAB_APPROVER_ID]
         )
 
-    o.mr_location = "{}/{}/merge_requests/{}!".format(
+    o.mr_location = "{}/{}/merge_requests/{}".format(
         configuration.GITLAB_URL, project.path_with_namespace, mr.iid
     )
 
-    return "You can review your merge request at {}".format(o.mr_location)
+    return 'You can review your merge request <a href="{}">here</a>'.format(o.mr_location)
 
 
 @method_decorator(login_required, name='dispatch')
@@ -258,7 +258,7 @@ class MRView(View):
         """
         obj = get_object_or_404(self.model, pk=pk)
 
-        messages.info(request, open_gitlab_mr(obj, delete_branch=True))
+        messages.info(request, open_gitlab_mr(obj, delete_branch=True), extra_tags="safe")
         obj.status = ACCEPTED
         obj.save()
 
