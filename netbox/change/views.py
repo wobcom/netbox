@@ -238,9 +238,11 @@ def open_gitlab_mr(o, delete_branch=False):
             approver_ids=[configuration.GITLAB_APPROVER_ID]
         )
 
-    msg = "You can review your merge request at {}/{}/merge_requests/{}!"
-    return msg.format(configuration.GITLAB_URL, project.path_with_namespace,
-                      mr.iid)
+    o.mr_location = "{}/{}/merge_requests/{}!".format(
+        configuration.GITLAB_URL, project.path_with_namespace, mr.iid
+    )
+
+    return "You can review your merge request at {}".format(o.mr_location)
 
 
 @method_decorator(login_required, name='dispatch')

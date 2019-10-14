@@ -137,6 +137,11 @@ class ChangeSet(models.Model):
         blank=True,
         null=True
     )
+    mr_location = models.CharField(
+        max_length=256,
+        blank=True,
+        null=True
+    )
 
     status = models.SmallIntegerField(
         default=DRAFT,
