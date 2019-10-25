@@ -986,7 +986,7 @@ class VLAN(ChangeLoggedModel, CustomFieldModel):
 
     tags = TaggableManager(through=TaggedItem)
 
-    csv_headers = ['site', 'group_name', 'vid', 'name', 'tenant', 'status', 'role', 'description']
+    csv_headers = ['site', 'group_name', 'vid', 'name', 'tenant', 'status', 'role', 'description', 'overlay_network']
 
     class Meta:
         ordering = ['site', 'group', 'vid']

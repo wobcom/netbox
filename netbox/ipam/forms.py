@@ -1372,6 +1372,15 @@ class VLANCSVForm(forms.ModelForm):
             'invalid_choice': 'Invalid role.',
         }
     )
+    overlay_network = forms.ModelChoiceField(
+        queryset=OverlayNetwork.objects.all(),
+        required=False,
+        to_field_name='name',
+        help_text='Overlay Network',
+        error_messages={
+            'invalid_choice': 'Invalid overlay network.',
+        }
+    )
 
     class Meta:
         model = VLAN
