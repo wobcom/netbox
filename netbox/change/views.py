@@ -247,7 +247,7 @@ def open_gitlab_mr(o, delete_branch=False):
 
 
 @method_decorator(login_required, name='dispatch')
-class MRView(View):
+class AcceptView(View):
     model = ChangeSet
 
     def get(self, request, pk=None):
@@ -257,39 +257,23 @@ class MRView(View):
         A merge request is created in Gitlab, and the status of the object is
         changed to Accepted.
         """
+        recreate = request.GET.get('recreate')
+
         obj = get_object_or_404(self.model, pk=pk)
 
-        safe = mark_safe(open_gitlab_mr(obj, delete_branch=True))
-        messages.info(request, safe)
-        obj.status = ACCEPTED
-        obj.save()
-
-        return redirect('user:changes')
-
-
-@method_decorator(login_required, name='dispatch')
-class AcceptView(View):
-    model = ChangeSet
-
-    def get(self, request, pk=None):
-        """
-        This view is triggered when the change was accepted by the operator.
-        The changes are propagated into Gitlab, and the status of the object is
-        changed to in review.
-        """
-        obj = get_object_or_404(self.model, pk=pk)
-
-        if obj.status != DRAFT:
+        if obj.status != DRAFT and not recreate:
             return HttpResponseForbidden('Change was already accepted!')
 
         try:
-            safe = mark_safe(open_gitlab_mr(obj))
+            safe = mark_safe(open_gitlab_mr(obj, delete_branch=recreate))
             messages.info(request, safe)
-        except ConnectionError as e:
-            return HttpResponseServerError(str(e))
-
-        obj.status = IN_REVIEW
-        obj.save()
+            obj.status = IN_REVIEW
+            obj.save()
+        except gitlab.exceptions.GitlabError as e:
+            obj.revert()
+            messages.warning(request,
+                "Unable to connect to GitLab at the moment! Error message: {}".format(e)
+            )
 
         return redirect('home')
 
