@@ -19,6 +19,7 @@ from rest_framework.viewsets import ViewSet
 import gitlab
 
 from netbox import configuration
+from dcim.models import Device
 from utilities.views import ObjectListView
 from . import tables
 from .forms import AffectedCustomerInlineFormSet, ChangeInformationForm
@@ -150,7 +151,11 @@ MR_TXT = """Change #{} was created in Netbox by {}.
 def check_actions(project, actions, branch):
     treated = set()
     new_actions = []
-    for f in project.repository_tree(path='host_vars', all=True, recursive=True):
+    # if not git exists:
+    #    git clone configurations.GITLAB_CLONE_URL
+    # git pull
+    # ls host_vars/**/*
+    for f in project.repository_tree(path='host_vars', all=True, recursive=True, per_page=100):
         # we only care for files
         if f['type'] != 'blob':
             continue
@@ -189,10 +194,15 @@ def check_branch_exists(project, branch_name):
 
 
 def open_gitlab_mr(o, delete_branch=False):
+    devices = Device.objects.prefetch_related(
+             'interfaces__untagged_vlan',
+             'interfaces__tagged_vlans',
+             'interfaces__overlay_network',
+             'device_type').filter(primary_ip4__isnull=False)
     gl = gitlab.Gitlab(configuration.GITLAB_URL, configuration.GITLAB_TOKEN)
     info = o.change_information
     project = gl.projects.get(configuration.GITLAB_PROJECT_ID)
-    actions = o.to_actions()
+    actions = o.to_actions(devices)
     mr_txt = MR_TXT.format(o.id, o.user, o.executive_summary())
     emergency_label = ['emergency'] if info.is_emergency else []
     branch_name = 'change_{}'.format(o.id)
@@ -210,8 +220,8 @@ def open_gitlab_mr(o, delete_branch=False):
         'ref': 'master'
     })
     actions = check_actions(project, actions, branch_name)
-    actions.append(o.create_inventory())
-    actions.append(o.create_topology_graph())
+    actions.append(o.create_inventory(devices))
+    actions.append(o.create_topology_graph(devices))
     project.commits.create({
         'id': project.id,
         'branch': branch_name,
