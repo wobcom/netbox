@@ -198,7 +198,7 @@ def open_gitlab_mr(o, delete_branch=False):
              'interfaces__untagged_vlan',
              'interfaces__tagged_vlans',
              'interfaces__overlay_network',
-             'device_type').filter(primary_ip4__isnull=False)
+             'device_type').all()
     gl = gitlab.Gitlab(configuration.GITLAB_URL, configuration.GITLAB_TOKEN)
     info = o.change_information
     project = gl.projects.get(configuration.GITLAB_PROJECT_ID)
