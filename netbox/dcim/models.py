@@ -1474,6 +1474,9 @@ class PlatformVersion(ChangeLoggedModel):
     )
     platform = models.ForeignKey(to=Platform, related_name='versions', on_delete=models.CASCADE)
 
+    class Meta:
+        unique_together = ['name', 'platform']
+
     def __str__(self):
         return "{} {}".format(self.platform, self.name)
 
