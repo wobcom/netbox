@@ -1,5 +1,6 @@
 import django_tables2 as tables
 from django_tables2.utils import Accessor
+from django.utils.safestring import mark_safe
 
 from tenancy.tables import COL_TENANT
 from utilities.tables import BaseTable, BooleanColumn, ColorColumn, ToggleColumn
@@ -527,6 +528,7 @@ class PlatformTable(BaseTable):
         orderable=False,
         verbose_name='VMs'
     )
+    versions = tables.ManyToManyColumn(verbose_name="Versions", transform=lambda pv: pv.name, separator=mark_safe('<br>'))
     actions = tables.TemplateColumn(
         template_code=PLATFORM_ACTIONS,
         attrs={'td': {'class': 'text-right noprint'}},
@@ -535,7 +537,7 @@ class PlatformTable(BaseTable):
 
     class Meta(BaseTable.Meta):
         model = Platform
-        fields = ('pk', 'name', 'manufacturer', 'device_count', 'vm_count', 'slug', 'napalm_driver', 'vagrant_box', 'actions')
+        fields = ('pk', 'name', 'manufacturer', 'versions', 'device_count', 'vm_count', 'slug', 'napalm_driver', 'vagrant_box', 'actions')
 
 
 #
