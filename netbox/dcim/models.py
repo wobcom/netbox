@@ -1474,8 +1474,8 @@ class PlatformVersion(ChangeLoggedModel):
     )
     platform = models.ForeignKey(to=Platform, related_name='versions', on_delete=models.CASCADE)
 
-    def str(self):
-        return self.name
+    def __str__(self):
+        return "{} {}".format(self.platform, self.name)
 
 
 class Device(ChangeLoggedModel, ConfigContextModel, CustomFieldModel):
