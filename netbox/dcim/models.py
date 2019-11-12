@@ -1464,6 +1464,20 @@ class Platform(ChangeLoggedModel):
         )
 
 
+class PlatformVersion(ChangeLoggedModel):
+    """
+    Platform version refers the exact version of the platform running on the device.
+    """
+
+    name = models.CharField(
+        max_length=50
+    )
+    platform = models.ForeignKey(to=Platform, related_name='versions', on_delete=models.CASCADE)
+
+    def str(self):
+        return self.name
+
+
 class Device(ChangeLoggedModel, ConfigContextModel, CustomFieldModel):
     """
     A Device represents a piece of physical hardware mounted within a Rack. Each Device is assigned a DeviceType,
