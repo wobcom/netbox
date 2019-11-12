@@ -33,8 +33,8 @@ from . import filters, forms, tables
 from .models import (
     Cable, ConsolePort, ConsolePortTemplate, ConsoleServerPort, ConsoleServerPortTemplate, Device, DeviceBay, DeviceLicense,
     DeviceBayTemplate, DeviceRole, DeviceType, FrontPort, FrontPortTemplate, Interface, InterfaceTemplate,
-    InventoryItem, Manufacturer, Platform, PowerFeed, PowerOutlet, PowerOutletTemplate, PowerPanel, PowerPort,
-    PowerPortTemplate, Rack, RackGroup, RackReservation, RackRole, RearPort, RearPortTemplate, Region, Site,
+    InventoryItem, Manufacturer, Platform, PlatformVersion, PowerFeed, PowerOutlet, PowerOutletTemplate, PowerPanel,
+    PowerPort, PowerPortTemplate, Rack, RackGroup, RackReservation, RackRole, RearPort, RearPortTemplate, Region, Site,
     VirtualChassis,
 )
 
@@ -896,6 +896,17 @@ class PlatformBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
     permission_required = 'dcim.delete_platform'
     queryset = Platform.objects.all()
     table = tables.PlatformTable
+    default_return_url = 'dcim:platform_list'
+
+
+#
+# Platform Versions
+#
+
+class PlatformVersionCreateForm(PermissionRequiredMixin, ObjectEditView):
+    permission_required = 'dcim.add_platformversion'
+    model = PlatformVersion
+    model_form = forms.PlatformVersionForm
     default_return_url = 'dcim:platform_list'
 
 

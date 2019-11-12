@@ -135,6 +135,9 @@ PLATFORM_ACTIONS = """
 {% if perms.dcim.change_platform %}
     <a href="{% url 'dcim:platform_edit' slug=record.slug %}?return_url={{ request.path }}" class="btn btn-xs btn-warning"><i class="glyphicon glyphicon-pencil" aria-hidden="true"></i></a>
 {% endif %}
+{% if perms.dcim.change_platform and perms.dcim.add_platformversion %}
+    <a href="{% url 'dcim:platform_version_add' %}?platform={{ record.pk }}" class="btn btn-xs btn-primary"><i class="glyphicon glyphicon-plus" aria-hidden="true"></i></a>
+{% endif %}
 """
 
 DEVICE_ROLE = """

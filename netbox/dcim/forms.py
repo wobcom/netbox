@@ -32,8 +32,9 @@ from .models import (
     Cable, DeviceBay, DeviceBayTemplate, ConsolePort, ConsolePortTemplate, ConsoleServerPort, ConsoleServerPortTemplate,
     Device, DeviceRole, DeviceType, DeviceLicense, FrontPort,
     FrontPortTemplate, Interface, InterfaceTemplate, Manufacturer,
-    InventoryItem, Platform, PowerFeed, PowerOutlet, PowerOutletTemplate, PowerPanel, PowerPort, PowerPortTemplate,
-    Rack, RackGroup, RackReservation, RackRole, RearPort, RearPortTemplate, Region, Site, VirtualChassis,
+    InventoryItem, Platform, PlatformVersion, PowerFeed, PowerOutlet, PowerOutletTemplate, PowerPanel, PowerPort,
+    PowerPortTemplate, Rack, RackGroup, RackReservation, RackRole, RearPort, RearPortTemplate, Region, Site,
+    VirtualChassis,
 )
 
 DEVICE_BY_PK_RE = r'{\d+\}'
@@ -1278,6 +1279,22 @@ class PlatformCSVForm(forms.ModelForm):
         fields = Platform.csv_headers
         help_texts = {
             'name': 'Platform name',
+        }
+
+
+#
+# Platform Versions
+#
+
+class PlatformVersionForm(BootstrapMixin, forms.ModelForm):
+
+    class Meta:
+        model = PlatformVersion
+        fields = [
+            'name', 'platform',
+        ]
+        widgets = {
+            'platforem': forms.HiddenInput()
         }
 
 
