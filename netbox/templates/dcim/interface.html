@@ -114,6 +114,7 @@
                 </tr>
             </table>
         </div>
+        {% include 'inc/custom_fields_panel.html' with obj=interface %}
         {% include 'extras/inc/tags_panel.html' with tags=interface.tags.all %}
     </div>
 	<div class="col-md-6">
