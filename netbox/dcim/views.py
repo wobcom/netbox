@@ -884,11 +884,18 @@ class PlatformView(PermissionRequiredMixin, View):
                 platform=platform
             )
         )
-        version_table.columns.show('pk')
+        perm_base_name = 'dcim.{}_platform'
+        permissions = {
+            p: request.user.has_perm(perm_base_name.format(p))
+            for p in ['add', 'change', 'delete']
+        }
+        if permissions['change']:
+            version_table.columns.show('pk')
 
         return render(request, 'dcim/platform.html', {
             'platform': platform,
             'version_table': version_table,
+            'permissions': permissions,
         })
 
 
