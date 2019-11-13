@@ -528,7 +528,11 @@ class PlatformTable(BaseTable):
         orderable=False,
         verbose_name='VMs'
     )
-    versions = tables.ManyToManyColumn(verbose_name="Versions", transform=lambda pv: pv.name, separator=mark_safe('<br>'))
+    versions = tables.ManyToManyColumn(
+        verbose_name="Versions",
+        transform=lambda pv: pv.name,
+        separator=mark_safe('<br>')
+    )
     actions = tables.TemplateColumn(
         template_code=PLATFORM_ACTIONS,
         attrs={'td': {'class': 'text-right noprint'}},
