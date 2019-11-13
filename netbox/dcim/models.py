@@ -1464,6 +1464,22 @@ class Platform(ChangeLoggedModel):
         )
 
 
+class PlatformVersion(ChangeLoggedModel):
+    """
+    Platform version refers the exact version of the platform running on the device.
+    """
+    name = models.CharField(
+        max_length=50
+    )
+    platform = models.ForeignKey(to=Platform, related_name='versions', on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ['name', 'platform']
+
+    def __str__(self):
+        return "{} {}".format(self.platform, self.name)
+
+
 class Device(ChangeLoggedModel, ConfigContextModel, CustomFieldModel):
     """
     A Device represents a piece of physical hardware mounted within a Rack. Each Device is assigned a DeviceType,
@@ -1499,6 +1515,14 @@ class Device(ChangeLoggedModel, ConfigContextModel, CustomFieldModel):
         related_name='devices',
         blank=True,
         null=True
+    )
+    platform_version = models.ForeignKey(
+        to='dcim.PlatformVersion',
+        on_delete=models.SET_NULL,
+        related_name='devices',
+        blank=True,
+        null=True,
+        verbose_name='Version'
     )
     name = models.CharField(
         max_length=64,

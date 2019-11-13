@@ -17,8 +17,8 @@ from dcim import filters
 from dcim.models import (
     Cable, ConsolePort, ConsolePortTemplate, ConsoleServerPort, ConsoleServerPortTemplate, Device, DeviceBay,
     DeviceBayTemplate, DeviceRole, DeviceType, FrontPort, FrontPortTemplate, Interface, InterfaceTemplate,
-    Manufacturer, InventoryItem, Platform, PowerFeed, PowerOutlet, PowerOutletTemplate, PowerPanel, PowerPort,
-    PowerPortTemplate, Rack, RackGroup, RackReservation, RackRole, RearPort, RearPortTemplate, Region, Site,
+    Manufacturer, InventoryItem, Platform, PlatformVersion, PowerFeed, PowerOutlet, PowerOutletTemplate, PowerPanel,
+    PowerPort, PowerPortTemplate, Rack, RackGroup, RackReservation, RackRole, RearPort, RearPortTemplate, Region, Site,
     VirtualChassis,
 )
 from extras.api.serializers import RenderedGraphSerializer
@@ -314,6 +314,12 @@ class PlatformViewSet(ModelViewSet):
     )
     serializer_class = serializers.PlatformSerializer
     filterset_class = filters.PlatformFilter
+
+
+class PlatformVersionViewSet(ModelViewSet):
+    queryset = PlatformVersion.objects.all()
+    serializer_class = serializers.PlatformVersionSerializer
+    filterset_class = filters.PlatformVersionFilter
 
 
 #

@@ -247,6 +247,9 @@
                         <td>
                             {% if device.platform %}
                                <a href="{{ device.platform.get_absolute_url }}">{{ device.platform }}</a>
+                               {% if device.platform_version %}
+                                   ({{ device.platform_version.name }})
+                               {% endif %}
                             {% else %}
                                 <span class="text-muted">None</span>
                             {% endif %}
