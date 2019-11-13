@@ -932,6 +932,12 @@ class PlatformVersionDeleteView(PermissionRequiredMixin, ObjectDeleteView):
     model = PlatformVersion
 
 
+class PlatformVersionBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
+    permission_required = 'dcim.delete_platformversion'
+    queryset = PlatformVersion.objects.all()
+    table = tables.PlatformVersionTable
+
+
 #
 # Devices
 #

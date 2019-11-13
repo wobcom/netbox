@@ -140,6 +140,7 @@ urlpatterns = [
     path(r'platforms/<slug:slug>', views.PlatformView.as_view(), name='platform'),
     path(r'platforms/<slug:slug>/edit/', views.PlatformEditView.as_view(), name='platform_edit'),
     path(r'platforms/<slug:slug>/changelog/', ObjectChangeLogView.as_view(), name='platform_changelog', kwargs={'model': Platform}),
+    path(r'platformversions/delete', views.PlatformVersionBulkDeleteView.as_view(), name='platform_version_bulk_delete'),
     path(r'platformversions/<int:pk>/delete', views.PlatformVersionDeleteView.as_view(), name='platform_version_delete'),
 
     # Devices

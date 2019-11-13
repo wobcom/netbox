@@ -18,7 +18,7 @@
 {% block content %}
     <div class="row">
         <div class="col-md-12">
-            {% include 'utilities/obj_table.html' with table_template='panel_table.html' table=version_table heading='Versions' %}
+            {% include 'utilities/obj_table.html' with table_template='panel_table.html' table=version_table heading='Versions' bulk_delete_url='dcim:platform_version_bulk_delete'%}
         </div>
     </div>
 {% endblock %}
