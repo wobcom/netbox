@@ -1323,6 +1323,26 @@ class DeviceForm(BootstrapMixin, TenancyForm, CustomFieldForm):
             display_field='display_name'
         )
     )
+    platform = forms.ModelChoiceField(
+        queryset=Platform.objects.all(),
+        widget=APISelect(
+            api_url='/api/dcim/platforms',
+            filter_for={
+                'platform_version': 'platform_id'
+            }
+        )
+    )
+    platform_version = ChainedModelChoiceField(
+        queryset=PlatformVersion.objects.all(),
+        chains=(
+            ('platform', 'platform'),
+        ),
+        required=False,
+        widget=APISelect(
+            api_url='/api/dcim/platform_versions',
+            display_field='name'
+        )
+    )
     position = forms.TypedChoiceField(
         required=False,
         empty_value=None,
@@ -1390,8 +1410,8 @@ class DeviceForm(BootstrapMixin, TenancyForm, CustomFieldForm):
         model = Device
         fields = [
             'name', 'device_role', 'device_type', 'serial', 'asset_tag', 'site', 'rack', 'position', 'face',
-            'status', 'platform', 'primary_ip4', 'primary_ip6', 'cluster_group', 'cluster', 'tenant_group', 'tenant',
-            'comments', 'tags', 'local_context_data', 'licenses'
+            'status', 'platform', 'platform_version', 'primary_ip4', 'primary_ip6', 'cluster_group', 'cluster',
+            'tenant_group', 'tenant', 'comments', 'tags', 'local_context_data', 'licenses'
         ]
         help_texts = {
             'device_role': "The function this device serves",
