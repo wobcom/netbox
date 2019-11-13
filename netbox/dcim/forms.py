@@ -1294,7 +1294,7 @@ class PlatformVersionForm(BootstrapMixin, forms.ModelForm):
             'name', 'platform',
         ]
         widgets = {
-            'platforem': forms.HiddenInput()
+            'platform': forms.HiddenInput()
         }
 
 
