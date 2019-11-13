@@ -121,6 +121,10 @@ DEVICEROLE_VM_COUNT = """
 <a href="{% url 'virtualization:virtualmachine_list' %}?role={{ record.slug }}">{{ value }}</a>
 """
 
+PLATFORM_LINK = """
+<a href="{% url 'dcim:platform' slug=record.slug %}">{{ value }}</a>
+"""
+
 PLATFORM_DEVICE_COUNT = """
 <a href="{% url 'dcim:device_list' %}?platform={{ record.slug }}">{{ value }}</a>
 """
@@ -516,6 +520,9 @@ class DeviceRoleTable(BaseTable):
 
 class PlatformTable(BaseTable):
     pk = ToggleColumn()
+    name = tables.TemplateColumn(
+        template_code=PLATFORM_LINK
+    )
     device_count = tables.TemplateColumn(
         template_code=PLATFORM_DEVICE_COUNT,
         accessor=Accessor('devices.count'),
