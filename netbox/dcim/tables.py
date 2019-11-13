@@ -579,7 +579,7 @@ class PlatformVersionTable(BaseTable):
 
     class Meta(BaseTable.Meta):
         model = PlatformVersion
-        fields = ('pk', 'name', 'actions')
+        fields = ('pk', 'name', 'device_count', 'actions')
 
 
 #
