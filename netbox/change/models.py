@@ -391,7 +391,10 @@ class ChangeSet(models.Model):
         res = {
             'type': self.yamlify_device_type(device.device_type),
             'role': device.device_role.name if device.device_role else None,
-            'platform': device.platform.name if device.platform else None,
+            'platform': {
+                'name': device.platform.name if device.platform else None,
+                'version': device.platform_version.name if device.platform_version else None,
+            },
             'name': device.name,
             'serial': device.serial,
             'asset_tag': device.asset_tag,
