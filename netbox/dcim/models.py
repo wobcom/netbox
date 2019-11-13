@@ -1736,14 +1736,6 @@ class Device(ChangeLoggedModel, ConfigContextModel, CustomFieldModel):
                         self.primary_ip6),
                 })
 
-        # Validate manufacturer/platform
-        if hasattr(self, 'device_type') and self.platform:
-            if self.platform.manufacturer and self.platform.manufacturer != self.device_type.manufacturer:
-                raise ValidationError({
-                    'platform': "The assigned platform is limited to {} device types, but this device's type belongs "
-                                "to {}.".format(self.platform.manufacturer, self.device_type.manufacturer)
-                })
-
         # A Device can only be assigned to a Cluster in the same Site (or no Site)
         if self.cluster and self.cluster.site is not None and self.cluster.site != self.site:
             raise ValidationError({
