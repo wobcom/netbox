@@ -136,9 +136,11 @@ urlpatterns = [
     path(r'platforms/add/', views.PlatformCreateView.as_view(), name='platform_add'),
     path(r'platforms/import/', views.PlatformBulkImportView.as_view(), name='platform_import'),
     path(r'platforms/delete/', views.PlatformBulkDeleteView.as_view(), name='platform_bulk_delete'),
-    path(r'platforms/versions/add', views.PlatformVersionCreateForm.as_view(), name='platform_version_add'),
+    path(r'platforms/versions/add', views.PlatformVersionCreateView.as_view(), name='platform_version_add'),
+    path(r'platforms/<slug:slug>', views.PlatformView.as_view(), name='platform'),
     path(r'platforms/<slug:slug>/edit/', views.PlatformEditView.as_view(), name='platform_edit'),
     path(r'platforms/<slug:slug>/changelog/', ObjectChangeLogView.as_view(), name='platform_changelog', kwargs={'model': Platform}),
+    path(r'platformversions/<int:pk>/delete', views.PlatformVersionDeleteView.as_view(), name='platform_version_delete'),
 
     # Devices
     path(r'devices/', views.DeviceListView.as_view(), name='device_list'),

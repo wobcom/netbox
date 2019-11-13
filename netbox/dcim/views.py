@@ -874,6 +874,17 @@ class PlatformListView(PermissionRequiredMixin, ObjectListView):
     template_name = 'dcim/platform_list.html'
 
 
+class PlatformView(PermissionRequiredMixin, View):
+    permission_required = 'dcim.view_platform'
+
+    def get(self, request, slug):
+        platform = get_object_or_404(Platform, slug=slug)
+
+        return render(request, 'dcim/platform.html', {
+            'platform': platform,
+        })
+
+
 class PlatformCreateView(PermissionRequiredMixin, ObjectEditView):
     permission_required = 'dcim.add_platform'
     model = Platform
@@ -903,11 +914,16 @@ class PlatformBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
 # Platform Versions
 #
 
-class PlatformVersionCreateForm(PermissionRequiredMixin, ObjectEditView):
+class PlatformVersionCreateView(PermissionRequiredMixin, ObjectEditView):
     permission_required = 'dcim.add_platformversion'
     model = PlatformVersion
     model_form = forms.PlatformVersionForm
     default_return_url = 'dcim:platform_list'
+
+
+class PlatformVersionDeleteView(PermissionRequiredMixin, ObjectDeleteView):
+    permission_required = 'dcim.delete_platformversion'
+    model = PlatformVersion
 
 
 #
