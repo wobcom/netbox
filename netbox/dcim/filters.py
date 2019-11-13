@@ -486,6 +486,10 @@ class DeviceFilter(LocalConfigContextFilter, TenancyFilterSet, CustomFieldFilter
         to_field_name='slug',
         label='Platform (slug)',
     )
+    platform_version_id = django_filters.ModelMultipleChoiceFilter(
+        queryset=PlatformVersion.objects.all(),
+        label='Platform Version (ID)',
+    )
     region_id = TreeNodeMultipleChoiceFilter(
         queryset=Region.objects.all(),
         field_name='site__region__in',

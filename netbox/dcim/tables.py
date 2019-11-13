@@ -145,6 +145,10 @@ PLATFORM_ACTIONS = """
 {% endif %}
 """
 
+PLATFORM_VERSION_DEVICE_COUNT = """
+<a href="{% url 'dcim:device_list' %}?platform_version_id={{ record.id }}">{{ value }}</a>
+"""
+
 PLATFORM_VERSION_ACTIONS = """
 {% if perms.dcim.delete_platformversion %}
     <a href="{% url 'dcim:platform_version_delete' pk=record.pk %}?return_url={% url 'dcim:platform' slug=record.platform.slug %}" class="btn btn-xs btn-danger" title="Delete Version"><i class="glyphicon glyphicon-trash" aria-hidden="true"></i></a>
@@ -559,6 +563,13 @@ class PlatformTable(BaseTable):
 
 class PlatformVersionTable(BaseTable):
     pk = ToggleColumn()
+
+    device_count = tables.TemplateColumn(
+        template_code=PLATFORM_VERSION_DEVICE_COUNT,
+        accessor=Accessor('devices.count'),
+        orderable=False,
+        verbose_name='Devices',
+    )
 
     actions = tables.TemplateColumn(
         template_code=PLATFORM_VERSION_ACTIONS,
