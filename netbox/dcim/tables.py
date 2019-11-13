@@ -149,6 +149,10 @@ PLATFORM_VERSION_DEVICE_COUNT = """
 <a href="{% url 'dcim:device_list' %}?platform_version_id={{ record.id }}">{{ value }}</a>
 """
 
+PLATFORM_VERSION_VM_COUNT = """
+<a href="{% url 'virtualization:virtualmachine_list' %}?platform_version_id={{ record.id }}">{{ value }}</a>
+"""
+
 PLATFORM_VERSION_ACTIONS = """
 {% if perms.dcim.delete_platformversion %}
     <a href="{% url 'dcim:platform_version_delete' pk=record.pk %}?return_url={% url 'dcim:platform' slug=record.platform.slug %}" class="btn btn-xs btn-danger" title="Delete Version"><i class="glyphicon glyphicon-trash" aria-hidden="true"></i></a>
@@ -571,6 +575,13 @@ class PlatformVersionTable(BaseTable):
         verbose_name='Devices',
     )
 
+    vm_count = tables.TemplateColumn(
+        template_code=PLATFORM_VERSION_VM_COUNT,
+        accessor=Accessor('virtual_machines.count'),
+        orderable=False,
+        verbose_name='VMs'
+    )
+
     actions = tables.TemplateColumn(
         template_code=PLATFORM_VERSION_ACTIONS,
         attrs={'td': {'class': 'text-right noprint'}},
@@ -579,7 +590,7 @@ class PlatformVersionTable(BaseTable):
 
     class Meta(BaseTable.Meta):
         model = PlatformVersion
-        fields = ('pk', 'name', 'device_count', 'actions')
+        fields = ('pk', 'name', 'device_count', 'vm_count', 'actions')
 
 
 #
