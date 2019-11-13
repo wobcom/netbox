@@ -7,8 +7,8 @@ from utilities.tables import BaseTable, BooleanColumn, ColorColumn, ToggleColumn
 from .models import (
     Cable, ConsolePort, ConsolePortTemplate, ConsoleServerPort, ConsoleServerPortTemplate, Device, DeviceLicense, DeviceBay,
     DeviceBayTemplate, DeviceRole, DeviceType, FrontPort, FrontPortTemplate, Interface, InterfaceTemplate,
-    InventoryItem, Manufacturer, Platform, PowerFeed, PowerOutlet, PowerOutletTemplate, PowerPanel, PowerPort,
-    PowerPortTemplate, Rack, RackGroup, RackReservation, RackRole, RearPort, RearPortTemplate, Region, Site,
+    InventoryItem, Manufacturer, Platform, PlatformVersion, PowerFeed, PowerOutlet, PowerOutletTemplate, PowerPanel,
+    PowerPort, PowerPortTemplate, Rack, RackGroup, RackReservation, RackRole, RearPort, RearPortTemplate, Region, Site,
     VirtualChassis,
 )
 
@@ -142,6 +142,12 @@ PLATFORM_ACTIONS = """
 {% endif %}
 {% if perms.dcim.change_platform and perms.dcim.add_platformversion %}
     <a href="{% url 'dcim:platform_version_add' %}?platform={{ record.pk }}" class="btn btn-xs btn-primary"><i class="glyphicon glyphicon-plus" aria-hidden="true"></i></a>
+{% endif %}
+"""
+
+PLATFORM_VERSION_ACTIONS = """
+{% if perms.dcim.delete_platformversion %}
+    <a href="{% url 'dcim:platform_version_delete' pk=record.pk %}?return_url={% url 'dcim:platform' slug=record.platform.slug %}" class="btn btn-xs btn-danger" title="Delete Version"><i class="glyphicon glyphicon-trash" aria-hidden="true"></i></a>
 {% endif %}
 """
 
@@ -549,6 +555,20 @@ class PlatformTable(BaseTable):
     class Meta(BaseTable.Meta):
         model = Platform
         fields = ('pk', 'name', 'manufacturer', 'versions', 'device_count', 'vm_count', 'slug', 'napalm_driver', 'vagrant_box', 'actions')
+
+
+class PlatformVersionTable(BaseTable):
+    pk = ToggleColumn()
+
+    actions = tables.TemplateColumn(
+        template_code=PLATFORM_VERSION_ACTIONS,
+        attrs={'td': {'class': 'text-right noprint'}},
+        verbose_name=''
+    )
+
+    class Meta(BaseTable.Meta):
+        model = PlatformVersion
+        fields = ('pk', 'name', 'actions')
 
 
 #

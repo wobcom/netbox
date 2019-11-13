@@ -879,9 +879,15 @@ class PlatformView(PermissionRequiredMixin, View):
 
     def get(self, request, slug):
         platform = get_object_or_404(Platform, slug=slug)
+        version_table = tables.PlatformVersionTable(
+            data=PlatformVersion.objects.filter(
+                platform=platform
+            ).all()
+        )
 
         return render(request, 'dcim/platform.html', {
             'platform': platform,
+            'version_table': version_table,
         })
 
 

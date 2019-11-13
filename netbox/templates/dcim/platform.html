@@ -18,29 +18,7 @@
 {% block content %}
     <div class="row">
         <div class="col-md-12">
-            <div class="panel panel-default">
-                <div class="panel-heading">
-                    <strong>Versions</strong>
-                </div>
-                <table id="versions_table" class="table table-hover table-headings panel-body">
-                    <thead>
-                        <tr>
-                            <th>Version</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    {% for version in platform.versions.all %}
-                        <tr>
-                            <td>{{ version.name }}</td>
-                            <td style="text-align: right;">
-                                <a href="{% url 'dcim:platform_version_delete' pk=version.pk %}?return_url={% url 'dcim:platform' slug=platform.slug %}" class="btn btn-xs btn-danger" title="Delete Version"><i class="glyphicon glyphicon-trash" aria-hidden="true"></i></a>
-                            </td>
-                        </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+            {% include 'utilities/obj_table.html' with table_template='panel_table.html' table=version_table heading='Versions' %}
         </div>
     </div>
 {% endblock %}
