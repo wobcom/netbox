@@ -1468,7 +1468,6 @@ class PlatformVersion(ChangeLoggedModel):
     """
     Platform version refers the exact version of the platform running on the device.
     """
-
     name = models.CharField(
         max_length=50
     )

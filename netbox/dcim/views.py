@@ -882,8 +882,9 @@ class PlatformView(PermissionRequiredMixin, View):
         version_table = tables.PlatformVersionTable(
             data=PlatformVersion.objects.filter(
                 platform=platform
-            ).all()
+            )
         )
+        version_table.columns.show('pk')
 
         return render(request, 'dcim/platform.html', {
             'platform': platform,
