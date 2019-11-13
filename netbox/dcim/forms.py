@@ -1339,7 +1339,7 @@ class DeviceForm(BootstrapMixin, TenancyForm, CustomFieldForm):
         ),
         required=False,
         widget=APISelect(
-            api_url='/api/dcim/platform_versions',
+            api_url='/api/dcim/platform-versions',
             display_field='name'
         )
     )
