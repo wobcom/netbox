@@ -516,7 +516,21 @@ class VirtualMachineBulkEditForm(BootstrapMixin, AddRemoveTagsForm, CustomFieldB
         queryset=Platform.objects.all(),
         required=False,
         widget=APISelect(
-            api_url='/api/dcim/platforms/'
+            api_url='/api/dcim/platforms',
+            filter_for={
+                'platform_version': 'platform_id'
+            }
+        )
+    )
+    platform_version = ChainedModelChoiceField(
+        queryset=PlatformVersion.objects.all(),
+        chains=(
+            ('platform', 'platform'),
+        ),
+        required=False,
+        widget=APISelect(
+            api_url='/api/dcim/platform-versions',
+            display_field='name'
         )
     )
     vcpus = forms.IntegerField(
@@ -537,7 +551,7 @@ class VirtualMachineBulkEditForm(BootstrapMixin, AddRemoveTagsForm, CustomFieldB
 
     class Meta:
         nullable_fields = [
-            'role', 'tenant', 'platform', 'vcpus', 'memory', 'disk', 'comments',
+            'role', 'tenant', 'platform', 'platform_version', 'vcpus', 'memory', 'disk', 'comments',
         ]
 
 

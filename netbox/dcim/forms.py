@@ -1734,7 +1734,21 @@ class DeviceBulkEditForm(BootstrapMixin, AddRemoveTagsForm, CustomFieldBulkEditF
         queryset=Platform.objects.all(),
         required=False,
         widget=APISelect(
-            api_url="/api/dcim/platforms/"
+            api_url='/api/dcim/platforms',
+            filter_for={
+                'platform_version': 'platform_id'
+            }
+        )
+    )
+    platform_version = ChainedModelChoiceField(
+        queryset=PlatformVersion.objects.all(),
+        chains=(
+            ('platform', 'platform'),
+        ),
+        required=False,
+        widget=APISelect(
+            api_url='/api/dcim/platform-versions',
+            display_field='name'
         )
     )
     status = forms.ChoiceField(
@@ -1751,7 +1765,7 @@ class DeviceBulkEditForm(BootstrapMixin, AddRemoveTagsForm, CustomFieldBulkEditF
 
     class Meta:
         nullable_fields = [
-            'tenant', 'platform', 'serial',
+            'tenant', 'platform', 'platform_version', 'serial',
         ]
 
 
