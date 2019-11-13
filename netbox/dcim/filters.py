@@ -15,8 +15,8 @@ from .constants import *
 from .models import (
     Cable, ConsolePort, ConsolePortTemplate, ConsoleServerPort, ConsoleServerPortTemplate, Device, DeviceBay,
     DeviceBayTemplate, DeviceRole, DeviceType, FrontPort, FrontPortTemplate, Interface, InterfaceTemplate,
-    InventoryItem, Manufacturer, Platform, PowerFeed, PowerOutlet, PowerOutletTemplate, PowerPanel, PowerPort,
-    PowerPortTemplate, Rack, RackGroup, RackReservation, RackRole, RearPort, RearPortTemplate, Region, Site,
+    InventoryItem, Manufacturer, Platform, PlatformVersion, PowerFeed, PowerOutlet, PowerOutletTemplate, PowerPanel,
+    PowerPort, PowerPortTemplate, Rack, RackGroup, RackReservation, RackRole, RearPort, RearPortTemplate, Region, Site,
     VirtualChassis,
 )
 
@@ -421,6 +421,24 @@ class PlatformFilter(NameSlugSearchFilterSet):
     class Meta:
         model = Platform
         fields = ['id', 'name', 'slug', 'napalm_driver']
+
+
+class PlatformVersionFilter(NameSlugSearchFilterSet):
+    platform_id = django_filters.ModelMultipleChoiceFilter(
+        field_name='platform',
+        queryset=Platform.objects.all(),
+        label='Platform (ID)',
+    )
+    platform = django_filters.ModelMultipleChoiceFilter(
+        field_name='platform__slug',
+        queryset=Platform.objects.all(),
+        to_field_name='slug',
+        label='Platform (slug)',
+    )
+
+    class Meta:
+        model = PlatformVersion
+        fields = ['id', 'name']
 
 
 class DeviceFilter(LocalConfigContextFilter, TenancyFilterSet, CustomFieldFilterSet):

@@ -316,6 +316,12 @@ class PlatformViewSet(ModelViewSet):
     filterset_class = filters.PlatformFilter
 
 
+class PlatformVersionViewSet(ModelViewSet):
+    queryset = Platform.objects
+    serializer_class = serializers.PlatformVersionSerializer
+    filterset_calss = filters.PlatformVersionFilter
+
+
 #
 # Devices
 #
