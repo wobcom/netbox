@@ -4,7 +4,7 @@ from taggit.forms import TagField
 
 from dcim.constants import IFACE_TYPE_VIRTUAL, IFACE_MODE_ACCESS, IFACE_MODE_TAGGED_ALL, IFACE_MODE_CHOICES
 from dcim.forms import INTERFACE_MODE_HELP_TEXT
-from dcim.models import Device, DeviceRole, Interface, Platform, Rack, Region, Site
+from dcim.models import Device, DeviceRole, Interface, Platform, PlatformVersion, Rack, Region, Site
 from extras.forms import AddRemoveTagsForm, CustomFieldBulkEditForm, CustomFieldForm, CustomFieldFilterForm
 from ipam.models import IPAddress, VLANGroup, VLAN
 from tenancy.forms import TenancyForm
@@ -325,6 +325,26 @@ class VirtualMachineForm(BootstrapMixin, TenancyForm, CustomFieldForm):
             api_url='/api/virtualization/clusters/'
         )
     )
+    platform = forms.ModelChoiceField(
+        queryset=Platform.objects.all(),
+        widget=APISelect(
+            api_url='/api/dcim/platforms',
+            filter_for={
+                'platform_version': 'platform_id'
+            }
+        )
+    )
+    platform_version = ChainedModelChoiceField(
+        queryset=PlatformVersion.objects.all(),
+        chains=(
+            ('platform', 'platform'),
+        ),
+        required=False,
+        widget=APISelect(
+            api_url='/api/dcim/platform-versions',
+            display_field='name'
+        )
+    )
     tags = TagField(
         required=False
     )
@@ -336,8 +356,9 @@ class VirtualMachineForm(BootstrapMixin, TenancyForm, CustomFieldForm):
     class Meta:
         model = VirtualMachine
         fields = [
-            'name', 'status', 'cluster_group', 'cluster', 'role', 'tenant_group', 'tenant', 'platform', 'primary_ip4',
-            'primary_ip6', 'vcpus', 'memory', 'disk', 'comments', 'tags', 'local_context_data',
+            'name', 'status', 'cluster_group', 'cluster', 'role', 'tenant_group', 'tenant', 'platform',
+            'platform_version', 'primary_ip4', 'primary_ip6', 'vcpus', 'memory', 'disk', 'comments', 'tags',
+            'local_context_data',
         ]
         help_texts = {
             'local_context_data': "Local config context data overwrites all sources contexts in the final rendered "
