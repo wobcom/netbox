@@ -1475,6 +1475,7 @@ class PlatformVersion(ChangeLoggedModel):
 
     class Meta:
         unique_together = ['name', 'platform']
+        ordering = ['platform', 'name']
 
     def __str__(self):
         return "{} {}".format(self.platform, self.name)
