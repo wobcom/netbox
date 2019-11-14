@@ -1480,11 +1480,6 @@ class DeviceForm(BootstrapMixin, TenancyForm, CustomFieldForm):
             # can be flipped from one face to another.
             self.fields['position'].widget.add_additional_query_param('exclude', self.instance.pk)
 
-            # Limit platform by manufacturer
-            self.fields['platform'].queryset = Platform.objects.filter(
-                Q(manufacturer__isnull=True) | Q(manufacturer=self.instance.device_type.manufacturer)
-            )
-
         else:
 
             # An object that doesn't exist yet can't have any IPs assigned to it
