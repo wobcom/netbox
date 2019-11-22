@@ -7,7 +7,7 @@ to address the needs of network and infrastructure engineers.
 
 NetBox runs as a web application atop the [Django](https://www.djangoproject.com/)
 Python framework with a [PostgreSQL](http://www.postgresql.org/) database. For a
-complete list of requirements, see `requirements.txt`. The code is available [on GitHub](https://github.com/digitalocean/netbox).
+complete list of requirements, see `requirements.txt`. The code is available [on GitHub](https://github.com/netbox-community/netbox).
 
 The complete documentation for NetBox can be found at [Read the Docs](http://netbox.readthedocs.io/en/stable/).
 
@@ -18,8 +18,8 @@ or join us in the #netbox Slack channel on [NetworkToCode](https://networktocode
 
 |             | status |
 |-------------|------------|
-| **master** | [![Build Status](https://travis-ci.org/digitalocean/netbox.svg?branch=master)](https://travis-ci.org/digitalocean/netbox) |
-| **develop** | [![Build Status](https://travis-ci.org/digitalocean/netbox.svg?branch=develop)](https://travis-ci.org/digitalocean/netbox) |
+| **master** | [![Build Status](https://travis-ci.org/netbox-community/netbox.svg?branch=master)](https://travis-ci.com/netbox-community/netbox/) |
+| **develop** | [![Build Status](https://travis-ci.org/netbox-community/netbox.svg?branch=develop)](https://travis-ci.com/netbox-community/netbox/) |
 
 ## Screenshots
 
@@ -32,26 +32,16 @@ or join us in the #netbox Slack channel on [NetworkToCode](https://networktocode
 # Installation
 
 Please see [the documentation](http://netbox.readthedocs.io/en/stable/) for
-instructions on installing NetBox. To upgrade NetBox, please download the [latest release](https://github.com/digitalocean/netbox/releases)
+instructions on installing NetBox. To upgrade NetBox, please download the [latest release](https://github.com/netbox-community/netbox/releases)
 and run `upgrade.sh`.
 
 ## Alternative Installations
 
-* [Docker container](https://github.com/ninech/netbox-docker) (via [@cimnine](https://github.com/cimnine))
+* [Docker container](https://github.com/netbox-community/netbox-docker) (via [@cimnine](https://github.com/cimnine))
 * [Vagrant deployment](https://github.com/ryanmerolle/netbox-vagrant) (via [@ryanmerolle](https://github.com/ryanmerolle))
 * [Ansible deployment](https://github.com/lae/ansible-role-netbox) (via [@lae](https://github.com/lae))
+* [Kubernetes deployment](https://github.com/CENGN/netbox-kubernetes) (via [@CENGN](https://github.com/CENGN))
 
 # Related projects
 
-## Supported SDK
-
-- [pynetbox](https://github.com/digitalocean/pynetbox) Python API client library for Netbox.
-
-## Community SDK
-
-- [netbox-client-ruby](https://github.com/ninech/netbox-client-ruby) A ruby client library for Netbox v2.
-
-## Ansible Inventory
-
-- [netbox-as-ansible-inventory](https://github.com/AAbouZaid/netbox-as-ansible-inventory) Ansible dynamic inventory script for Netbox.
-
+Please see [our wiki](https://github.com/netbox-community/netbox/wiki/Community-Contributions) for a list of relevant community projects.

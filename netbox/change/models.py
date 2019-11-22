@@ -37,9 +37,23 @@ class ChangeInformation(models.Model):
     affects_customer = models.BooleanField(verbose_name="Customers are affected")
     change_implications = models.TextField()
     ignore_implications = models.TextField()
-    change_type = models.SmallIntegerField(choices=[(1, 'Standard Change (vorabgenehmigt)')], default=1)
+    change_type = models.SmallIntegerField(choices=[
+        (1, 'Standard Change (vorabgenehmigt)')], default=1)
     category = models.SmallIntegerField(choices=[(1, 'Netzwerk')], default=1)
-    subcategory = models.SmallIntegerField(choices=[(0, '------------'), (1, 'Routing/Switching'), (2, 'Firewall'), (3, 'CPE'), (4, 'Access Netz'), (5, 'Extern')], default=0)
+    subcategory = models.SmallIntegerField(choices=[
+        (0, '------------'),
+        (1, 'Routing/Switching'),
+        (2, 'Firewall'),
+        (3, 'CPE'),
+        (4, 'Access Netz'),
+        (5, 'Extern')
+    ], default=0)
+
+    depends_on = models.ManyToManyField(
+        'ChangeSet',
+        related_name='dependants',
+        blank=True,
+    )
 
     def executive_summary(self, no_markdown=True):
         md = Markdownify(no_markdown=no_markdown)
@@ -61,6 +75,12 @@ class ChangeInformation(models.Model):
                 if change.is_business:
                     res.write(md.bold(' (Business Customer)'))
                 res.write(": {}\n".format(change.products_affected))
+
+        if self.depends_on.exists():
+            res.write(md.h3('This change depends on the following changes\n'))
+            for depends in self.depends_on.all():
+                res.write('- {}\n'.format(depends))
+
         return res.getvalue()
 
 
@@ -91,7 +111,6 @@ class ChangeSet(models.Model):
     A change set always refers to a ticket, has a set of changes, and can be
     serialized to YAML.
     """
-    ticket_id = models.UUIDField(null=True)
     active = models.BooleanField(default=False)
     change_information = models.ForeignKey(
         to=ChangeInformation,
@@ -107,7 +126,6 @@ class ChangeSet(models.Model):
         auto_now_add=True,
         editable=False
     )
-
     user = models.ForeignKey(
         to=User,
         on_delete=models.SET_NULL,
@@ -115,8 +133,12 @@ class ChangeSet(models.Model):
         blank=True,
         null=True
     )
-
     provision_log = JSONField(
+        blank=True,
+        null=True
+    )
+    mr_location = models.CharField(
+        max_length=256,
         blank=True,
         null=True
     )
@@ -194,9 +216,9 @@ class ChangeSet(models.Model):
 
     def convert_form_factor(self, form_factor):
         m = {
-            IFACE_FF_VIRTUAL: 'virtual',
-            IFACE_FF_BRIDGE: 'bridge',
-            IFACE_FF_LAG: 'lag'
+            IFACE_TYPE_VIRTUAL: 'virtual',
+            IFACE_TYPE_BRIDGE: 'bridge',
+            IFACE_TYPE_LAG: 'lag'
         }
         return m.get(form_factor, 'default')
 
@@ -206,7 +228,7 @@ class ChangeSet(models.Model):
     def child_interfaces(self, interface):
         res = []
         for child_interface in Interface.objects.filter(lag=interface):
-            if child_interface.form_factor == IFACE_FF_ONTEP:
+            if child_interface.type == IFACE_TYPE_ONTEP:
                 if not child_interface.overlay_network:
                     continue
                 # expand ONTEP to VTEPs (but only for those VLANs that are actually used on switchports)
@@ -257,7 +279,7 @@ class ChangeSet(models.Model):
             }
         tagged_vlans = set()
         for child_interface in Interface.objects.filter(lag=interface):
-            if child_interface.form_factor == IFACE_FF_ONTEP:
+            if child_interface.type == IFACE_TYPE_ONTEP:
                 tagged_vlans |= set(child_interface.overlay_network.vlans.all())
             else:
                 tagged_vlans |= set(child_interface.tagged_vlans.all())
@@ -266,9 +288,9 @@ class ChangeSet(models.Model):
 
     def yamlify_interface(self, interface):
         res = None
-        if interface.form_factor == IFACE_FF_ONTEP:
+        if interface.type == IFACE_TYPE_ONTEP:
             res = self.yamlify_ontep_interface(interface)
-        elif interface.form_factor == IFACE_FF_BRIDGE:
+        elif interface.type == IFACE_TYPE_BRIDGE:
             res = self.yamlify_bridge_interface(interface)
         elif interface:
             res = [{
@@ -287,12 +309,12 @@ class ChangeSet(models.Model):
                 'tagged_vlans': [self.yamlify_vlan(v)
                                             for v
                                             in interface.tagged_vlans.all()],
-                'form_factor': self.convert_form_factor(interface.form_factor),
+                'form_factor': self.convert_form_factor(interface.type),
                 'ip_addresses': [self.yamlify_ip_address(address)
                                             for address
                                             in interface.ip_addresses.all()]
             }]
-        if interface:
+        if interface and len(res):
             res[0]['extra_fields'] = self.yamlify_extra_fields(interface)
         return res
 
@@ -370,7 +392,10 @@ class ChangeSet(models.Model):
         res = {
             'type': self.yamlify_device_type(device.device_type),
             'role': device.device_role.name if device.device_role else None,
-            'platform': device.platform.name if device.platform else None,
+            'platform': {
+                'name': device.platform.name if device.platform else None,
+                'version': device.platform_version.name if device.platform_version else None,
+            },
             'name': device.name,
             'serial': device.serial,
             'asset_tag': device.asset_tag,
@@ -407,7 +432,7 @@ class ChangeSet(models.Model):
 
     # by grouping apply/revert here, we could make this a lot faster
 
-    def create_topology_graph(self):
+    def create_topology_graph(self, devices):
         """Creates a topology graph in dot syntax"""
         self.apply()
         graph = graphviz.Graph(
@@ -416,7 +441,7 @@ class ChangeSet(models.Model):
         )
         seen_devices = []
         # TODO apply filtering
-        for device in Device.objects.filter(status=DEVICE_STATUS_ACTIVE):
+        for device in devices.filter(status=DEVICE_STATUS_ACTIVE):
             if device.device_role.name not in DEVICE_ROLE_TOPOLOGY_WHITELIST:
                 continue
             attributes = {
@@ -426,7 +451,7 @@ class ChangeSet(models.Model):
             graph.node(device.name, **attributes)
             seen_devices.append(device)
             for interface in device.interfaces.all():
-                if interface.form_factor in NONCONNECTABLE_IFACE_TYPES + AGGREGATABLE_IFACE_TYPES:
+                if interface.type in NONCONNECTABLE_IFACE_TYPES + AGGREGATABLE_IFACE_TYPES:
                     continue
                 trace = interface.trace()[0]
                 cable = trace[1]
@@ -451,12 +476,12 @@ class ChangeSet(models.Model):
         self.revert()
         return self.to_action('topology.dot', 'update', graph.source)
 
-    def create_inventory(self):
+    def create_inventory(self, devices):
         self.apply()
         res = io.StringIO()
         res.write("# Generated by netbox")
         groups = defaultdict(list)
-        for device in Device.objects.filter(primary_ip4__isnull=False):
+        for device in devices:
             res.write("\n{} ansible_host={}".format(device.name, str(device.primary_ip4.address.ip)))
             if device.device_role:
                 if device.status == DEVICE_STATUS_PLANNED:
@@ -477,12 +502,12 @@ class ChangeSet(models.Model):
         self.revert()
         return self.to_action('inventory.ini', 'update', res.getvalue())
 
-    def to_actions(self):
+    def to_actions(self, devices):
         """Creates Gitlab actions for all devices"""
         actions = {}
         self.apply()
 
-        for device in Device.objects.prefetch_related('interfaces', 'device_type').all():
+        for device in devices:
             key = 'host_vars/{}/main.yaml'.format(device.name)
             actions[key] = self.yamlify_device(device)
         self.revert()
@@ -496,6 +521,9 @@ class ChangeSet(models.Model):
         change_objects = list(self.changedobject_set.all())
         change_fields = list(self.changedfield_set.all())
         changes = sorted(change_objects + change_fields, key=lambda x: x.time)
+        if self.change_information:
+            for change in self.change_information.depends_on.all():
+                change.apply()
         for change in changes:
             change.apply()
 
@@ -506,6 +534,10 @@ class ChangeSet(models.Model):
         changes = sorted(
             change_objects + change_fields, key=lambda x: x.time, reverse=True
         )
+        if self.change_information:
+            for change in self.change_information.depends_on.all():
+                if change.status != IMPLEMENTED:
+                    change.revert()
         for change in changes:
             change.revert()
 
@@ -514,6 +546,9 @@ class ChangeSet(models.Model):
         before = timezone.now() - threshold
 
         return self.updated > before
+
+    def __str__(self):
+        return '#{}: {}'.format(self.id, self.change_information.name if self.change_information else '')
 
 
 class ChangedField(models.Model):

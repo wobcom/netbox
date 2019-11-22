@@ -1,10 +1,11 @@
 {% extends '_base.html' %}
+{% load custom_links %}
 {% load helpers %}
 
 {% block title %}{{ devicetype.manufacturer }} {{ devicetype.model }}{% endblock %}
 
 {% block header %}
-    <div class="row">
+    <div class="row noprint">
         <div class="col-md-12">
             <ol class="breadcrumb">
                 <li><a href="{% url 'dcim:devicetype_list' %}">Device Types</a></li>
@@ -14,7 +15,7 @@
         </div>
     </div>
     {% if perms.dcim.change_devicetype or perms.dcim.delete_devicetype %}
-        <div class="pull-right">
+        <div class="pull-right noprint">
             {% if perms.dcim.change_devicetype %}
                 <div class="btn-group">
                     <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -46,13 +47,18 @@
     {% endif %}
     <h1>{{ devicetype.manufacturer }} {{ devicetype.model }}</h1>
     {% include 'inc/created_updated.html' with obj=devicetype %}
+    <div class="pull-right noprint">
+        {% custom_links devicetype %}
+    </div>
     <ul class="nav nav-tabs">
         <li role="presentation"{% if not active_tab %} class="active"{% endif %}>
             <a href="{{ devicetype.get_absolute_url }}">Device Type</a>
         </li>
-        <li role="presentation"{% if active_tab == 'changelog' %} class="active"{% endif %}>
-            <a href="{% url 'dcim:devicetype_changelog' pk=devicetype.pk %}">Changelog</a>
-        </li>
+        {% if perms.extras.view_objectchange %}
+            <li role="presentation"{% if active_tab == 'changelog' %} class="active"{% endif %}>
+                <a href="{% url 'dcim:devicetype_changelog' pk=devicetype.pk %}">Changelog</a>
+            </li>
+        {% endif %}
     </ul>
 {% endblock %}
 

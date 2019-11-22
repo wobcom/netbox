@@ -1,8 +1,8 @@
-from django.contrib.auth.backends import ModelBackend
+from utilities.auth_backends import ViewExemptModelBackend
 from . import perm_available
 
 
-class ProxyBackend(ModelBackend):
+class ProxyBackend(ViewExemptModelBackend):
     """
     Proxy class wrapped around ModelBackend to deny permissions
     based on actual change state.

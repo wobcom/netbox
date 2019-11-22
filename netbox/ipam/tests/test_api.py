@@ -1,3 +1,5 @@
+import json
+
 from django.urls import reverse
 from netaddr import IPNetwork
 from rest_framework import status
@@ -5,6 +7,7 @@ from rest_framework import status
 from dcim.models import Device, DeviceRole, DeviceType, Manufacturer, Site
 from ipam.constants import IP_PROTOCOL_TCP, IP_PROTOCOL_UDP
 from ipam.models import Aggregate, IPAddress, Prefix, RIR, Role, Service, VLAN, VLANGroup, VRF
+from tenancy.models import Tenant
 from utilities.testing import APITestCase
 
 
@@ -16,7 +19,7 @@ class VRFTest(APITestCase):
 
         self.vrf1 = VRF.objects.create(name='Test VRF 1', rd='65000:1')
         self.vrf2 = VRF.objects.create(name='Test VRF 2', rd='65000:2')
-        self.vrf3 = VRF.objects.create(name='Test VRF 3', rd='65000:3')
+        self.vrf3 = VRF.objects.create(name='Test VRF 3')  # No RD
 
     def test_get_vrf(self):
 
@@ -39,24 +42,31 @@ class VRFTest(APITestCase):
 
         self.assertEqual(
             sorted(response.data['results'][0]),
-            ['id', 'name', 'rd', 'url']
+            ['id', 'name', 'prefix_count', 'rd', 'url']
         )
 
     def test_create_vrf(self):
 
-        data = {
-            'name': 'Test VRF 4',
-            'rd': '65000:4',
-        }
+        data_list = [
+            # VRF with RD
+            {
+                'name': 'Test VRF 4',
+                'rd': '65000:4',
+            },
+            # VRF without RD
+            {
+                'name': 'Test VRF 5',
+            }
+        ]
 
         url = reverse('ipam-api:vrf-list')
-        response = self.client.post(url, data, format='json', **self.header)
 
-        self.assertHttpStatus(response, status.HTTP_201_CREATED)
-        self.assertEqual(VRF.objects.count(), 4)
-        vrf4 = VRF.objects.get(pk=response.data['id'])
-        self.assertEqual(vrf4.name, data['name'])
-        self.assertEqual(vrf4.rd, data['rd'])
+        for data in data_list:
+            response = self.client.post(url, data, format='json', **self.header)
+            self.assertHttpStatus(response, status.HTTP_201_CREATED)
+            vrf = VRF.objects.get(pk=response.data['id'])
+            self.assertEqual(vrf.name, data['name'])
+            self.assertEqual(vrf.rd, data['rd'] if 'rd' in data else None)
 
     def test_create_vrf_bulk(self):
 
@@ -140,7 +150,7 @@ class RIRTest(APITestCase):
 
         self.assertEqual(
             sorted(response.data['results'][0]),
-            ['id', 'name', 'slug', 'url']
+            ['aggregate_count', 'id', 'name', 'slug', 'url']
         )
 
     def test_create_rir(self):
@@ -344,7 +354,7 @@ class RoleTest(APITestCase):
 
         self.assertEqual(
             sorted(response.data['results'][0]),
-            ['id', 'name', 'slug', 'url']
+            ['id', 'name', 'prefix_count', 'slug', 'url', 'vlan_count']
         )
 
     def test_create_role(self):
@@ -422,7 +432,8 @@ class PrefixTest(APITestCase):
 
         self.site1 = Site.objects.create(name='Test Site 1', slug='test-site-1')
         self.vrf1 = VRF.objects.create(name='Test VRF 1', rd='65000:1')
-        self.vlan1 = VLAN.objects.create(vid=1, name='Test VLAN 1')
+        self.tenant = Tenant.objects.create(name='My Tenant', slug='mytenant')
+        self.vlan1 = VLAN.objects.create(vid=1, name='Test VLAN 1', tenant=self.tenant)
         self.role1 = Role.objects.create(name='Test Role 1', slug='test-role-1')
         self.prefix1 = Prefix.objects.create(prefix=IPNetwork('192.168.1.0/24'))
         self.prefix2 = Prefix.objects.create(prefix=IPNetwork('192.168.2.0/24'))
@@ -783,7 +794,7 @@ class VLANGroupTest(APITestCase):
 
         self.assertEqual(
             sorted(response.data['results'][0]),
-            ['id', 'name', 'slug', 'url']
+            ['id', 'name', 'slug', 'url', 'vlan_count']
         )
 
     def test_create_vlangroup(self):
@@ -859,9 +870,12 @@ class VLANTest(APITestCase):
 
         super().setUp()
 
-        self.vlan1 = VLAN.objects.create(vid=1, name='Test VLAN 1')
-        self.vlan2 = VLAN.objects.create(vid=2, name='Test VLAN 2')
-        self.vlan3 = VLAN.objects.create(vid=3, name='Test VLAN 3')
+        self.tenant = Tenant.objects.create(name='My Tenant', slug='mytenant')
+        self.vlan1 = VLAN.objects.create(vid=1, name='Test VLAN 1', tenant=self.tenant)
+        self.vlan2 = VLAN.objects.create(vid=2, name='Test VLAN 2', tenant=self.tenant)
+        self.vlan3 = VLAN.objects.create(vid=3, name='Test VLAN 3', tenant=self.tenant)
+
+        self.prefix1 = Prefix.objects.create(prefix=IPNetwork('192.168.1.0/24'))
 
     def test_get_vlan(self):
 
@@ -892,6 +906,9 @@ class VLANTest(APITestCase):
         data = {
             'vid': 4,
             'name': 'Test VLAN 4',
+            'tenant': {
+                'id': self.tenant.id
+            },
         }
 
         url = reverse('ipam-api:vlan-list')
@@ -909,14 +926,23 @@ class VLANTest(APITestCase):
             {
                 'vid': 4,
                 'name': 'Test VLAN 4',
+                'tenant': {
+                    'id': self.tenant.id
+                },
             },
             {
                 'vid': 5,
                 'name': 'Test VLAN 5',
+                'tenant': {
+                    'id': self.tenant.id
+                },
             },
             {
                 'vid': 6,
                 'name': 'Test VLAN 6',
+                'tenant': {
+                    'id': self.tenant.id
+                },
             },
         ]
 
@@ -952,6 +978,20 @@ class VLANTest(APITestCase):
 
         self.assertHttpStatus(response, status.HTTP_204_NO_CONTENT)
         self.assertEqual(VLAN.objects.count(), 2)
+
+    def test_delete_vlan_with_prefix(self):
+        self.prefix1.vlan = self.vlan1
+        self.prefix1.save()
+
+        url = reverse('ipam-api:vlan-detail', kwargs={'pk': self.vlan1.pk})
+        response = self.client.delete(url, **self.header)
+
+        # can't use assertHttpStatus here because we don't have response.data
+        self.assertEqual(response.status_code, 409)
+
+        content = json.loads(response.content.decode('utf-8'))
+        self.assertIn('detail', content)
+        self.assertTrue(content['detail'].startswith('Unable to delete object.'))
 
 
 class ServiceTest(APITestCase):

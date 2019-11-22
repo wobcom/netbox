@@ -1,41 +1,51 @@
 import io
 import json
+from datetime import datetime
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.db import models
 from django.http import HttpResponse, HttpResponseForbidden, \
     HttpResponseServerError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import dateparse, timezone
 from django.utils.decorators import method_decorator
+from django.utils.safestring import mark_safe
 from django.views.generic import View
 from django.views.generic.edit import CreateView
 from rest_framework.decorators import action
 from rest_framework.viewsets import ViewSet
 import gitlab
-import requests
 
 from netbox import configuration
+from dcim.models import Device
 from utilities.views import ObjectListView
 from . import tables
-from .forms import AffectedCustomerInlineFormSet
+from .forms import AffectedCustomerInlineFormSet, ChangeInformationForm
 from .models import ChangeInformation, ChangeSet, \
     DRAFT, IN_REVIEW, ACCEPTED, REJECTED, IMPLEMENTED, FAILED
 from .utilities import redirect_to_referer
 
 
-
-@method_decorator(login_required, name='dispatch')
-class ChangeFormView(CreateView):
+class ChangeFormView(PermissionRequiredMixin, CreateView):
     model = ChangeInformation
-    fields = '__all__'
+    form_class = ChangeInformationForm
     success_url = '/'
+    permission_required = 'change.add_change'
 
     def get(self, request, *args, **kwargs):
         if not request.session.get('in_change'):
-            return redirect('/')
-        return super(CreateView, self).get(request, *args, **kwargs)
+            return redirect('home')
+        return super(ChangeFormView, self).get(request, *args, **kwargs)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        change_id = self.request.session['change_id']
+        return {
+            **kwargs,
+            'change_id': change_id
+        }
 
     def form_valid(self, form):
         result = super(ChangeFormView, self).form_valid(form)
@@ -46,9 +56,14 @@ class ChangeFormView(CreateView):
             prefix='affected_customers'
         )
         if customers_formset.is_valid():
-            customers = customers_formset.save()
+            customers_formset.save()
 
-        self.request.session['change_information'] = self.object.id
+        for depends in self.object.depends_on.all():
+            depends.apply()
+
+        c = ChangeSet.objects.get(pk=self.request.session['change_id'])
+        c.change_information = self.object
+        c.save()
 
         return result
 
@@ -76,16 +91,15 @@ class ToggleView(View):
         if not changeset.active:
             return HttpResponseForbidden('Change timed out!')
 
-        info_id = request.session.get('change_information')
-        change_information = None
-        if info_id:
-            change_information = ChangeInformation.objects.get(pk=info_id)
-            changeset.change_information = change_information
-
         changeset.active = False
         changeset.save()
 
         changeset.revert()
+
+        change_information = changeset.change_information
+        if change_information:
+            for depends in change_information.depends_on.all():
+                depends.revert()
 
         return changeset
 
@@ -110,7 +124,7 @@ class ToggleView(View):
             c = ChangeSet(user=request.user, active=True)
             c.save()
             request.session['change_id'] = c.id
-            return redirect('/change/form')
+            return redirect('change:form')
 
         # we finished our change. we generate the changeset now
         changeset = self.treat_changeset(request)
@@ -119,11 +133,9 @@ class ToggleView(View):
             'changeset': changeset
         })
 
-        if 'change_information' not in request.session:
+        if not changeset.change_information:
             request.session['in_change'] = False
-            return redirect('/')
-
-        self.clear_session(request)
+            return redirect('home')
 
         return res
 
@@ -139,7 +151,11 @@ MR_TXT = """Change #{} was created in Netbox by {}.
 def check_actions(project, actions, branch):
     treated = set()
     new_actions = []
-    for f in project.repository_tree(path='host_vars', all=True, recursive=True):
+    # if not git exists:
+    #    git clone configurations.GITLAB_CLONE_URL
+    # git pull
+    # ls host_vars/**/*
+    for f in project.repository_tree(path='host_vars', all=True, recursive=True, per_page=100):
         # we only care for files
         if f['type'] != 'blob':
             continue
@@ -178,10 +194,15 @@ def check_branch_exists(project, branch_name):
 
 
 def open_gitlab_mr(o, delete_branch=False):
+    devices = Device.objects.prefetch_related(
+             'interfaces__untagged_vlan',
+             'interfaces__tagged_vlans',
+             'interfaces__overlay_network',
+             'device_type').filter(primary_ip4__isnull=False)
     gl = gitlab.Gitlab(configuration.GITLAB_URL, configuration.GITLAB_TOKEN)
     info = o.change_information
     project = gl.projects.get(configuration.GITLAB_PROJECT_ID)
-    actions = o.to_actions()
+    actions = o.to_actions(devices)
     mr_txt = MR_TXT.format(o.id, o.user, o.executive_summary())
     emergency_label = ['emergency'] if info.is_emergency else []
     branch_name = 'change_{}'.format(o.id)
@@ -199,8 +220,8 @@ def open_gitlab_mr(o, delete_branch=False):
         'ref': 'master'
     })
     actions = check_actions(project, actions, branch_name)
-    actions.append(o.create_inventory())
-    actions.append(o.create_topology_graph())
+    actions.append(o.create_inventory(devices))
+    actions.append(o.create_topology_graph(devices))
     project.commits.create({
         'id': project.id,
         'branch': branch_name,
@@ -228,13 +249,15 @@ def open_gitlab_mr(o, delete_branch=False):
             approver_ids=[configuration.GITLAB_APPROVER_ID]
         )
 
-    msg = "You can review your merge request at {}/{}/merge_requests/{}!"
-    return msg.format(configuration.GITLAB_URL, project.path_with_namespace,
-                      mr.iid)
+    o.mr_location = "{}/{}/merge_requests/{}".format(
+        configuration.GITLAB_URL, project.path_with_namespace, mr.iid
+    )
+
+    return 'You can review your merge request <a href="{}">here</a>!'.format(o.mr_location)
 
 
 @method_decorator(login_required, name='dispatch')
-class MRView(View):
+class AcceptView(View):
     model = ChangeSet
 
     def get(self, request, pk=None):
@@ -244,39 +267,25 @@ class MRView(View):
         A merge request is created in Gitlab, and the status of the object is
         changed to Accepted.
         """
+        recreate = request.GET.get('recreate')
+
         obj = get_object_or_404(self.model, pk=pk)
 
-        messages.info(request, open_gitlab_mr(obj, delete_branch=True))
-        obj.status = ACCEPTED
-        obj.save()
-
-        return redirect('/change/list')
-
-
-@method_decorator(login_required, name='dispatch')
-class AcceptView(View):
-    model = ChangeSet
-
-    def get(self, request, pk=None):
-        """
-        This view is triggered when the change was accepted by the operator.
-        The changes are propagated into Gitlab, and the status of the object is
-        changed to in review.
-        """
-        obj = get_object_or_404(self.model, pk=pk)
-
-        if obj.status != DRAFT:
+        if obj.status != DRAFT and not recreate:
             return HttpResponseForbidden('Change was already accepted!')
 
         try:
-            messages.info(request, open_gitlab_mr(obj))
-        except ConnectionError as e:
-            return HttpResponseServerError(str(e))
+            safe = mark_safe(open_gitlab_mr(obj, delete_branch=recreate))
+            messages.info(request, safe)
+            obj.status = IN_REVIEW
+            obj.save()
+        except gitlab.exceptions.GitlabError as e:
+            obj.revert()
+            messages.warning(request,
+                "Unable to connect to GitLab at the moment! Error message: {}".format(e)
+            )
 
-        obj.status = IN_REVIEW
-        obj.save()
-
-        return redirect('/')
+        return redirect('home')
 
 
 @method_decorator(login_required, name='dispatch')
@@ -296,7 +305,30 @@ class RejectView(View):
         obj.status = REJECTED
         obj.save()
 
-        return redirect('/')
+        return redirect('home')
+
+
+@method_decorator(login_required, name='dispatch')
+class ReactivateView(View):
+    model = ChangeSet
+
+    def get(self, request, pk=None):
+        """
+        This view is triggered when the change is reactivated by the operator.
+        The object is marked as active, updated, and assigned to the operator.
+        """
+        obj = get_object_or_404(self.model, pk=pk)
+
+        if obj.status != DRAFT:
+            return HttpResponseForbidden('Change cannot be reactivated!')
+
+        obj.active = True
+        obj.updated = datetime.now()
+        obj.save()
+
+        request.session['in_change'] = True
+
+        return redirect('home')
 
 
 # needs to be a rest_framework viewset for nextbox... urgh
@@ -392,13 +424,3 @@ class DetailView(View):
         """
         changeset = get_object_or_404(ChangeSet, pk=pk)
         return render(request, 'change/detail.html', {'changeset': changeset})
-
-
-@method_decorator(login_required, name='dispatch')
-class ListView(ObjectListView):
-    queryset = ChangeSet.objects.annotate(
-        changedfield_count=models.Count('changedfield', distinct=True),
-        changedobject_count=models.Count('changedobject', distinct=True)
-    )
-    table = tables.ChangeTable
-    template_name = 'change/change_list.html'

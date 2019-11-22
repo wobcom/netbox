@@ -44,6 +44,7 @@ router.register(r'device-bay-templates', views.DeviceBayTemplateViewSet)
 # Devices
 router.register(r'device-roles', views.DeviceRoleViewSet)
 router.register(r'platforms', views.PlatformViewSet)
+router.register(r'platform-versions', views.PlatformVersionViewSet)
 router.register(r'devices', views.DeviceViewSet)
 
 # Device components
@@ -67,6 +68,10 @@ router.register(r'cables', views.CableViewSet)
 
 # Virtual chassis
 router.register(r'virtual-chassis', views.VirtualChassisViewSet)
+
+# Power
+router.register(r'power-panels', views.PowerPanelViewSet)
+router.register(r'power-feeds', views.PowerFeedViewSet)
 
 # Miscellaneous
 router.register(r'connected-device', views.ConnectedDeviceViewSet, basename='connected-device')

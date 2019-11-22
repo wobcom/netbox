@@ -1,15 +1,15 @@
 import django_filters
 from django.db.models import Q
 
-from dcim.models import Site
+from dcim.models import Region, Site
 from extras.filters import CustomFieldFilterSet
-from tenancy.models import Tenant
-from utilities.filters import NumericInFilter, TagFilter
+from tenancy.filtersets import TenancyFilterSet
+from utilities.filters import NameSlugSearchFilterSet, NumericInFilter, TagFilter, TreeNodeMultipleChoiceFilter
 from .constants import CIRCUIT_STATUS_CHOICES
 from .models import Provider, Circuit, CircuitTermination, CircuitType
 
 
-class ProviderFilter(CustomFieldFilterSet, django_filters.FilterSet):
+class ProviderFilter(CustomFieldFilterSet):
     id__in = NumericInFilter(
         field_name='id',
         lookup_expr='in'
@@ -47,14 +47,14 @@ class ProviderFilter(CustomFieldFilterSet, django_filters.FilterSet):
         )
 
 
-class CircuitTypeFilter(django_filters.FilterSet):
+class CircuitTypeFilter(NameSlugSearchFilterSet):
 
     class Meta:
         model = CircuitType
-        fields = ['name', 'slug']
+        fields = ['id', 'name', 'slug']
 
 
-class CircuitFilter(CustomFieldFilterSet, django_filters.FilterSet):
+class CircuitFilter(CustomFieldFilterSet, TenancyFilterSet):
     id__in = NumericInFilter(
         field_name='id',
         lookup_expr='in'
@@ -87,16 +87,6 @@ class CircuitFilter(CustomFieldFilterSet, django_filters.FilterSet):
         choices=CIRCUIT_STATUS_CHOICES,
         null_value=None
     )
-    tenant_id = django_filters.ModelMultipleChoiceFilter(
-        queryset=Tenant.objects.all(),
-        label='Tenant (ID)',
-    )
-    tenant = django_filters.ModelMultipleChoiceFilter(
-        field_name='tenant__slug',
-        queryset=Tenant.objects.all(),
-        to_field_name='slug',
-        label='Tenant (slug)',
-    )
     site_id = django_filters.ModelMultipleChoiceFilter(
         field_name='terminations__site',
         queryset=Site.objects.all(),
@@ -107,6 +97,17 @@ class CircuitFilter(CustomFieldFilterSet, django_filters.FilterSet):
         queryset=Site.objects.all(),
         to_field_name='slug',
         label='Site (slug)',
+    )
+    region_id = TreeNodeMultipleChoiceFilter(
+        queryset=Region.objects.all(),
+        field_name='terminations__site__region__in',
+        label='Region (ID)',
+    )
+    region = TreeNodeMultipleChoiceFilter(
+        queryset=Region.objects.all(),
+        field_name='terminations__site__region__in',
+        to_field_name='slug',
+        label='Region (slug)',
     )
     tag = TagFilter()
 

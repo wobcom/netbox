@@ -1,4 +1,4 @@
-from django.db.models import QuerySet
+from django.db.models import Manager, QuerySet
 from django.db.models.expressions import RawSQL
 
 from .constants import NONCONNECTABLE_IFACE_TYPES
@@ -15,22 +15,6 @@ CHANNEL_RE = r"COALESCE(CAST(SUBSTRING({} FROM '^.*:(\d{{1,9}})(\.\d{{1,9}})?$')
 VC_RE = r"COALESCE(CAST(SUBSTRING({} FROM '^.*\.(\d{{1,9}})$') AS integer), 0)"
 
 
-class DeviceComponentManager(BaseManager):
-
-    def get_queryset(self):
-
-        queryset = super().get_queryset()
-        table_name = self.model._meta.db_table
-        sql = r"CONCAT(REGEXP_REPLACE({}.name, '\d+$', ''), LPAD(SUBSTRING({}.name FROM '\d+$'), 8, '0'))"
-
-        # Pad any trailing digits to effect natural sorting
-        return queryset.extra(
-            select={
-                'name_padded': sql.format(table_name, table_name),
-            }
-        ).order_by('name_padded')
-
-
 class InterfaceQuerySet(QuerySet):
 
     def connectable(self):
@@ -38,7 +22,7 @@ class InterfaceQuerySet(QuerySet):
         Return only physical interfaces which are capable of being connected to other interfaces (i.e. not virtual or
         wireless).
         """
-        return self.exclude(form_factor__in=NONCONNECTABLE_IFACE_TYPES)
+        return self.exclude(type__in=NONCONNECTABLE_IFACE_TYPES)
 
 
 class InterfaceManager(BaseManager):
@@ -65,11 +49,15 @@ class InterfaceManager(BaseManager):
 
         The original `name` field is considered in its entirety to serve as a fallback in the event interfaces do not
         match any of the prescribed fields.
+
+        The `id` field is included to enforce deterministic ordering of interfaces in similar vein of other device
+        components.
         """
 
         sql_col = '{}.name'.format(self.model._meta.db_table)
         ordering = [
-            '_slot', '_subslot', '_position', '_subposition', '_type', '_id', '_channel', '_vc', 'name',
+            '_slot', '_subslot', '_position', '_subposition', '_type', '_id', '_channel', '_vc', 'name', 'pk'
+
         ]
 
         fields = {
