@@ -185,7 +185,20 @@ class ChangeSet(models.Model):
             return self.vlan_cache[device]
         self.vlan_cache[device] = set()
         for interface in device.interfaces.exclude(type=IFACE_TYPE_ONTEP):
-            self.vlan_cache[device] |= set(list(interface.tagged_vlans.values_list('vid', flat=True)))
+            self.vlan_cache[device] |= set(interface.tagged_vlans.values_list('vid', flat=True))
+            # VTEPs for single homed hosts terminated on the peer must also be generated
+            if interface.name == 'peerlink':
+                # get a bond member of the peerlink
+                bond_member = interface.member_interfaces.first()
+                # trace that interface to a remote interface
+                remote_interface = bond_member.trace()[0][2]
+                # collect vlans from the remote device
+                remote_device = remote_interface.device
+                for remote_interface in remote_device.interfaces.exclude(type=IFACE_TYPE_ONTEP):
+                    self.vlan_cache[device] |= set(
+                        remote_interface.tagged_vlans.values_list('vid', flat=True))
+                    if remote_interface.untagged_vlan != None:
+                        self.vlan_cache[device].add(remote_interface.untagged_vlan.vid)
             if interface.untagged_vlan != None:
                 self.vlan_cache[device].add(interface.untagged_vlan.vid)
         return self.vlan_cache[device]
