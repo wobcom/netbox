@@ -1,6 +1,6 @@
 site_name: NetBox
 theme: readthedocs
-repo_url: https://github.com/digitalocean/netbox
+repo_url: https://github.com/netbox-community/netbox
 
 pages:
     - Introduction: 'index.md'
@@ -27,15 +27,18 @@ pages:
         - Secrets: 'core-functionality/secrets.md'
         - Tenancy: 'core-functionality/tenancy.md'
     - Additional Features:
-        - Tags: 'additional-features/tags.md'
-        - Custom Fields: 'additional-features/custom-fields.md'
+        - Caching: 'additional-features/caching.md'
+        - Change Logging: 'additional-features/change-logging.md'
         - Context Data: 'additional-features/context-data.md'
+        - Custom Fields: 'additional-features/custom-fields.md'
+        - Custom Scripts: 'additional-features/custom-scripts.md'
         - Export Templates: 'additional-features/export-templates.md'
         - Graphs: 'additional-features/graphs.md'
-        - Topology Maps: 'additional-features/topology-maps.md'
+        - Prometheus Metrics: 'additional-features/prometheus-metrics.md'
         - Reports: 'additional-features/reports.md'
+        - Tags: 'additional-features/tags.md'
+        - Topology Maps: 'additional-features/topology-maps.md'
         - Webhooks: 'additional-features/webhooks.md'
-        - Change Logging: 'additional-features/change-logging.md'
     - Administration:
         - Replicating NetBox: 'administration/replicating-netbox.md'
         - NetBox Shell: 'administration/netbox-shell.md'

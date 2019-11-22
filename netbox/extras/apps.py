@@ -7,6 +7,9 @@ class ExtrasConfig(AppConfig):
     name = "extras"
 
     def ready(self):
+
+        import extras.signals
+
         # Check that we can connect to the configured Redis database if webhooks are enabled.
         if settings.WEBHOOKS_ENABLED:
             try:
@@ -22,6 +25,7 @@ class ExtrasConfig(AppConfig):
                     port=settings.REDIS_PORT,
                     db=settings.REDIS_DATABASE,
                     password=settings.REDIS_PASSWORD or None,
+                    ssl=settings.REDIS_SSL,
                 )
                 rs.ping()
             except redis.exceptions.ConnectionError:

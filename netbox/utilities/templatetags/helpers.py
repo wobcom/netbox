@@ -22,6 +22,7 @@ def oneline(value):
     """
     Replace each line break with a single space
     """
+    value = value.replace('\r', '')
     return value.replace('\n', ' ')
 
 
@@ -165,6 +166,26 @@ def fgcolor(value):
     return '#{}'.format(foreground_color(value))
 
 
+@register.filter()
+def divide(x, y):
+    """
+    Return x/y (rounded).
+    """
+    if x is None or y is None:
+        return None
+    return round(x / y)
+
+
+@register.filter()
+def percentage(x, y):
+    """
+    Return x/y as a percentage.
+    """
+    if x is None or y is None:
+        return None
+    return round(x / y * 100)
+
+
 #
 # Tags
 #
@@ -177,7 +198,7 @@ def querystring(request, **kwargs):
     querydict = request.GET.copy()
     for k, v in kwargs.items():
         if v is not None:
-            querydict[k] = v
+            querydict[k] = str(v)
         elif k in querydict:
             querydict.pop(k)
     querystring = querydict.urlencode(safe='/')

@@ -25,6 +25,9 @@ from dcim.constants import *
 from configuration.models import RouteMap, BGPCommunity, BGPCommunityList
 
 DEVICE_ROLE_TOPOLOGY_WHITELIST = ['leaf', 'spine', 'superspine']
+NO_CHANGE = 0
+OWN_CHANGE = 1
+FOREIGN_CHANGE = 2
 
 class ChangeInformation(models.Model):
     """Meta information about a change."""
@@ -34,9 +37,23 @@ class ChangeInformation(models.Model):
     affects_customer = models.BooleanField(verbose_name="Customers are affected")
     change_implications = models.TextField()
     ignore_implications = models.TextField()
-    change_type = models.SmallIntegerField(choices=[(1, 'Standard Change (vorabgenehmigt)')], default=1)
+    change_type = models.SmallIntegerField(choices=[
+        (1, 'Standard Change (vorabgenehmigt)')], default=1)
     category = models.SmallIntegerField(choices=[(1, 'Netzwerk')], default=1)
-    subcategory = models.SmallIntegerField(choices=[(0, '------------'), (1, 'Routing/Switching'), (2, 'Firewall'), (3, 'CPE'), (4, 'Access Netz'), (5, 'Extern')], default=0)
+    subcategory = models.SmallIntegerField(choices=[
+        (0, '------------'),
+        (1, 'Routing/Switching'),
+        (2, 'Firewall'),
+        (3, 'CPE'),
+        (4, 'Access Netz'),
+        (5, 'Extern')
+    ], default=0)
+
+    depends_on = models.ManyToManyField(
+        'ChangeSet',
+        related_name='dependants',
+        blank=True,
+    )
 
     def executive_summary(self, no_markdown=True):
         md = Markdownify(no_markdown=no_markdown)
@@ -58,6 +75,12 @@ class ChangeInformation(models.Model):
                 if change.is_business:
                     res.write(md.bold(' (Business Customer)'))
                 res.write(": {}\n".format(change.products_affected))
+
+        if self.depends_on.exists():
+            res.write(md.h3('This change depends on the following changes\n'))
+            for depends in self.depends_on.all():
+                res.write('- {}\n'.format(depends))
+
         return res.getvalue()
 
 
@@ -88,7 +111,6 @@ class ChangeSet(models.Model):
     A change set always refers to a ticket, has a set of changes, and can be
     serialized to YAML.
     """
-    ticket_id = models.UUIDField(null=True)
     active = models.BooleanField(default=False)
     change_information = models.ForeignKey(
         to=ChangeInformation,
@@ -104,7 +126,6 @@ class ChangeSet(models.Model):
         auto_now_add=True,
         editable=False
     )
-
     user = models.ForeignKey(
         to=User,
         on_delete=models.SET_NULL,
@@ -112,8 +133,12 @@ class ChangeSet(models.Model):
         blank=True,
         null=True
     )
-
     provision_log = JSONField(
+        blank=True,
+        null=True
+    )
+    mr_location = models.CharField(
+        max_length=256,
         blank=True,
         null=True
     )
@@ -129,6 +154,40 @@ class ChangeSet(models.Model):
             (FAILED, 'Failed'),
         )
     )
+
+    def __init__(self, *args, **kwargs):
+        super(ChangeSet, self).__init__(*args, **kwargs)
+        self.vlan_cache = {}  # stores used VLANs for a given device
+
+    @staticmethod
+    def change_state(user=None):
+        """
+        Get actual change state
+        :param user: user for which the state should be checked, maybe None
+        :return: integer value corresponding to *_CHANGE constants
+        """
+        try:
+            c = ChangeSet.objects.get(active=True)
+            if c.user == user:
+                return OWN_CHANGE
+            else:
+                return FOREIGN_CHANGE
+        except ChangeSet.DoesNotExist:
+            return NO_CHANGE
+
+    def collect_vids(self, device):
+        """
+        Collects VLAN IDs that are used on the device's interfaces, in order to expand
+        the ONTEP interface to only those VTEPs that are actually required.
+        This avoids unnecessary BUM traffic in the fabric.
+        """
+        if device in self.vlan_cache:
+            return self.vlan_cache[device]
+        for interface in device.interfaces.exclude(type=IFACE_TYPE_ONTEP):
+            self.vlan_cache[device] = list(interface.tagged_vlans.values_list('vid', flat=True))
+            if interface.untagged_vlan != None:
+                self.vlan_cache[device].append(interface.untagged_vlan.vid)
+        return self.vlan_cache[device]
 
     def yamlify_extra_fields(self, instance):
         res = {}
@@ -156,9 +215,9 @@ class ChangeSet(models.Model):
 
     def convert_form_factor(self, form_factor):
         m = {
-            IFACE_FF_VIRTUAL: 'virtual',
-            IFACE_FF_BRIDGE: 'bridge',
-            IFACE_FF_LAG: 'lag'
+            IFACE_TYPE_VIRTUAL: 'virtual',
+            IFACE_TYPE_BRIDGE: 'bridge',
+            IFACE_TYPE_LAG: 'lag'
         }
         return m.get(form_factor, 'default')
 
@@ -168,11 +227,13 @@ class ChangeSet(models.Model):
     def child_interfaces(self, interface):
         res = []
         for child_interface in Interface.objects.filter(lag=interface):
-            if child_interface.form_factor == IFACE_FF_ONTEP:
+            if child_interface.type == IFACE_TYPE_ONTEP:
                 if not child_interface.overlay_network:
                     continue
-                # expand ONTEP to VTEPs
-                for vlan in child_interface.overlay_network.vlans.all():
+                # expand ONTEP to VTEPs (but only for those VLANs that are actually used on switchports)
+                for vlan in child_interface.overlay_network.vlans.filter(
+                        vid__in=self.collect_vids(interface.device)
+                    ):
                     res.append(child_interface.name + '_' + self.concat_vxlan_vlan(child_interface.overlay_network.vxlan_prefix, vlan.vid))
             else:
                 res.append(child_interface.name)
@@ -182,7 +243,9 @@ class ChangeSet(models.Model):
         res = []
         if not interface.overlay_network:
             return res
-        for vlan in interface.overlay_network.vlans.all():
+        for vlan in interface.overlay_network.vlans.filter(
+                vid__in=self.collect_vids(interface.device)
+            ):
             res.append({
                 'name': interface.name + '_' + self.concat_vxlan_vlan(interface.overlay_network.vxlan_prefix, vlan.vid),
                 'enabled': True,
@@ -215,7 +278,7 @@ class ChangeSet(models.Model):
             }
         tagged_vlans = set()
         for child_interface in Interface.objects.filter(lag=interface):
-            if child_interface.form_factor == IFACE_FF_ONTEP:
+            if child_interface.type == IFACE_TYPE_ONTEP:
                 tagged_vlans |= set(child_interface.overlay_network.vlans.all())
             else:
                 tagged_vlans |= set(child_interface.tagged_vlans.all())
@@ -224,9 +287,9 @@ class ChangeSet(models.Model):
 
     def yamlify_interface(self, interface):
         res = None
-        if interface.form_factor == IFACE_FF_ONTEP:
+        if interface.type == IFACE_TYPE_ONTEP:
             res = self.yamlify_ontep_interface(interface)
-        elif interface.form_factor == IFACE_FF_BRIDGE:
+        elif interface.type == IFACE_TYPE_BRIDGE:
             res = self.yamlify_bridge_interface(interface)
         elif interface:
             res = [{
@@ -245,12 +308,12 @@ class ChangeSet(models.Model):
                 'tagged_vlans': [self.yamlify_vlan(v)
                                             for v
                                             in interface.tagged_vlans.all()],
-                'form_factor': self.convert_form_factor(interface.form_factor),
+                'form_factor': self.convert_form_factor(interface.type),
                 'ip_addresses': [self.yamlify_ip_address(address)
                                             for address
                                             in interface.ip_addresses.all()]
             }]
-        if interface:
+        if interface and len(res):
             res[0]['extra_fields'] = self.yamlify_extra_fields(interface)
         return res
 
@@ -328,7 +391,10 @@ class ChangeSet(models.Model):
         res = {
             'type': self.yamlify_device_type(device.device_type),
             'role': device.device_role.name if device.device_role else None,
-            'platform': device.platform.name if device.platform else None,
+            'platform': {
+                'name': device.platform.name if device.platform else None,
+                'version': device.platform_version.name if device.platform_version else None,
+            },
             'name': device.name,
             'serial': device.serial,
             'asset_tag': device.asset_tag,
@@ -384,7 +450,7 @@ class ChangeSet(models.Model):
             graph.node(device.name, **attributes)
             seen_devices.append(device)
             for interface in device.interfaces.all():
-                if interface.form_factor in NONCONNECTABLE_IFACE_TYPES + AGGREGATABLE_IFACE_TYPES:
+                if interface.type in NONCONNECTABLE_IFACE_TYPES + AGGREGATABLE_IFACE_TYPES:
                     continue
                 trace = interface.trace()[0]
                 cable = trace[1]
@@ -424,6 +490,8 @@ class ChangeSet(models.Model):
         for vm in VirtualMachine.objects.filter(primary_ip4__isnull=False):
             res.write("\n{} ansible_host={}".format(vm.name, str(vm.primary_ip4.address.ip)))
             if vm.role:
+                if vm.status == DEVICE_STATUS_STAGED:
+                    vm.role.name += "_staged"
                 groups[vm.role.name].append(vm.name)
             res.write("\n")
         for group, entries in groups.items():
@@ -452,6 +520,9 @@ class ChangeSet(models.Model):
         change_objects = list(self.changedobject_set.all())
         change_fields = list(self.changedfield_set.all())
         changes = sorted(change_objects + change_fields, key=lambda x: x.time)
+        if self.change_information:
+            for change in self.change_information.depends_on.all():
+                change.apply()
         for change in changes:
             change.apply()
 
@@ -462,6 +533,10 @@ class ChangeSet(models.Model):
         changes = sorted(
             change_objects + change_fields, key=lambda x: x.time, reverse=True
         )
+        if self.change_information:
+            for change in self.change_information.depends_on.all():
+                if change.status != IMPLEMENTED:
+                    change.revert()
         for change in changes:
             change.revert()
 
@@ -470,6 +545,9 @@ class ChangeSet(models.Model):
         before = timezone.now() - threshold
 
         return self.updated > before
+
+    def __str__(self):
+        return '#{}: {}'.format(self.id, self.change_information.name if self.change_information else '')
 
 
 class ChangedField(models.Model):

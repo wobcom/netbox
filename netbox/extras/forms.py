@@ -4,21 +4,21 @@ from django import forms
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
-from mptt.forms import TreeNodeMultipleChoiceField
 from taggit.forms import TagField
-from taggit.models import Tag
 
 from dcim.models import DeviceRole, Platform, Region, Site
 from tenancy.models import Tenant, TenantGroup
+from utilities.constants import COLOR_CHOICES
 from utilities.forms import (
-    add_blank_choice, BootstrapMixin, BulkEditForm, BulkEditNullBooleanSelect, ContentTypeSelect, FilterChoiceField,
-    FilterTreeNodeMultipleChoiceField, LaxURLField, JSONField, SlugField,
+    add_blank_choice, APISelectMultiple, BootstrapMixin, BulkEditForm, BulkEditNullBooleanSelect, ColorSelect,
+    CommentField, ContentTypeSelect, FilterChoiceField, LaxURLField, JSONField, SlugField, StaticSelect2,
+    BOOLEAN_WITH_BLANK_CHOICES,
 )
 from .constants import (
     CF_FILTER_DISABLED, CF_TYPE_BOOLEAN, CF_TYPE_DATE, CF_TYPE_INTEGER, CF_TYPE_SELECT, CF_TYPE_URL,
     OBJECTCHANGE_ACTION_CHOICES,
 )
-from .models import ConfigContext, CustomField, CustomFieldValue, ImageAttachment, ObjectChange
+from .models import ConfigContext, CustomField, CustomFieldValue, ImageAttachment, ObjectChange, Tag
 
 
 #
@@ -113,8 +113,10 @@ class CustomFieldForm(forms.ModelForm):
 
         # If editing an existing object, initialize values for all custom fields
         if self.instance.pk:
-            existing_values = CustomFieldValue.objects.filter(obj_type=self.obj_type, obj_id=self.instance.pk)\
-                .select_related('field')
+            existing_values = CustomFieldValue.objects.filter(
+                obj_type=self.obj_type,
+                obj_id=self.instance.pk
+            ).prefetch_related('field')
             for cfv in existing_values:
                 self.initial['cf_{}'.format(str(cfv.field.name))] = cfv.serialized_value
 
@@ -122,9 +124,11 @@ class CustomFieldForm(forms.ModelForm):
 
         for field_name in self.custom_fields:
             try:
-                cfv = CustomFieldValue.objects.select_related('field').get(field=self.fields[field_name].model,
-                                                                           obj_type=self.obj_type,
-                                                                           obj_id=self.instance.pk)
+                cfv = CustomFieldValue.objects.prefetch_related('field').get(
+                    field=self.fields[field_name].model,
+                    obj_type=self.obj_type,
+                    obj_id=self.instance.pk
+                )
             except CustomFieldValue.DoesNotExist:
                 # Skip this field if none exists already and its value is empty
                 if self.cleaned_data[field_name] in [None, '']:
@@ -190,11 +194,12 @@ class CustomFieldFilterForm(forms.Form):
 
 class TagForm(BootstrapMixin, forms.ModelForm):
     slug = SlugField()
+    comments = CommentField()
 
     class Meta:
         model = Tag
         fields = [
-            'name', 'slug',
+            'name', 'slug', 'color', 'comments'
         ]
 
 
@@ -216,16 +221,29 @@ class TagFilterForm(BootstrapMixin, forms.Form):
     )
 
 
+class TagBulkEditForm(BootstrapMixin, BulkEditForm):
+    pk = forms.ModelMultipleChoiceField(
+        queryset=Tag.objects.all(),
+        widget=forms.MultipleHiddenInput
+    )
+    color = forms.CharField(
+        max_length=6,
+        required=False,
+        widget=ColorSelect()
+    )
+
+    class Meta:
+        nullable_fields = []
+
+
 #
 # Config contexts
 #
 
 class ConfigContextForm(BootstrapMixin, forms.ModelForm):
-    regions = TreeNodeMultipleChoiceField(
-        queryset=Region.objects.all(),
-        required=False
+    data = JSONField(
+        label=''
     )
-    data = JSONField()
 
     class Meta:
         model = ConfigContext
@@ -233,6 +251,26 @@ class ConfigContextForm(BootstrapMixin, forms.ModelForm):
             'name', 'weight', 'description', 'is_active', 'regions', 'sites', 'roles', 'platforms', 'tenant_groups',
             'tenants', 'data',
         ]
+        widgets = {
+            'regions': APISelectMultiple(
+                api_url="/api/dcim/regions/"
+            ),
+            'sites': APISelectMultiple(
+                api_url="/api/dcim/sites/"
+            ),
+            'roles': APISelectMultiple(
+                api_url="/api/dcim/device-roles/"
+            ),
+            'platforms': APISelectMultiple(
+                api_url="/api/dcim/platforms/"
+            ),
+            'tenant_groups': APISelectMultiple(
+                api_url="/api/tenancy/tenant-groups/"
+            ),
+            'tenants': APISelectMultiple(
+                api_url="/api/tenancy/tenants/"
+            )
+        }
 
 
 class ConfigContextBulkEditForm(BootstrapMixin, BulkEditForm):
@@ -264,29 +302,67 @@ class ConfigContextFilterForm(BootstrapMixin, forms.Form):
         required=False,
         label='Search'
     )
-    region = FilterTreeNodeMultipleChoiceField(
+    region = FilterChoiceField(
         queryset=Region.objects.all(),
-        to_field_name='slug'
+        to_field_name='slug',
+        widget=APISelectMultiple(
+            api_url="/api/dcim/regions/",
+            value_field="slug",
+        )
     )
     site = FilterChoiceField(
         queryset=Site.objects.all(),
-        to_field_name='slug'
+        to_field_name='slug',
+        widget=APISelectMultiple(
+            api_url="/api/dcim/sites/",
+            value_field="slug",
+        )
     )
     role = FilterChoiceField(
         queryset=DeviceRole.objects.all(),
-        to_field_name='slug'
+        to_field_name='slug',
+        widget=APISelectMultiple(
+            api_url="/api/dcim/device-roles/",
+            value_field="slug",
+        )
     )
     platform = FilterChoiceField(
         queryset=Platform.objects.all(),
-        to_field_name='slug'
+        to_field_name='slug',
+        widget=APISelectMultiple(
+            api_url="/api/dcim/platforms/",
+            value_field="slug",
+        )
     )
     tenant_group = FilterChoiceField(
         queryset=TenantGroup.objects.all(),
-        to_field_name='slug'
+        to_field_name='slug',
+        widget=APISelectMultiple(
+            api_url="/api/tenancy/tenant-groups/",
+            value_field="slug",
+        )
     )
     tenant = FilterChoiceField(
         queryset=Tenant.objects.all(),
-        to_field_name='slug'
+        to_field_name='slug',
+        widget=APISelectMultiple(
+            api_url="/api/tenancy/tenants/",
+            value_field="slug",
+        )
+    )
+
+
+#
+# Filter form for local config context data
+#
+
+class LocalConfigContextFilterForm(forms.Form):
+    local_context_data = forms.NullBooleanField(
+        required=False,
+        label='Has local config context data',
+        widget=StaticSelect2(
+            choices=BOOLEAN_WITH_BLANK_CHOICES
+        )
     )
 
 
@@ -341,3 +417,34 @@ class ObjectChangeFilterForm(BootstrapMixin, forms.Form):
         widget=ContentTypeSelect(),
         label='Object Type'
     )
+
+
+#
+# Scripts
+#
+
+class ScriptForm(BootstrapMixin, forms.Form):
+    _commit = forms.BooleanField(
+        required=False,
+        initial=True,
+        label="Commit changes",
+        help_text="Commit changes to the database (uncheck for a dry-run)"
+    )
+
+    def __init__(self, vars, *args, **kwargs):
+
+        super().__init__(*args, **kwargs)
+
+        # Dynamically populate fields for variables
+        for name, var in vars.items():
+            self.fields[name] = var.as_field()
+
+        # Move _commit to the end of the form
+        self.fields.move_to_end('_commit', True)
+
+    @property
+    def requires_input(self):
+        """
+        A boolean indicating whether the form requires user input (ignore the _commit field).
+        """
+        return bool(len(self.fields) > 1)

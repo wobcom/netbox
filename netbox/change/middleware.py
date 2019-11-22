@@ -234,10 +234,10 @@ class FieldChangeMiddleware(object):
                 # So, what should we do if the change is still in use? As it turns out, a
                 # couple of things. First we install the save hooks that will record the
                 # changes made during this request. There is one exception to that rule,
-                # however: if we are currently trying to end this change during this
+                # however: if we are currently trying to change this change during this
                 # request, we will not install these hooks, because we would otherwise
-                # record the rollback as well, and we do not want that.
-                if request.path != '/change/toggle/':
+                # record applying or rolling back as well, and we do not want that.
+                if request.path not in ['/change/toggle/', '/change/form/']:
                     to_uninstall = install_save_hooks(request)
 
                 # Alright, then are we done here? Not quite. We will also have to check
@@ -247,7 +247,7 @@ class FieldChangeMiddleware(object):
                 # cancelled the change.
                 wrong_url = request.path not in ['/change/form/',
                                                  '/change/toggle/']
-                if not request.session.get('change_information') and wrong_url:
+                if not c.change_information and wrong_url:
                     return redirect('/change/form')
 
             # Now we are done, and can take care of the other alternative, which is that
@@ -258,6 +258,9 @@ class FieldChangeMiddleware(object):
                 # tells them that their session has timed out.
                 messages.warning(request, "Your change session timed out.")
                 request.session['in_change'] = False
+                c.active = False
+                c.revert()
+                c.save()
 
         # That is all we need to do if we are in a change.
         #
