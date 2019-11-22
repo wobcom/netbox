@@ -257,8 +257,7 @@ class ChangeSet(models.Model):
         tagged_vlans = set()
         for child_interface in Interface.objects.filter(lag=interface):
             if child_interface.type == IFACE_TYPE_ONTEP:
-                tagged_vlans |= set(child_interface.overlay_network.vlans.filter(
-                    vid__in=self.collect_vids(interface.device)))
+                tagged_vlans |= set(child_interface.overlay_network.vlans.all())
             else:
                 tagged_vlans |= set(child_interface.tagged_vlans.all())
         res['tagged_vlans'] = [self.yamlify_vlan(v) for v in tagged_vlans]
