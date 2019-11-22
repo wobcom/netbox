@@ -183,9 +183,9 @@ class ChangeSet(models.Model):
         """
         if device in self.vlan_cache:
             return self.vlan_cache[device]
-        self.vlan_cache = set()
-        for interface in device.interfaces.exclude(form_factor=IFACE_FF_ONTEP):
-            self.vlan_cache[device] |= set(interface.tagged_vlans.values_list('vid', flat=True))
+        self.vlan_cache[device] = set()
+        for interface in device.interfaces.exclude(type=IFACE_TYPE_ONTEP):
+            self.vlan_cache[device] |= set(list(interface.tagged_vlans.values_list('vid', flat=True)))
             if interface.untagged_vlan != None:
                 self.vlan_cache[device].add(interface.untagged_vlan.vid)
         return self.vlan_cache[device]
@@ -280,7 +280,8 @@ class ChangeSet(models.Model):
         tagged_vlans = set()
         for child_interface in Interface.objects.filter(lag=interface):
             if child_interface.type == IFACE_TYPE_ONTEP:
-                tagged_vlans |= set(child_interface.overlay_network.vlans.all())
+                tagged_vlans |= set(child_interface.overlay_network.vlans.filter(
+                    vid__in=self.collect_vids(interface.device)))
             else:
                 tagged_vlans |= set(child_interface.tagged_vlans.all())
         res['tagged_vlans'] = [self.yamlify_vlan(v) for v in tagged_vlans]
