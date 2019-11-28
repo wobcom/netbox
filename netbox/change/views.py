@@ -326,6 +326,8 @@ class ReactivateView(View):
         obj.updated = datetime.now()
         obj.save()
 
+        obj.apply()
+
         request.session['in_change'] = True
 
         return redirect('home')
