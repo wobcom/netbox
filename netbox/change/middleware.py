@@ -18,9 +18,7 @@ from django.db.models.signals import pre_save, post_save, m2m_changed, pre_delet
 from django.shortcuts import redirect
 from django.utils import timezone
 
-from extras.models import TaggedItem
-
-from extras.models import ObjectChange
+from extras.models import TaggedItem, ObjectChange
 from netbox import settings
 
 from .models import ChangedField, ChangedObject, ChangeSet, AffectedCustomer, \
