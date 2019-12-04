@@ -18,9 +18,7 @@ from django.db.models.signals import pre_save, post_save, m2m_changed, pre_delet
 from django.shortcuts import redirect
 from django.utils import timezone
 
-from taggit.models import TaggedItem, GenericTaggedItemBase
-
-from extras.models import ObjectChange
+from extras.models import TaggedItem, ObjectChange
 from netbox import settings
 
 from .models import ChangedField, ChangedObject, ChangeSet, AffectedCustomer, \
@@ -136,16 +134,10 @@ def install_save_hooks(request):
 
         if action == 'post_add':
             for pk in pk_set:
-                if issubclass(sender, GenericTaggedItemBase):
-                    through = sender.objects.get(**{
-                        'object_id': instance.pk,
-                        '{}_id'.format(model.__name__.lower()): pk
-                    })
-                else:
-                    through = sender.objects.get(**{
-                        '{}_id'.format(instance._meta.model.__name__.lower()): instance.pk,
-                        '{}_id'.format(model.__name__.lower()): pk
-                    })
+                through = sender.objects.get(**{
+                    '{}_id'.format(instance._meta.model.__name__.lower()): instance.pk,
+                    '{}_id'.format(model.__name__.lower()): pk
+                })
                 co = ChangedObject(
                     changed_object=through,
                     changed_object_data=pickle.dumps(through),
