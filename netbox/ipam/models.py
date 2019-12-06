@@ -869,7 +869,7 @@ class OverlayNetwork(ChangeLoggedModel, CustomFieldModel):
         object_id_field='obj_id'
     )
 
-    tags = TaggableManager()
+    tags = TaggableManager(through=TaggedItem)
 
     csv_headers = ['site', 'group_name', 'vxlan_prefix', 'name', 'tenant', 'role', 'description']
 
