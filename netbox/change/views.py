@@ -32,7 +32,7 @@ class ChangeFormView(PermissionRequiredMixin, CreateView):
     model = ChangeInformation
     form_class = ChangeInformationForm
     success_url = '/'
-    permission_required = 'change.add_change'
+    permission_required = 'change.add_changeset'
 
     def get(self, request, *args, **kwargs):
         if not request.session.get('in_change'):
