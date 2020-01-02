@@ -226,7 +226,7 @@ class ChangeSet(models.Model):
         res = []
         if not interface.overlay_network:
             return res
-        for vlan in interface.overlay_network.vlans.all():
+        for vlan in interface.overlay_network.vlans.all().distinct():
             res.append({
                 'name': interface.name + '_' + self.concat_vxlan_vlan(interface.overlay_network.vxlan_prefix, vlan.vid),
                 'enabled': True,
