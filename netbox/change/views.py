@@ -79,9 +79,9 @@ class ChangeFormView(PermissionRequiredMixin, CreateView):
         return ctx
 
 
-@method_decorator(login_required, name='dispatch')
-class ToggleView(View):
+class ToggleView(PermissionRequiredMixin, View):
     SESSION_VARS = ['change_information', 'in_change', 'foreign_change']
+    permission_required = 'change.add_changeset'
 
     def treat_changeset(self, request):
         if 'change_id' not in request.session:
