@@ -28,6 +28,35 @@ from .models import ChangeInformation, ChangeSet, \
 from .utilities import redirect_to_referer
 
 
+def treat_changeset(request):
+    if 'change_id' not in request.session:
+        return HttpResponseForbidden('Invalid session!'), None
+
+    changeset = ChangeSet.objects.get(pk=request.session['change_id'])
+    if not changeset.active:
+        return HttpResponseForbidden('Change timed out!'), None
+
+    changeset.active = False
+    changeset.save()
+
+    changeset.revert()
+
+    change_information = changeset.change_information
+    if change_information:
+        for depends in change_information.depends_on.all():
+            depends.revert()
+
+    return None, changeset
+
+
+SESSION_VARS = ['change_information', 'in_change', 'foreign_change']
+
+def clear_session(request):
+    for session_var in SESSION_VARS:
+        if session_var in request.session:
+            del request.session[session_var]
+
+
 class ChangeFormView(PermissionRequiredMixin, CreateView):
     model = ChangeInformation
     form_class = ChangeInformationForm
@@ -80,33 +109,6 @@ class ChangeFormView(PermissionRequiredMixin, CreateView):
 
 
 class ToggleView(PermissionRequiredMixin, View):
-    SESSION_VARS = ['change_information', 'in_change', 'foreign_change']
-    permission_required = 'change.add_changeset'
-
-    def treat_changeset(self, request):
-        if 'change_id' not in request.session:
-            return None, HttpResponseForbidden('Invalid session!')
-
-        changeset = ChangeSet.objects.get(pk=request.session['change_id'])
-        if not changeset.active:
-            return None, HttpResponseForbidden('Change timed out!')
-
-        changeset.active = False
-        changeset.save()
-
-        changeset.revert()
-
-        change_information = changeset.change_information
-        if change_information:
-            for depends in change_information.depends_on.all():
-                depends.revert()
-
-        return changeset, None
-
-    def clear_session(self, request):
-        for session_var in self.SESSION_VARS:
-            if session_var in request.session:
-                del request.session[session_var]
 
     def get(self, request):
         """
@@ -117,20 +119,19 @@ class ToggleView(PermissionRequiredMixin, View):
         if request.session['foreign_change']:
             return redirect_to_referer(request)
 
-        request.session['in_change'] = not request.session.get('in_change', False)
-
         # we started the change and need to get info
-        if request.session['in_change']:
+        if not request.session['in_change']:
+            request.session['in_change'] = True
+
             c = ChangeSet(user=request.user, active=True)
             c.save()
             request.session['change_id'] = c.id
             return redirect('change:form')
 
         # we finished our change. we generate the changeset now
-        changeset, response = self.treat_changeset(request)
-
-        if not changeset:
-            return response
+        changeset = ChangeSet.objects.get(pk=request.session['change_id'])
+        if not changeset.active:
+            return HttpResponseForbidden('Change timed out!')
 
         res = render(request, 'change/list.html', {
             'changeset': changeset
@@ -272,9 +273,15 @@ class AcceptView(View):
         """
         recreate = request.GET.get('recreate')
 
-        obj = get_object_or_404(self.model, pk=pk)
+        err, obj = treat_changeset(request)
+
+        if err:
+            return err
+
+        request.session['in_change'] = False
 
         if obj.status != DRAFT and not recreate:
+
             return HttpResponseForbidden('Change was already accepted!')
 
         try:
@@ -293,14 +300,18 @@ class AcceptView(View):
 
 @method_decorator(login_required, name='dispatch')
 class RejectView(View):
-    model = ChangeSet
 
     def get(self, request, pk=None):
         """
         This view is triggered when the change was rejected by the operator.
         The status of the object is changed to rejected.
         """
-        obj = get_object_or_404(self.model, pk=pk)
+        err, obj = treat_changeset(request)
+
+        if err:
+            return err
+
+        request.session['in_change'] = False
 
         if obj.status != DRAFT:
             return HttpResponseForbidden('Change was already accepted!')
