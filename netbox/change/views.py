@@ -120,7 +120,7 @@ class ToggleView(PermissionRequiredMixin, View):
             return redirect_to_referer(request)
 
         # we started the change and need to get info
-        if not request.session['in_change']:
+        if not request.session.get('in_change'):
             request.session['in_change'] = True
 
             c = ChangeSet(user=request.user, active=True)
