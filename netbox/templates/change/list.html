@@ -27,13 +27,28 @@
       {% if changeset.change_information.is_emergency %}
         <b>Emergency Change</b>
       {% endif %}
-      <h6>What changes if the change is accepted?</h6>
+      <h5>What changes if the change is accepted?</h5>
         {{ changeset.change_information.change_implications }}
-      <h6>What changes if the change is rejected?</h6>
+      <h5>What changes if the change is rejected?</h5>
         {{ changeset.change_information.ignore_implications }}
-        {{ changeset.change_information.change_type }}
-        {{ changeset.change_information.category }}
-        {{ changeset.change_information.subcategory }}
+
+      <h5>Change Category</h5>
+        <table class="table">
+          <thead class="thead-light">
+            <tr>
+              <th>Type</th>
+              <th>Category</th>
+              <th>Subcategory</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>{{ changeset.change_information.get_change_type_display }}</td>
+              <td>{{ changeset.change_information.get_category_display }}</td>
+              <td>{{ changeset.change_information.get_subcategory_display }}</td>
+            </tr>
+          </tbody>
+        </table>
 
       {% if changeset.change_information.affects_customer %}
         <h6>Who is affected?</h6>
@@ -45,23 +60,33 @@
       {% endif %}
       <h4>Change List</h4>
       <h5>Changed Fields</h5>
-      <ol>
-        {% for change in changeset.changedfield_set.all %}
-          <li>{{change}}</li>
-        {% endfor %}
-      </ol>
+      {% if changeset.changedfield.set.exists %}
+        <ol>
+          {% for change in changeset.changedfield_set.all %}
+            <li>{{change}}</li>
+          {% endfor %}
+        </ol>
+      {% else %}
+        <p>No changes</p>
+      {% endif %}
       <h5>Changed Objects</h5>
-      <ol>
-        {% for change in changeset.changedobject_set.all %}
-          <li>{{change}}</li>
-        {% endfor %}
-      </ol>
-      <a href="/change/{{changeset.pk}}/accept/" class="btn btn-primary" id="change-accept">
-        Accept
-      </a>
-      <a href="/change/{{changeset.pk}}/reject/" class="btn btn-default">
-        Reject
-      </a>
+      {% if changeset.changedobject.set.exists %}
+        <ol>
+          {% for change in changeset.changedobject_set.all %}
+            <li>{{change}}</li>
+          {% endfor %}
+        </ol>
+      {% else %}
+        <p>No changes</p>
+      {% endif %}
+      <div class="pull-right">
+        <a href="/change/{{changeset.pk}}/accept/" class="btn btn-primary" id="change-accept">
+          Accept
+        </a>
+        <a href="/change/{{changeset.pk}}/reject/" class="btn btn-default">
+          Reject
+        </a>
+      </div>
     {% else %}
       <h3>Nothing to do!</h3>
       <p>We didn’t detect any changes in this set.</p>

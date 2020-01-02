@@ -16,16 +16,31 @@
                   {% if changeset.change_information.is_emergency %}
                     <b>Emergency Change</b>
                   {% endif %}
-                  <h6>What changes if the change is accepted?</h6>
+                  <h5>What changes if the change is accepted?</h5>
                     {{ changeset.change_information.change_implications }}
-                  <h6>What changes if the change is rejected?</h6>
+                  <h5>What changes if the change is rejected?</h5>
                     {{ changeset.change_information.ignore_implications }}
-                    {{ changeset.change_information.change_type }}
-                    {{ changeset.change_information.category }}
-                    {{ changeset.change_information.subcategory }}
+
+                  <h5>Change Category</h5>
+                    <table class="table">
+                      <thead class="thead-light">
+                        <tr>
+                          <th>Type</th>
+                          <th>Category</th>
+                          <th>Subcategory</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>{{ changeset.change_information.get_change_type_display }}</td>
+                          <td>{{ changeset.change_information.get_category_display }}</td>
+                          <td>{{ changeset.change_information.get_subcategory_display }}</td>
+                        </tr>
+                      </tbody>
+                    </table>
 
                   {% if changeset.change_information.affects_customer %}
-                    <h6>Who is affected?</h6>
+                    <h5>Who is affected?</h5>
                     <ul>
                     {% for customer in changeset.change_information.affectedcustomer_set.all %}
                       <li>{{ customer.name }}{% if customer.is_business %} (Business Customer){% endif %}: {{ customer.products_affected }}</li>
@@ -33,21 +48,25 @@
                     </ul>
                   {% endif %}
                   <h4>Change List</h4>
-                  {% if changeset.changedfield_set.count %}
                   <h5>Changed Fields</h5>
-                  <ol>
-                    {% for change in changeset.changedfield_set.all %}
-                      <li>{{change}}</li>
-                    {% endfor %}
-                  </ol>
+                  {% if changeset.changedfield.set.exists %}
+                    <ol>
+                      {% for change in changeset.changedfield_set.all %}
+                        <li>{{change}}</li>
+                      {% endfor %}
+                    </ol>
+                  {% else %}
+                    <p>No changes</p>
                   {% endif %}
-                  {% if changeset.changedobject_set.count %}
                   <h5>Changed Objects</h5>
-                  <ol>
-                    {% for change in changeset.changedobject_set.all %}
-                      <li>{{change}}</li>
-                    {% endfor %}
-                  </ol>
+                  {% if changeset.changedobject.set.exists %}
+                    <ol>
+                      {% for change in changeset.changedobject_set.all %}
+                        <li>{{change}}</li>
+                      {% endfor %}
+                    </ol>
+                  {% else %}
+                    <p>No changes</p>
                   {% endif %}
                 </div>
             </div>
