@@ -97,6 +97,12 @@ class AffectedCustomer(models.Model):
                                          verbose_name="Affected Products")
 
 
+class ChangeSetManager(models.Manager):
+    def get_queryset(self):
+        return super(ChangeSetManager, self).get_queryset()\
+            .select_related('change_information', 'user')
+
+
 # These are the states that a change set can be in
 DRAFT = 1
 IN_REVIEW = 2
@@ -111,6 +117,7 @@ class ChangeSet(models.Model):
     A change set always refers to a ticket, has a set of changes, and can be
     serialized to YAML.
     """
+    objects = ChangeSetManager()
     active = models.BooleanField(default=False)
     change_information = models.ForeignKey(
         to=ChangeInformation,
@@ -565,6 +572,13 @@ class ChangeSet(models.Model):
         return '#{}: {}'.format(self.id, self.change_information.name if self.change_information else '')
 
 
+class ChangedObjectManager(models.Manager):
+    def get_queryset(self):
+        return super(ChangedObjectManager, self).get_queryset()\
+            .select_related('changed_object_type', 'user')\
+            .prefetch_related('changed_object')
+
+
 class ChangedField(models.Model):
     """
     A changed field refers to a field of any model that has changed. It records
@@ -576,6 +590,8 @@ class ChangedField(models.Model):
     are as we expect them (otherwise something terrible happened), and reverts
     it to the old value.
     """
+    objects = ChangedObjectManager()
+
     changeset = models.ForeignKey(
         ChangeSet,
         null=True,
@@ -639,6 +655,8 @@ class ChangedObject(models.Model):
 
     It can be reverted by calling revert(), which will simply delete the object.
     """
+    objects = ChangedObjectManager()
+
     deleted = models.BooleanField(default=False)
     changeset = models.ForeignKey(
         ChangeSet,
