@@ -85,11 +85,11 @@ class ToggleView(View):
 
     def treat_changeset(self, request):
         if 'change_id' not in request.session:
-            return HttpResponseForbidden('Invalid session!')
+            return None, HttpResponseForbidden('Invalid session!')
 
         changeset = ChangeSet.objects.get(pk=request.session['change_id'])
         if not changeset.active:
-            return HttpResponseForbidden('Change timed out!')
+            return None, HttpResponseForbidden('Change timed out!')
 
         changeset.active = False
         changeset.save()
@@ -101,7 +101,7 @@ class ToggleView(View):
             for depends in change_information.depends_on.all():
                 depends.revert()
 
-        return changeset
+        return changeset, None
 
     def clear_session(self, request):
         for session_var in self.SESSION_VARS:
@@ -127,7 +127,10 @@ class ToggleView(View):
             return redirect('change:form')
 
         # we finished our change. we generate the changeset now
-        changeset = self.treat_changeset(request)
+        changeset, response = self.treat_changeset(request)
+
+        if not changeset:
+            return response
 
         res = render(request, 'change/list.html', {
             'changeset': changeset
