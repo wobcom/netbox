@@ -157,7 +157,6 @@ class ChangeSet(models.Model):
 
     def __init__(self, *args, **kwargs):
         super(ChangeSet, self).__init__(*args, **kwargs)
-        self.vlan_cache = {}  # stores used VLANs for a given device
 
     @staticmethod
     def change_state(user=None):
@@ -174,34 +173,6 @@ class ChangeSet(models.Model):
                 return FOREIGN_CHANGE
         except ChangeSet.DoesNotExist:
             return NO_CHANGE
-
-    def collect_vids(self, device):
-        """
-        Collects VLAN IDs that are used on the device's interfaces, in order to expand
-        the ONTEP interface to only those VTEPs that are actually required.
-        This avoids unnecessary BUM traffic in the fabric.
-        """
-        if device in self.vlan_cache:
-            return self.vlan_cache[device]
-        self.vlan_cache[device] = set()
-        for interface in device.interfaces.exclude(type=IFACE_TYPE_ONTEP):
-            self.vlan_cache[device] |= set(interface.tagged_vlans.values_list('vid', flat=True))
-            # VTEPs for single homed hosts terminated on the peer must also be generated
-            if interface.name == 'peerlink':
-                # get a bond member of the peerlink
-                bond_member = interface.member_interfaces.first()
-                # trace that interface to a remote interface
-                remote_interface = bond_member.trace()[0][2]
-                # collect vlans from the remote device
-                remote_device = remote_interface.device
-                for remote_interface in remote_device.interfaces.exclude(type=IFACE_TYPE_ONTEP):
-                    self.vlan_cache[device] |= set(
-                        remote_interface.tagged_vlans.values_list('vid', flat=True))
-                    if remote_interface.untagged_vlan != None:
-                        self.vlan_cache[device].add(remote_interface.untagged_vlan.vid)
-            if interface.untagged_vlan != None:
-                self.vlan_cache[device].add(interface.untagged_vlan.vid)
-        return self.vlan_cache[device]
 
     def yamlify_extra_fields(self, instance):
         res = {}
@@ -245,9 +216,7 @@ class ChangeSet(models.Model):
                 if not child_interface.overlay_network:
                     continue
                 # expand ONTEP to VTEPs (but only for those VLANs that are actually used on switchports)
-                for vlan in child_interface.overlay_network.vlans.filter(
-                        vid__in=self.collect_vids(interface.device)
-                    ):
+                for vlan in child_interface.overlay_network.vlans.all():
                     res.append(child_interface.name + '_' + self.concat_vxlan_vlan(child_interface.overlay_network.vxlan_prefix, vlan.vid))
             else:
                 res.append(child_interface.name)
@@ -257,9 +226,7 @@ class ChangeSet(models.Model):
         res = []
         if not interface.overlay_network:
             return res
-        for vlan in interface.overlay_network.vlans.filter(
-                vid__in=self.collect_vids(interface.device)
-            ):
+        for vlan in interface.overlay_network.vlans.all():
             res.append({
                 'name': interface.name + '_' + self.concat_vxlan_vlan(interface.overlay_network.vxlan_prefix, vlan.vid),
                 'enabled': True,
@@ -293,8 +260,7 @@ class ChangeSet(models.Model):
         tagged_vlans = set()
         for child_interface in Interface.objects.filter(lag=interface):
             if child_interface.type == IFACE_TYPE_ONTEP:
-                tagged_vlans |= set(child_interface.overlay_network.vlans.filter(
-                    vid__in=self.collect_vids(interface.device)))
+                tagged_vlans |= set(child_interface.overlay_network.vlans.all())
             else:
                 tagged_vlans |= set(child_interface.tagged_vlans.all())
         res['tagged_vlans'] = [self.yamlify_vlan(v) for v in tagged_vlans]
