@@ -993,6 +993,7 @@ class VLAN(ChangeLoggedModel, CustomFieldModel):
         unique_together = [
             ['group', 'vid'],
             ['group', 'name'],
+            ['overlay_network', 'vid'],
         ]
         verbose_name = 'VLAN'
         verbose_name_plural = 'VLANs'
