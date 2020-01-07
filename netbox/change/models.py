@@ -216,7 +216,7 @@ class ChangeSet(models.Model):
                 if not child_interface.overlay_network:
                     continue
                 # expand ONTEP to VTEPs (but only for those VLANs that are actually used on switchports)
-                for vlan in child_interface.overlay_network.vlans.all():
+                for vlan in child_interface.overlay_network.vlans.order_by('vid').distinct('vid'):
                     res.append(child_interface.name + '_' + self.concat_vxlan_vlan(child_interface.overlay_network.vxlan_prefix, vlan.vid))
             else:
                 res.append(child_interface.name)
@@ -226,7 +226,7 @@ class ChangeSet(models.Model):
         res = []
         if not interface.overlay_network:
             return res
-        for vlan in interface.overlay_network.vlans.all():
+        for vlan in interface.overlay_network.vlans.order_by('vid').distinct('vid'):
             res.append({
                 'name': interface.name + '_' + self.concat_vxlan_vlan(interface.overlay_network.vxlan_prefix, vlan.vid),
                 'enabled': True,
