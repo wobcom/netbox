@@ -658,10 +658,13 @@ class ChangedObject(models.Model):
                                        'deleted' if self.deleted else 'added')
 
     def apply(self):
-        obj = pickle.loads(self.changed_object_data)
         if self.deleted:
-            obj.delete()
+            try:
+                self.changed_object.delete()
+            except self.changed_object.__class__.DoesNotExist:
+                pass
         else:
+            obj = pickle.loads(self.changed_object_data)
             obj.save(force_insert=True)
 
     def revert(self):
