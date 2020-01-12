@@ -109,6 +109,7 @@ class ChangeFormView(PermissionRequiredMixin, CreateView):
 
 
 class ToggleView(PermissionRequiredMixin, View):
+    permission_required = 'change.add_changeset'
 
     def get(self, request):
         """
