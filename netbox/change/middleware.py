@@ -132,21 +132,22 @@ def install_save_hooks(request):
         if sender == TaggedItem:
             return
 
-        if action == 'post_add':
-            for pk in pk_set:
-                through = sender.objects.get(**{
-                    '{}_id'.format(instance._meta.model.__name__.lower()): instance.pk,
-                    '{}_id'.format(model.__name__.lower()): pk
-                })
-                co = ChangedObject(
-                    changed_object=through,
-                    changed_object_data=pickle.dumps(through),
-                    user=request.user,
-                )
-                co.save()
-                changeset.changedobject_set.add(co)
-                changeset.updated = timezone.now()
-                changeset.save()
+        deleted = action == 'pre_remove'
+        for pk in pk_set:
+            through = sender.objects.get(**{
+                '{}_id'.format(instance._meta.model.__name__.lower()): instance.pk,
+                '{}_id'.format(model.__name__.lower()): pk
+            })
+            co = ChangedObject(
+                changed_object=through,
+                deleted=deleted,
+                changed_object_data=pickle.dumps(through),
+                user=request.user,
+            )
+            co.save()
+            changeset.changedobject_set.add(co)
+            changeset.updated = timezone.now()
+            changeset.save()
 
     def before_delete_internal(sender, instance, **kwargs):
         if sender in CHANGE_BLACKLIST or instance in handled:
