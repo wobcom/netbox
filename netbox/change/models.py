@@ -521,12 +521,12 @@ class ChangeSet(models.Model):
         changes = sorted(
             change_objects + change_fields, key=lambda x: x.time, reverse=True
         )
+        for change in changes:
+            change.revert()
         if self.change_information:
             for change in self.change_information.depends_on.all():
                 if change.status != IMPLEMENTED:
                     change.revert()
-        for change in changes:
-            change.revert()
 
     def in_use(self):
         threshold = timedelta(minutes=configuration.CHANGE_SESSION_TIMEOUT)
