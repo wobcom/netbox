@@ -41,11 +41,6 @@ def treat_changeset(request):
 
     changeset.revert()
 
-    change_information = changeset.change_information
-    if change_information:
-        for depends in change_information.depends_on.all():
-            depends.revert()
-
     return None, changeset
 
 
