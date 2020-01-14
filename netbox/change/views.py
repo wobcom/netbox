@@ -291,7 +291,11 @@ class AcceptView(View):
             obj.status = IN_REVIEW
             obj.save()
         except gitlab.exceptions.GitlabError as e:
-            obj.revert()
+            # if reverting fails, it was never applied
+            try:
+                obj.revert()
+            except:
+                pass
             messages.warning(request,
                 "Unable to connect to GitLab at the moment! Error message: {}".format(e)
             )
