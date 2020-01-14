@@ -344,6 +344,7 @@ class ReactivateView(View):
         obj.apply()
 
         request.session['in_change'] = True
+        request.session['change_id'] = pk
 
         return redirect('home')
 
