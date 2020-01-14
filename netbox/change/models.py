@@ -660,6 +660,9 @@ class ChangedObject(models.Model):
     def apply(self):
         if self.deleted:
             try:
+                # we don't need to do anything if the object does not exist
+                if not self.changed_object:
+                    return
                 self.changed_object.delete()
             except self.changed_object.__class__.DoesNotExist:
                 pass
