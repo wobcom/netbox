@@ -80,9 +80,6 @@ class ChangeFormView(PermissionRequiredMixin, CreateView):
         if customers_formset.is_valid():
             customers_formset.save()
 
-        for depends in self.object.depends_on.all():
-            depends.apply()
-
         c = ChangeSet.objects.get(pk=self.request.session['change_id'])
         c.change_information = self.object
         c.save()
@@ -346,8 +343,6 @@ class ReactivateView(View):
         obj.updated = datetime.now()
         obj.save()
 
-        obj.apply()
-
         request.session['in_change'] = True
         request.session['change_id'] = pk
 
@@ -371,7 +366,6 @@ class ProvisionedView(ViewSet):
 
         obj.status = IMPLEMENTED
         obj.provision_log = json.loads(request.body.decode('utf-8'))
-        obj.apply()
         obj.save()
 
         # no content
