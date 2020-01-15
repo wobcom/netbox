@@ -203,8 +203,8 @@ class FieldChangeMiddleware(object):
         # with a couple of different things at once. Let’s go through the
         # source code of the function together, and find out what exactly!
         #
-        # We’re starting out by checking whether our user does admin-y or meta
-        # things. If they do, we put them on the fast track and ignore them.
+        # We’re starting out by checking whether our user does admin-y things.
+        # If they do, we put them on the fast track and ignore them.
         #
         # We also need to set up a list of hooks we need to uninstall (called
         # `to_uninstall` here). It’s initially empty, but depending on where we
@@ -214,10 +214,6 @@ class FieldChangeMiddleware(object):
             return self.get_response(request)
 
         in_change = request.session.get('in_change', False)
-
-        if in_change and request.path.startswith('/change'):
-            return self.get_response(request)
-
         to_uninstall = []
 
         # Chapter I: We are in a change

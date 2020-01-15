@@ -80,10 +80,10 @@
         <p>No changes</p>
       {% endif %}
       <div class="pull-right">
-        <a href="/change/{{changeset.pk}}/accept/" class="btn btn-primary" id="change-accept">
+        <a href="/change/{{changeset.pk}}/finalize?redirect=change:accept" class="btn btn-primary" id="change-accept">
           Accept
         </a>
-        <a href="/change/{{changeset.pk}}/reject/" class="btn btn-default">
+        <a href="/change/{{changeset.pk}}/finalize?redirect=change:reject" class="btn btn-default">
           Reject
         </a>
       </div>

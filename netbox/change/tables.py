@@ -13,7 +13,7 @@ MR_LINK = """
 """
 
 RECREATE_MR = """
-<a href="{{% url "change:accept" pk=record.pk %}}?recreate=true" class="btn btn-primary {{% if record.status == {} %}}disabled{{% endif %}}"><i class="fa fa-play"></i></a>
+<a href="{{% url "change:finalize" pk=record.pk %}}?recreate=true&redirect=change:accept" class="btn btn-primary {{% if record.status == {} %}}disabled{{% endif %}}"><i class="fa fa-play"></i></a>
 """.format(IMPLEMENTED)
 
 REACTIVATE = """

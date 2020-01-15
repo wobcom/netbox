@@ -8,7 +8,7 @@ from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.db import models
 from django.http import HttpResponse, HttpResponseForbidden, \
     HttpResponseServerError
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import get_object_or_404, redirect, render, reverse
 from django.utils import dateparse, timezone
 from django.utils.decorators import method_decorator
 from django.utils.safestring import mark_safe
@@ -38,8 +38,6 @@ def treat_changeset(request):
 
     changeset.active = False
     changeset.save()
-
-    changeset.revert()
 
     return None, changeset
 
@@ -256,6 +254,34 @@ def open_gitlab_mr(o, delete_branch=False):
     return 'You can review your merge request <a href="{}">here</a>!'.format(o.mr_location)
 
 
+class FinalizeView(PermissionRequiredMixin, View):
+    permission_required = 'change.add_changeset'
+
+    def get(self, request, pk=None):
+        """
+        This view is triggered when the operator clicks on "Recreate Merge
+        Request" in the change list view.
+        A merge request is created in Gitlab, and the status of the object is
+        changed to Accepted.
+        """
+        recreate = request.GET.get('recreate')
+        redir = request.GET.get('redirect', 'change:accept')
+
+        err, obj = treat_changeset(request)
+
+        if err:
+            return err
+
+        request.session['in_change'] = False
+
+        if obj.status != DRAFT and not recreate:
+            return HttpResponseForbidden('Change was already accepted!')
+
+        return redirect(
+            '{}?recreate={}'.format(reverse(redir, kwargs={'pk': pk}), recreate)
+        )
+
+
 @method_decorator(login_required, name='dispatch')
 class AcceptView(View):
     model = ChangeSet
@@ -268,17 +294,8 @@ class AcceptView(View):
         changed to Accepted.
         """
         recreate = request.GET.get('recreate')
-
-        err, obj = treat_changeset(request)
-
-        if err:
-            return err
-
-        request.session['in_change'] = False
-
-        if obj.status != DRAFT and not recreate:
-
-            return HttpResponseForbidden('Change was already accepted!')
+        obj = ChangeSet.objects.get(pk=pk)
+        obj.revert()
 
         try:
             safe = mark_safe(open_gitlab_mr(obj, delete_branch=recreate))
@@ -286,11 +303,6 @@ class AcceptView(View):
             obj.status = IN_REVIEW
             obj.save()
         except gitlab.exceptions.GitlabError as e:
-            # if reverting fails, it was never applied
-            try:
-                obj.revert()
-            except:
-                pass
             messages.warning(request,
                 "Unable to connect to GitLab at the moment! Error message: {}".format(e)
             )
@@ -306,15 +318,9 @@ class RejectView(View):
         This view is triggered when the change was rejected by the operator.
         The status of the object is changed to rejected.
         """
-        err, obj = treat_changeset(request)
+        obj = ChangeSet.objects.get(pk=pk)
+        obj.revert()
 
-        if err:
-            return err
-
-        request.session['in_change'] = False
-
-        if obj.status != DRAFT:
-            return HttpResponseForbidden('Change was already accepted!')
 
         obj.status = REJECTED
         obj.save()
