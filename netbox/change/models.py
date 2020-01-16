@@ -662,7 +662,7 @@ class ChangedObject(models.Model):
             # we don't need to do anything if the object does not exist
             if not self.changed_object:
                 return
-                self.changed_object.delete()
+            self.changed_object.delete()
         else:
             obj = pickle.loads(self.changed_object_data)
             obj.save(force_insert=True)
