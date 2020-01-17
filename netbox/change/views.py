@@ -22,7 +22,7 @@ from netbox import configuration
 from dcim.models import Device
 from utilities.views import ObjectListView
 from . import tables
-from .forms import AffectedCustomerInlineFormSet, ChangeInformationForm
+from .forms import ChangeInformationForm
 from .models import ChangeInformation, ChangeSet, \
     DRAFT, IN_REVIEW, ACCEPTED, REJECTED, IMPLEMENTED, FAILED
 from .utilities import redirect_to_referer
@@ -37,6 +37,7 @@ def close_change(request):
         return HttpResponse('Change timed out!', status=409), None
 
     changeset.active = False
+    changeset.status = ACCEPTED
     del request.session['change_id']
     request.session['in_change'] = False
     changeset.save()
@@ -65,14 +66,6 @@ class ChangeFormView(PermissionRequiredMixin, CreateView):
     def form_valid(self, form):
         result = super(ChangeFormView, self).form_valid(form)
 
-        customers_formset = AffectedCustomerInlineFormSet(
-            form.data,
-            instance=self.object,
-            prefix='affected_customers'
-        )
-        if customers_formset.is_valid():
-            customers_formset.save()
-
         self.request.session['in_change'] = True
 
         c = ChangeSet(user=self.request.user, active=True)
@@ -84,7 +77,7 @@ class ChangeFormView(PermissionRequiredMixin, CreateView):
 
     def get_context_data(self, **kwargs):
         ctx = super(ChangeFormView, self).get_context_data(**kwargs)
-        ctx['affected_customers'] = AffectedCustomerInlineFormSet(prefix='affected_customers')
+        #ctx['affected_customers'] = AffectedCustomerInlineFormSet(prefix='affected_customers')
         ctx['return_url'] = '/change/toggle'
         ctx['obj_type'] = 'Change Request'
 
@@ -243,28 +236,6 @@ class FinalizeView(PermissionRequiredMixin, View):
 
         if err:
             return err
-
-        return redirect(
-            '{}'.format(reverse(redir, kwargs={'pk': pk}))
-        )
-
-
-@method_decorator(login_required, name='dispatch')
-class AcceptView(View):
-    model = ChangeSet
-
-    def get(self, request, pk=None):
-        """
-        This view is triggered when the operator clicks on "Recreate Merge
-        Request" in the change list view.
-        A merge request is created in Gitlab, and the status of the object is
-        changed to Accepted.
-        """
-        obj = ChangeSet.objects.get(pk=pk)
-
-        obj.status = ACCEPTED
-        obj.active = False
-        obj.save()
 
         return redirect('home')
 

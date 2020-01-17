@@ -10,10 +10,5 @@ class ChangeInformationForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = ChangeInformation
         fields = '__all__'
-        exclude = ['depends_on']
+        exclude = ['depends_on', '']
 
-AffectedCustomerInlineFormSet = forms.inlineformset_factory(ChangeInformation,
-                                                            AffectedCustomer,
-                                                            extra=1,
-                                                            fields='__all__',
-                                                            can_delete=False)
