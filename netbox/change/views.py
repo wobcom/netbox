@@ -292,7 +292,6 @@ class AcceptView(View):
         """
         recreate = request.GET.get('recreate')
         obj = ChangeSet.objects.get(pk=pk)
-        obj.revert()
 
         try:
             safe = mark_safe(open_gitlab_mr(obj, delete_branch=recreate))
@@ -316,7 +315,6 @@ class RejectView(View):
         The status of the object is changed to rejected.
         """
         obj = ChangeSet.objects.get(pk=pk)
-        obj.revert()
 
 
         obj.status = REJECTED
