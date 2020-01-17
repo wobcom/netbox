@@ -494,16 +494,34 @@
             {% endif %}
             <ul class="nav navbar-nav navbar-right">
                 {% if request.user.is_authenticated %}
-                    {% if not request.session.foreign_change %}
                     <li>
-                      <form class="navbar-form" action="{% url 'change:toggle' %}">
-                          <button type="submit" class="btn btn-{% if request.session.in_change %}warning{% else %}primary{% endif %}">
-                            <i class="fa fa-{% if request.session.in_change %}stop{% else %}play{% endif %}"></i>
-                            Change
-                          </button>
-                      </form>
+                        <form class="navbar-form">
+                        <div class="btn-group navbar-formv">
+                        {% if not request.session.in_change %}
+                              <a href="{% url 'change:form' %}" class="btn btn-primary">
+                                  <i class="fa fa-play"></i>
+                                  Change
+                              </a>
+                                <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    <span class="caret"></span>
+                                    <span class="sr-only">Toggle Dropdown</span>
+                                </button>
+                        {% else %}
+                              <a href="{% url 'change:end_change' %}" class="btn btn-warning">
+                                  <i class="fa fa-stop"></i>
+                                  Change
+                              </a>
+                                <button type="button" class="btn btn-warning dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    <span class="caret"></span>
+                                    <span class="sr-only">Toggle Dropdown</span>
+                                </button>
+                        {% endif %}
+                            <ul class="dropdown-menu">
+                                <li><a href="{% url "change:deploy" %}">Deploy</a></li>
+                            </ul>
+                        </div>
+                        </form>
                     </li>
-                    {% endif %}
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown" title="{{ request.user }}" role="button" aria-haspopup="true" aria-expanded="false">
                             <i class="fa fa-user"></i>

@@ -165,6 +165,11 @@ class ChangeSet(models.Model):
     def __init__(self, *args, **kwargs):
         super(ChangeSet, self).__init__(*args, **kwargs)
 
+    class Meta:
+        permissions = [
+            ('deploy_changeset', 'Can deploy Changesets')
+        ]
+
     @staticmethod
     def change_state(user=None):
         """
@@ -173,11 +178,8 @@ class ChangeSet(models.Model):
         :return: integer value corresponding to *_CHANGE constants
         """
         try:
-            c = ChangeSet.objects.get(active=True)
-            if c.user == user:
-                return OWN_CHANGE
-            else:
-                return FOREIGN_CHANGE
+            c = ChangeSet.objects.get(active=True, user=user)
+            return OWN_CHANGE
         except ChangeSet.DoesNotExist:
             return NO_CHANGE
 

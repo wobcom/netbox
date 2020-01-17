@@ -7,7 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.db import models
 from django.http import HttpResponse, HttpResponseForbidden, \
-    HttpResponseServerError
+    HttpResponseServerError, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render, reverse
 from django.utils import dateparse, timezone
 from django.utils.decorators import method_decorator
@@ -28,15 +28,17 @@ from .models import ChangeInformation, ChangeSet, \
 from .utilities import redirect_to_referer
 
 
-def treat_changeset(request):
+def close_change(request):
     if 'change_id' not in request.session:
-        return HttpResponseForbidden('Invalid session!'), None
+        return HttpResponse('No change_id in session!', status=409), None
 
     changeset = ChangeSet.objects.get(pk=request.session['change_id'])
     if not changeset.active:
-        return HttpResponseForbidden('Change timed out!'), None
+        return HttpResponse('Change timed out!', status=409), None
 
     changeset.active = False
+    del request.session['change_id']
+    request.session['in_change'] = False
     changeset.save()
 
     return None, changeset
@@ -56,18 +58,9 @@ class ChangeFormView(PermissionRequiredMixin, CreateView):
     success_url = '/'
     permission_required = 'change.add_changeset'
 
-    def get(self, request, *args, **kwargs):
-        if not request.session.get('in_change'):
-            return redirect('home')
-        return super(ChangeFormView, self).get(request, *args, **kwargs)
-
-    def get_form_kwargs(self):
-        kwargs = super().get_form_kwargs()
-        change_id = self.request.session['change_id']
-        return {
-            **kwargs,
-            'change_id': change_id
-        }
+    def post(self, request, *args, **kwargs):
+        self.request = request
+        return super(ChangeFormView, self).post(request, *args, **kwargs)
 
     def form_valid(self, form):
         result = super(ChangeFormView, self).form_valid(form)
@@ -80,9 +73,12 @@ class ChangeFormView(PermissionRequiredMixin, CreateView):
         if customers_formset.is_valid():
             customers_formset.save()
 
-        c = ChangeSet.objects.get(pk=self.request.session['change_id'])
+        self.request.session['in_change'] = True
+
+        c = ChangeSet(user=self.request.user, active=True)
         c.change_information = self.object
         c.save()
+        self.request.session['change_id'] = c.id
 
         return result
 
@@ -98,41 +94,21 @@ class ChangeFormView(PermissionRequiredMixin, CreateView):
         return ctx
 
 
-class ToggleView(PermissionRequiredMixin, View):
+class EndChangeView(PermissionRequiredMixin, View):
     permission_required = 'change.add_changeset'
 
     def get(self, request):
-        """
-        This view is triggered when we begin or end a change.
-        If we begin the change, we simply toggle the cookie. If we end it, we
-        finalize the change and present it to the user.
-        """
-        if request.session['foreign_change']:
-            return redirect_to_referer(request)
-
-        # we started the change and need to get info
         if not request.session.get('in_change'):
-            request.session['in_change'] = True
+            return HttpResponse('Not in Change!', status=409)
 
-            c = ChangeSet(user=request.user, active=True)
-            c.save()
-            request.session['change_id'] = c.id
-            return redirect('change:form')
-
-        # we finished our change. we generate the changeset now
         changeset = ChangeSet.objects.get(pk=request.session['change_id'])
-        if not changeset.active:
-            return HttpResponseForbidden('Change timed out!')
 
-        res = render(request, 'change/list.html', {
+        if not changeset.active:
+            return HttpResponse('Stale change?', status=409)
+
+        return render(request, 'change/list.html', {
             'changeset': changeset
         })
-
-        if not changeset.change_information:
-            request.session['in_change'] = False
-            return redirect('home')
-
-        return res
 
 
 MR_TXT = """Change #{} was created in Netbox by {}.
@@ -261,21 +237,15 @@ class FinalizeView(PermissionRequiredMixin, View):
         A merge request is created in Gitlab, and the status of the object is
         changed to Accepted.
         """
-        recreate = request.GET.get('recreate')
         redir = request.GET.get('redirect', 'change:accept')
 
-        err, obj = treat_changeset(request)
+        err, obj = close_change(request)
 
         if err:
             return err
 
-        request.session['in_change'] = False
-
-        if obj.status != DRAFT and not recreate:
-            return HttpResponseForbidden('Change was already accepted!')
-
         return redirect(
-            '{}?recreate={}'.format(reverse(redir, kwargs={'pk': pk}), recreate)
+            '{}'.format(reverse(redir, kwargs={'pk': pk}))
         )
 
 
@@ -290,38 +260,43 @@ class AcceptView(View):
         A merge request is created in Gitlab, and the status of the object is
         changed to Accepted.
         """
-        recreate = request.GET.get('recreate')
         obj = ChangeSet.objects.get(pk=pk)
 
-        try:
-            safe = mark_safe(open_gitlab_mr(obj, delete_branch=recreate))
-            messages.info(request, safe)
-            obj.status = IN_REVIEW
-            obj.save()
-        except gitlab.exceptions.GitlabError as e:
-            messages.warning(request,
-                "Unable to connect to GitLab at the moment! Error message: {}".format(e)
-            )
-
-        return redirect('home')
-
-
-@method_decorator(login_required, name='dispatch')
-class RejectView(View):
-
-    def get(self, request, pk=None):
-        """
-        This view is triggered when the change was rejected by the operator.
-        The status of the object is changed to rejected.
-        """
-        obj = ChangeSet.objects.get(pk=pk)
-
-
-        obj.status = REJECTED
+        obj.status = ACCEPTED
+        obj.active = False
         obj.save()
 
         return redirect('home')
 
+
+class DeployView(PermissionRequiredMixin, View):
+    permission_required = 'change.deploy_changeset'
+
+    def __init__(self, *args, **kwargs):
+        super(DeployView, self).__init__(*args, **kwargs)
+        self.undeployed_changesets = ChangeSet.objects.exclude(status=IMPLEMENTED).order_by('id')
+
+    def get(self, request):
+
+        return render(request, 'change/deploy.html', context={
+            'undeployed_changesets': self.undeployed_changesets,
+            'unaccepted_changes': self.undeployed_changesets.exclude(status=ACCEPTED).count(),
+            'ACCEPTED': ACCEPTED
+        })
+
+    def post(self, request):
+
+        try:
+            safe = mark_safe(open_gitlab_mr(self.undeployed_changesets.last()))
+            messages.info(request, safe)
+
+        except gitlab.exceptions.GitlabError as e:
+            messages.warning(request,
+                             "Unable to connect to GitLab at the moment! Error message: {}".format(e)
+                             )
+        self.undeployed_changesets.update(status=IMPLEMENTED)
+
+        return redirect('home')
 
 @method_decorator(login_required, name='dispatch')
 class ReactivateView(View):
