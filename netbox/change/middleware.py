@@ -229,7 +229,7 @@ class FieldChangeMiddleware(object):
                 messages.warning(request, "Your change session was deleted.")
                 request.session['in_change'] = False
 
-            if c and c.in_use():
+            if c:
                 # So, what should we do if the change is still in use? As it turns out, a
                 # couple of things. First we install the save hooks that will record the
                 # changes made during this request. There is one exception to that rule,
@@ -248,18 +248,6 @@ class FieldChangeMiddleware(object):
                                                  '/change/toggle/']
                 if not c.change_information and wrong_url:
                     return redirect('/change/form')
-
-            # Now we are done, and can take care of the other alternative, which is that
-            # our change timed out.
-            elif c:
-                # If it timed out, we will simply unset the cookie that tells us that the
-                # user is currently in a change, and give the user a visible message that
-                # tells them that their session has timed out.
-                messages.warning(request, "Your change session timed out.")
-                request.session['in_change'] = False
-                c.active = False
-                c.revert()
-                c.save()
 
         # That is all we need to do if we are in a change.
         #
@@ -296,7 +284,6 @@ class FieldChangeMiddleware(object):
                     # cookie we might have set before.
                     request.session['foreign_change'] = False
                     c.active = False
-                    c.revert()
                     c.save()
             # if we’re not in a change, then we’ll also unset the cookie, just for safety.
             else:
