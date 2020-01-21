@@ -498,18 +498,16 @@
                         <form class="navbar-form">
                         <div class="btn-group navbar-formv">
                         {% if not request.in_change %}
-                              <a href="{% url 'change:form' %}" class="btn btn-primary">
+                              <a href="{% url 'change:form' %}" class="btn btn-primary" title="Start change">
                                   <i class="fa fa-play"></i>
-                                  Change
                               </a>
                                 <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                     <span class="caret"></span>
                                     <span class="sr-only">Toggle Dropdown</span>
                                 </button>
                         {% else %}
-                              <a href="{% url 'change:end_change' %}" class="btn btn-warning">
+                              <a href="{% url 'change:end_change' %}" class="btn btn-warning" title="End change">
                                   <i class="fa fa-stop"></i>
-                                  Change
                               </a>
                                 <button type="button" class="btn btn-warning dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                     <span class="caret"></span>
@@ -522,6 +520,15 @@
                         </div>
                         </form>
                     </li>
+                    {% if request.foreign_changes %}
+                        <li style="background: #f0ad4e;">
+                            <a href="#" class="navbar-link" style="color: white;"><i class="glyphicon glyphicon-warning-sign"></i></a>
+                        </li>
+                    {% else %}
+                        <li style="background: #5cb85c;">
+                            <p class="navbar-text" style="color: white;"><i class="glyphicon glyphicon-ok"></i></p>
+                        </li>
+                    {% endif %}
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown" title="{{ request.user }}" role="button" aria-haspopup="true" aria-expanded="false">
                             <i class="fa fa-user"></i>

@@ -497,12 +497,6 @@ class ChangeSet(models.Model):
     def executive_summary(self, no_markdown=False):
         return self.change_information.executive_summary(no_markdown=no_markdown)
 
-    def in_use(self):
-        threshold = timedelta(minutes=configuration.CHANGE_SESSION_TIMEOUT)
-        before = timezone.now() - threshold
-
-        return self.updated > before
-
     def __str__(self):
         return '#{}: {}'.format(self.id, self.change_information.name if self.change_information else '')
 

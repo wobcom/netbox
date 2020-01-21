@@ -216,6 +216,8 @@ class FieldChangeMiddleware(object):
         in_change = request.user.changesets.filter(active=True).exists()
         to_uninstall = []
 
+        request.foreign_changes = ChangeSet.objects.filter(active=True).exclude(user=request.user)
+
         # Chapter I: We are in a change
         #
         # If we find ourselves inside a change, we should first get the change set we are
@@ -246,54 +248,6 @@ class FieldChangeMiddleware(object):
                     return redirect('/change/form')
 
         # That is all we need to do if we are in a change.
-        #
-        # Chapter II: We are not in a change, but someone else might be
-        #
-        else:
-            # We are not in a change, so what do we have to do?
-            #
-            # First, we see if there are any active changes.
-            cs = ChangeSet.objects.filter(active=True)
-
-            # Now, let’s check whether there is someone making a change.
-            if cs.exists() and cs.first().id != request.session.get('change_id'):
-                # First, we get the change that is active.
-                c = cs.first()
-
-                # Secondly, we need to check whether that change is actually still
-                # active—the user might have left without finalizing their change after
-                # all.
-                if c.in_use():
-                    # If the change really is currently active, we will leave the user
-                    # with a message and, if they attempted to do an edit of some sort,
-                    # redirect them to where they came from instead. We’ll also set a
-                    # cookie so that we can disable editing!
-                    request.session['foreign_change'] = True
-                    message = "User {} is currently making a change."
-                    messages.warning(request, message.format(c.user.username))
-                    if any(request.path.endswith(s) for s in SITE_BLACKLIST):
-                        return redirect_to_referer(request)
-                # What, however, if the changeset is not active anymore?
-                else:
-                    # Well, helpful citizens as we are, we should mark this change as not
-                    # active, revert it, save that result to the database, and unset the
-                    # cookie we might have set before.
-                    request.session['foreign_change'] = False
-                    c.active = False
-                    c.save()
-            # if we’re not in a change, then we’ll also unset the cookie, just for safety.
-            else:
-                request.session['foreign_change'] = False
-
-            # If we are not in a change, we’ll have to do another thing: we’ll have to
-            # check whether we are allowed to edit anything outside a change. If not,
-            # we’ll have to disallow doing that. To that end, we look for the setting
-            # `NEED_CHANGE_FOR_WRITE`, and if this is set, we’ll redirect the person who
-            # tries to edit anything.
-            if settings.NEED_CHANGE_FOR_WRITE:
-                # dont check for change/toggle
-                if any(request.path.endswith(s) for s in SITE_BLACKLIST[:-1]):
-                    return redirect_to_referer(request)
 
         # Epilogue
         #
