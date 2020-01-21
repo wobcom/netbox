@@ -23,7 +23,7 @@ from dcim.models import Device
 from utilities.views import ObjectListView
 from . import tables
 from .forms import ChangeInformationForm
-from .models import ChangeInformation, ChangeSet, \
+from .models import ChangeInformation, ChangeSet, ProvisionSet, \
     DRAFT, IN_REVIEW, ACCEPTED, REJECTED, IMPLEMENTED, FAILED
 from .utilities import redirect_to_referer
 
@@ -104,9 +104,16 @@ class EndChangeView(PermissionRequiredMixin, View):
         })
 
 
-MR_TXT = """Change #{} was created in Netbox by {}.
+MR_TXT = """## Multiple Changes
+Provisioning started in Netbox by {}.
+"""
 
-## Executive Summary
+CHANGE_TXT = """
+
+### Change #{}: {}
+Created in Netbox by {}.
+
+#### Executive Summary
 
 {}
 """
@@ -164,17 +171,21 @@ def open_gitlab_mr(o, delete_branch=False):
              'interfaces__overlay_network',
              'device_type').filter(primary_ip4__isnull=False)
     gl = gitlab.Gitlab(configuration.GITLAB_URL, configuration.GITLAB_TOKEN)
-    info = o.change_information
     project = gl.projects.get(configuration.GITLAB_PROJECT_ID)
     actions = o.to_actions(devices)
-    mr_txt = MR_TXT.format(o.id, o.user, o.executive_summary())
-    emergency_label = ['emergency'] if info.is_emergency else []
-    branch_name = 'change_{}'.format(o.id)
-    req_approvals = 1 if o.change_information.is_emergency or not o.change_information.is_extensive else 2
-    commit_msg = 'Autocommit from Netbox (Change #{}: {})'.format(
-        o.id, info.name
-    )
-    req_approvals = 1 if info.is_emergency or not info.is_extensive else 2
+    mr_txt = MR_TXT.format(o.user.username)
+    changes_txt = ""
+    for change_set in o.changesets.all():
+        mr_txt += "* {}\n".format(change_set.change_information.name)
+        changes_txt += CHANGE_TXT.format(
+            change_set.id,
+            change_set.change_information.name,
+            change_set.user.username,
+            change_set.executive_summary().replace('\n', '\\\n'),
+        )
+    mr_txt += changes_txt
+    branch_name = 'provisioning_{}'.format(o.id)
+    commit_msg = 'Autocommit from Netbox (Provisioning #{})'.format(o.id)
 
     if delete_branch and check_branch_exists(project, branch_name):
         project.branches.delete(branch_name)
@@ -194,12 +205,12 @@ def open_gitlab_mr(o, delete_branch=False):
         'actions': actions,
     })
     mr = project.mergerequests.create({
-        'title': 'Change #{}: {}'.format(o.id, info.name),
+        'title': 'Deployment #{}: {} Changes'.format(o.id, o.changesets.count()),
         'description': mr_txt,
         'source_branch': branch_name,
         'target_branch': 'master',
-        'approvals_before_merge': req_approvals,
-        'labels': ['netbox', 'unreviewed'] + emergency_label
+        'approvals_before_merge': 1,
+        'labels': ['netbox', 'unreviewed']
     })
 
     # set project approvals so the surveyor can do its funk if the approver is
@@ -257,8 +268,15 @@ class DeployView(PermissionRequiredMixin, View):
 
     def post(self, request):
 
+        provision_set = ProvisionSet(user=request.user)
+        provision_set.save()
+
+        for change_set in self.undeployed_changesets:
+            change_set.provision_set = provision_set
+            change_set.save()
+
         try:
-            safe = mark_safe(open_gitlab_mr(self.undeployed_changesets.last()))
+            safe = mark_safe(open_gitlab_mr(provision_set))
             messages.info(request, safe)
 
         except gitlab.exceptions.GitlabError as e:
