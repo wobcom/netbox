@@ -521,8 +521,18 @@
                         </form>
                     </li>
                     {% if request.foreign_changes %}
-                        <li style="background: #f0ad4e;">
-                            <a href="#" class="navbar-link" style="color: white;"><i class="glyphicon glyphicon-warning-sign"></i></a>
+                        <li style="background: #f0ad4e;" class="dropdown">
+                            <a href="#" style="color: white;" class="dropdown-toggle" data-toggle="dropdown"><i class="glyphicon glyphicon-warning-sign"></i></a>
+                            <ul class="dropdown-menu">
+                                <li>
+                                    <a><b>Following persons currently<br>making a change:</b></a>
+                                </li>
+                                {% for changeset in request.foreign_changes %}
+                                    <li>
+                                        <a>{{ changeset.user.username }}</a>
+                                    </li>
+                                {% endfor %}
+                            </ul>
                         </li>
                     {% else %}
                         <li style="background: #5cb85c;">
