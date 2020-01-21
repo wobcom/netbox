@@ -210,7 +210,7 @@ class FieldChangeMiddleware(object):
         # `to_uninstall` here). It’s initially empty, but depending on where we
         # will go during our little voyage, it might get filled with hooks that
         # need to be uninstalled.
-        if request.path.startswith('/admin'):
+        if request.path.startswith('/admin') or request.user.is_anonymous:
             return self.get_response(request)
 
         in_change = request.user.changesets.filter(active=True).exists()
