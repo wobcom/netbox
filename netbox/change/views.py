@@ -29,28 +29,16 @@ from .utilities import redirect_to_referer
 
 
 def close_change(request):
-    if 'change_id' not in request.session:
-        return HttpResponse('No change_id in session!', status=409), None
+    if not request.user.changesets.filter(active=True).exists():
+        return HttpResponse("You're currently not in a change", status=409), None
 
-    changeset = ChangeSet.objects.get(pk=request.session['change_id'])
-    if not changeset.active:
-        return HttpResponse('Change timed out!', status=409), None
+    changeset = request.user.changesets.filter(active=True).first()
 
     changeset.active = False
     changeset.status = ACCEPTED
-    del request.session['change_id']
-    request.session['in_change'] = False
     changeset.save()
 
     return None, changeset
-
-
-SESSION_VARS = ['change_information', 'in_change', 'foreign_change']
-
-def clear_session(request):
-    for session_var in SESSION_VARS:
-        if session_var in request.session:
-            del request.session[session_var]
 
 
 class ChangeFormView(PermissionRequiredMixin, CreateView):
@@ -66,12 +54,9 @@ class ChangeFormView(PermissionRequiredMixin, CreateView):
     def form_valid(self, form):
         result = super(ChangeFormView, self).form_valid(form)
 
-        self.request.session['in_change'] = True
-
         c = ChangeSet(user=self.request.user, active=True)
         c.change_information = self.object
         c.save()
-        self.request.session['change_id'] = c.id
 
         return result
 
@@ -91,13 +76,10 @@ class EndChangeView(PermissionRequiredMixin, View):
     permission_required = 'change.add_changeset'
 
     def get(self, request):
-        if not request.session.get('in_change'):
+        if not request.user.changesets.filter(active=True).exists():
             return HttpResponse('Not in Change!', status=409)
 
-        changeset = ChangeSet.objects.get(pk=request.session['change_id'])
-
-        if not changeset.active:
-            return HttpResponse('Stale change?', status=409)
+        changeset = request.user.changesets.filter(active=True).first()
 
         return render(request, 'change/list.html', {
             'changeset': changeset

@@ -59,9 +59,9 @@ def install_save_hooks(request):
     all newly-created models.
     """
     handled = []
-    try:
-        changeset = ChangeSet.objects.get(pk=request.session['change_id'])
-    except ChangeSet.DoesNotExist:
+    changeset = request.user.changesets.filter(active=True).first()
+
+    if changeset is None:
         return handled
 
     def before_save_internal(sender, instance, **kwargs):
@@ -213,7 +213,7 @@ class FieldChangeMiddleware(object):
         if request.path.startswith('/admin'):
             return self.get_response(request)
 
-        in_change = request.session.get('in_change', False)
+        in_change = request.user.changesets.filter(active=True).exists()
         to_uninstall = []
 
         # Chapter I: We are in a change
@@ -222,12 +222,8 @@ class FieldChangeMiddleware(object):
         # working with. We have to take some precautions, because someone might have
         # deleted the change set while it’s still active.
         if in_change:
-            c = None
-            try:
-                c = ChangeSet.objects.get(pk=request.session['change_id'])
-            except ChangeSet.DoesNotExist:
-                messages.warning(request, "Your change session was deleted.")
-                request.session['in_change'] = False
+            c = request.user.changesets.filter(active=True).first()
+            request.in_change = True
 
             if c:
                 # So, what should we do if the change is still in use? As it turns out, a

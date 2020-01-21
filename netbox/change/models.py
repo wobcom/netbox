@@ -136,7 +136,7 @@ class ChangeSet(models.Model):
     user = models.ForeignKey(
         to=User,
         on_delete=models.SET_NULL,
-        related_name='+',
+        related_name='changesets',
         blank=True,
         null=True
     )
