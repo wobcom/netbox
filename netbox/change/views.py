@@ -1,59 +1,23 @@
-import io
-import json
-from datetime import datetime
-
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import PermissionRequiredMixin
-from django.db import models
-from django.http import HttpResponse, HttpResponseForbidden, \
-    HttpResponseServerError, HttpResponseBadRequest
-from django.shortcuts import get_object_or_404, redirect, render, reverse
-from django.utils import dateparse, timezone
-from django.utils.decorators import method_decorator
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.safestring import mark_safe
 from django.views.generic import View
 from django.views.generic.edit import CreateView
-from rest_framework.decorators import action
-from rest_framework.viewsets import ViewSet
 import gitlab
 
 from netbox import configuration
 from dcim.models import Device
-from utilities.views import ObjectListView
-from . import tables
 from .forms import ChangeInformationForm
-from .models import ChangeInformation, ChangeSet, ProvisionSet, \
-    DRAFT, IN_REVIEW, ACCEPTED, REJECTED, IMPLEMENTED, FAILED
-from .utilities import redirect_to_referer
-
-
-def close_change(request):
-    if 'change_id' not in request.session:
-        return HttpResponse('No change_id in session!', status=409), None
-
-    changeset = ChangeSet.objects.get(pk=request.session['change_id'])
-    if not changeset.active:
-        return HttpResponse('Change timed out!', status=409), None
-
-    changeset.active = False
-    changeset.status = ACCEPTED
-    del request.session['change_id']
-    request.session['in_change'] = False
-    changeset.save()
-
-    return None, changeset
-
-
-SESSION_VARS = ['change_information', 'in_change', 'foreign_change']
-
-def clear_session(request):
-    for session_var in SESSION_VARS:
-        if session_var in request.session:
-            del request.session[session_var]
+from .models import ChangeInformation, ChangeSet, ACCEPTED, IMPLEMENTED
 
 
 class ChangeFormView(PermissionRequiredMixin, CreateView):
+    """
+    This view is for displaying the change form and
+    open a new change.
+    """
     model = ChangeInformation
     form_class = ChangeInformationForm
     success_url = '/'
@@ -66,12 +30,9 @@ class ChangeFormView(PermissionRequiredMixin, CreateView):
     def form_valid(self, form):
         result = super(ChangeFormView, self).form_valid(form)
 
-        self.request.session['in_change'] = True
-
         c = ChangeSet(user=self.request.user, active=True)
         c.change_information = self.object
         c.save()
-        self.request.session['change_id'] = c.id
 
         return result
 
@@ -88,20 +49,35 @@ class ChangeFormView(PermissionRequiredMixin, CreateView):
 
 
 class EndChangeView(PermissionRequiredMixin, View):
+    """
+    This view is for displaying change overview and closes a change.
+    """
     permission_required = 'change.add_changeset'
 
     def get(self, request):
-        if not request.session.get('in_change'):
+        if request.actual_change is None:
             return HttpResponse('Not in Change!', status=409)
 
-        changeset = ChangeSet.objects.get(pk=request.session['change_id'])
-
-        if not changeset.active:
-            return HttpResponse('Stale change?', status=409)
-
         return render(request, 'change/list.html', {
-            'changeset': changeset
+            'changeset': request.actual_change
         })
+
+    def post(self, request):
+        """
+        This view is triggered when the operator clicks on "Recreate Merge
+        Request" in the change list view.
+        A merge request is created in Gitlab, and the status of the object is
+        changed to Accepted.
+        """
+
+        if request.actual_change is None:
+            return HttpResponse("You're currently not in a change", status=409), None
+
+        request.actual_change.active = False
+        request.actual_change.status = ACCEPTED
+        request.actual_change.save()
+
+        return redirect('home')
 
 
 MR_TXT = """## Multiple Changes
@@ -231,27 +207,11 @@ def open_gitlab_mr(o, delete_branch=False):
     return 'You can review your merge request <a href="{}">here</a>!'.format(o.mr_location)
 
 
-class FinalizeView(PermissionRequiredMixin, View):
-    permission_required = 'change.add_changeset'
-
-    def get(self, request, pk=None):
-        """
-        This view is triggered when the operator clicks on "Recreate Merge
-        Request" in the change list view.
-        A merge request is created in Gitlab, and the status of the object is
-        changed to Accepted.
-        """
-        redir = request.GET.get('redirect', 'change:accept')
-
-        err, obj = close_change(request)
-
-        if err:
-            return err
-
-        return redirect('home')
-
-
 class DeployView(PermissionRequiredMixin, View):
+    """
+    This view is for displaying provisioning details
+    and start provisioning.
+    """
     permission_required = 'change.deploy_changeset'
 
     def __init__(self, *args, **kwargs):
@@ -287,116 +247,13 @@ class DeployView(PermissionRequiredMixin, View):
 
         return redirect('home')
 
-@method_decorator(login_required, name='dispatch')
-class ReactivateView(View):
-    model = ChangeSet
 
-    def get(self, request, pk=None):
-        """
-        This view is triggered when the change is reactivated by the operator.
-        The object is marked as active, updated, and assigned to the operator.
-        """
-        obj = get_object_or_404(self.model, pk=pk)
+class DetailView(PermissionRequiredMixin, View):
+    """
+    This view is for displaying change details.
+    """
+    permission_required = 'change.view_changeset'
 
-        if obj.status != DRAFT:
-            return HttpResponseForbidden('Change cannot be reactivated!')
-
-        obj.active = True
-        obj.updated = datetime.now()
-        obj.save()
-
-        request.session['in_change'] = True
-        request.session['change_id'] = pk
-
-        return redirect('home')
-
-
-# needs to be a rest_framework viewset for nextbox... urgh
-# TODO: combine to generic workflow endpoint with ReviewedView and RejectedView?
-class ProvisionedView(ViewSet):
-    model = ChangeSet
-    queryset = ChangeSet.objects
-    def update(self, request, pk=None):
-        """
-        This view is triggered when the change was provisioned by Gitlab.
-        The status of the changeset is updated and the changes are re-applied.
-        """
-        obj = get_object_or_404(self.model, pk=pk)
-
-        if obj.status == IMPLEMENTED:
-            return HttpResponseForbidden('Change was already provisioned!')
-
-        obj.status = IMPLEMENTED
-        obj.provision_log = json.loads(request.body.decode('utf-8'))
-        obj.save()
-
-        # no content
-        return HttpResponse(status=204)
-
-
-class FailedView(ViewSet):
-    model = ChangeSet
-    queryset = ChangeSet.objects
-    def update(self, request, pk=None):
-        """
-        This view is triggered when the change was provisioned by Gitlab and
-        errored. The status of the changeset is updated and the changes are
-        re-applied.
-        """
-        obj = get_object_or_404(self.model, pk=pk)
-
-        obj.status = FAILED
-        obj.provision_log = json.loads(request.body.decode('utf-8'))
-        obj.save()
-
-        # no content
-        return HttpResponse(status=204)
-
-
-class ReviewedView(ViewSet):
-    model = ChangeSet
-    queryset = ChangeSet.objects
-    def retrieve(self, request, pk=None):
-        """
-        This view is triggered when the change was reviewed in TOPdesk.
-        The status of the changeset is updated.
-        """
-        obj = get_object_or_404(self.model, pk=pk)
-
-        if obj.status != IN_REVIEW:
-            return HttpResponseForbidden('Change is not in review!')
-
-        open_gitlab_mr(obj)
-
-        obj.status = ACCEPTED
-        obj.save()
-
-        # no content
-        return HttpResponse(status=204)
-
-
-class RejectedView(ViewSet):
-    model = ChangeSet
-    queryset = ChangeSet.objects
-    def retrieve(self, request, pk=None):
-        """
-        This view is triggered when the change was rejected in TOPdesk.
-        The status of the changeset is updated.
-        """
-        obj = get_object_or_404(self.model, pk=pk)
-
-        if obj.status != IN_REVIEW:
-            return HttpResponseForbidden('Change is not in review!')
-
-        obj.status = REJECTED
-        obj.save()
-
-        # no content
-        return HttpResponse(status=204)
-
-
-@method_decorator(login_required, name='dispatch')
-class DetailView(View):
     def get(self, request, pk=None):
         """
         This view renders the details of a change.

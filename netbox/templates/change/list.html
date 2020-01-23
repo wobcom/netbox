@@ -54,9 +54,12 @@
         </ul>
       {% endif %}
       <div class="pull-right">
-        <a href="/change/{{changeset.pk}}/finalize?redirect=change:accept" class="btn btn-primary" id="change-accept">
-          Save Change
-        </a>
+        <form method="post">
+             {% csrf_token %}
+            <button class="btn btn-primary" id="change-accept">
+              Save Change
+            </button>
+        </form>
       </div>
     {% else %}
       <h3>Nothing to do!</h3>
