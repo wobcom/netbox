@@ -10,7 +10,7 @@ import gitlab
 from netbox import configuration
 from dcim.models import Device
 from .forms import ChangeInformationForm
-from .models import ChangeInformation, ChangeSet, ACCEPTED, IMPLEMENTED
+from .models import ChangeInformation, ChangeSet, ProvisionSet, ACCEPTED, IMPLEMENTED
 
 
 class ChangeFormView(PermissionRequiredMixin, CreateView):
