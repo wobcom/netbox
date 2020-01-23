@@ -29,6 +29,7 @@ NO_CHANGE = 0
 OWN_CHANGE = 1
 FOREIGN_CHANGE = 2
 
+
 class ChangeInformation(models.Model):
     """Meta information about a change."""
     name = models.CharField(max_length=256, verbose_name="Change Title")
@@ -62,9 +63,9 @@ class ChangeInformation(models.Model):
             res.write(md.bold('This change is an emergency change.'))
             res.write('\n\n')
 
-        res.write(md.h3('Implications if this change is accepted:'))
+        res.write(md.bold('Implications if this change is accepted:'))
         res.write('\n{}\n\n'.format(self.change_implications))
-        res.write(md.h3('Implications if this change is rejected:'))
+        res.write(md.bold('Implications if this change is rejected:'))
         res.write('\n{}\n\n'.format(self.ignore_implications))
 
         if self.affects_customer:
@@ -162,6 +163,14 @@ class ChangeSet(models.Model):
         )
     )
 
+    provision_set = models.ForeignKey(
+        to='ProvisionSet',
+        on_delete=models.PROTECT,
+        related_name='changesets',
+        blank=True,
+        null=True,
+    )
+
     def __init__(self, *args, **kwargs):
         super(ChangeSet, self).__init__(*args, **kwargs)
 
@@ -183,6 +192,28 @@ class ChangeSet(models.Model):
         except ChangeSet.DoesNotExist:
             return NO_CHANGE
 
+    def executive_summary(self, no_markdown=False):
+        return self.change_information.executive_summary(no_markdown=no_markdown)
+
+    def in_use(self):
+        threshold = timedelta(minutes=configuration.CHANGE_SESSION_TIMEOUT)
+        before = timezone.now() - threshold
+
+        return self.updated > before
+
+    def __str__(self):
+        return '#{}: {}'.format(self.id, self.change_information.name if self.change_information else '')
+
+
+class ProvisionSet(models.Model):
+    user = models.ForeignKey(
+        to=User,
+        on_delete=models.SET_NULL,
+        related_name='+',
+        blank=True,
+        null=True,
+    )
+
     def yamlify_extra_fields(self, instance):
         res = {}
         for field in instance.custom_field_values.all():
@@ -193,7 +224,7 @@ class ChangeSet(models.Model):
         if device_type:
             return {
                 'manufacturer': device_type.manufacturer.name
-                                if device_type.manufacturer else None,
+                if device_type.manufacturer else None,
                 'model': device_type.model,
                 'part_number': device_type.part_number,
                 **self.yamlify_extra_fields(device_type)
@@ -226,7 +257,8 @@ class ChangeSet(models.Model):
                     continue
                 # expand ONTEP to VTEPs (but only for those VLANs that are actually used on switchports)
                 for vlan in child_interface.overlay_network.vlans.order_by('vid').distinct('vid'):
-                    res.append(child_interface.name + '_' + self.concat_vxlan_vlan(child_interface.overlay_network.vxlan_prefix, vlan.vid))
+                    res.append(child_interface.name + '_' + self.concat_vxlan_vlan(
+                        child_interface.overlay_network.vxlan_prefix, vlan.vid))
             else:
                 res.append(child_interface.name)
         return res
@@ -240,15 +272,16 @@ class ChangeSet(models.Model):
                 'name': interface.name + '_' + self.concat_vxlan_vlan(interface.overlay_network.vxlan_prefix, vlan.vid),
                 'enabled': True,
                 'untagged_vlan': self.yamlify_vlan(vlan),
-                'description': 'VTEP (VxLAN prefix="{}" VLAN="{}")'.format(interface.overlay_network.vxlan_prefix, vlan.vid),
+                'description': 'VTEP (VxLAN prefix="{}" VLAN="{}")'.format(interface.overlay_network.vxlan_prefix,
+                                                                           vlan.vid),
                 'form_factor': 'VTEP',
                 'vxlan_id': self.concat_vxlan_vlan(interface.overlay_network.vxlan_prefix, vlan.vid),
                 'ip_addresses': [self.yamlify_ip_address(address)
-                                    for address
-                                    in interface.ip_addresses.all()]
+                                 for address
+                                 in interface.ip_addresses.all()]
             })
         return res
- 
+
     def yamlify_ip_address(self, ip_address):
         return {
             'address': str(ip_address.address.ip),
@@ -265,7 +298,7 @@ class ChangeSet(models.Model):
             'enabled': interface.enabled,
             'mtu': interface.mtu,
             'untagged_vlan': self.yamlify_vlan(interface.untagged_vlan),
-            }
+        }
         tagged_vlans = set()
         for child_interface in Interface.objects.filter(lag=interface):
             if child_interface.type == IFACE_TYPE_ONTEP:
@@ -292,16 +325,16 @@ class ChangeSet(models.Model):
                 'mgmnt_only': interface.mgmt_only,
                 'mode': interface.get_mode_display(),
                 'untagged_vlan': self.yamlify_vlan(interface.untagged_vlan),
-                #'overlay': self.yamlify_overlay(interface.overlay_network),
+                # 'overlay': self.yamlify_overlay(interface.overlay_network),
                 'tags': list(interface.tags.names()),
                 'description': interface.description,
                 'tagged_vlans': [self.yamlify_vlan(v)
-                                            for v
-                                            in interface.tagged_vlans.all()],
+                                 for v
+                                 in interface.tagged_vlans.all()],
                 'form_factor': self.convert_form_factor(interface.type),
                 'ip_addresses': [self.yamlify_ip_address(address)
-                                            for address
-                                            in interface.ip_addresses.all()]
+                                 for address
+                                 in interface.ip_addresses.all()]
             }]
         if interface and len(res):
             res[0]['extra_fields'] = self.yamlify_extra_fields(interface)
@@ -405,8 +438,8 @@ class ChangeSet(models.Model):
     def map_platform_to_vagrant_box(self, platform):
         default = "centos/7"
         m = {
-            "Cumulus Linux" : "CumulusCommunity/cumulus-vx",
-            "debian9" : "debian/stretch64"
+            "Cumulus Linux": "CumulusCommunity/cumulus-vx",
+            "debian9": "debian/stretch64"
         }
         if platform and platform.name:
             return m.get(platform.name, default)
@@ -432,7 +465,7 @@ class ChangeSet(models.Model):
                 continue
             attributes = {
                 "function": device.device_role.name,
-                "os" : self.map_platform_to_vagrant_box(device.platform)
+                "os": self.map_platform_to_vagrant_box(device.platform)
             }
             graph.node(device.name, **attributes)
             seen_devices.append(device)
@@ -442,7 +475,7 @@ class ChangeSet(models.Model):
                 trace = interface.trace()[0]
                 cable = trace[1]
                 peer_interface = trace[2]
-                if cable==None or cable.status != CONNECTION_STATUS_CONNECTED:
+                if cable == None or cable.status != CONNECTION_STATUS_CONNECTED:
                     continue
                 if not peer_interface:
                     continue
@@ -493,12 +526,6 @@ class ChangeSet(models.Model):
             key = 'host_vars/{}/main.yaml'.format(device.name)
             actions[key] = self.yamlify_device(device)
         return actions
-
-    def executive_summary(self, no_markdown=False):
-        return self.change_information.executive_summary(no_markdown=no_markdown)
-
-    def __str__(self):
-        return '#{}: {}'.format(self.id, self.change_information.name if self.change_information else '')
 
 
 class ChangedObjectManager(models.Manager):
