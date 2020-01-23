@@ -24,16 +24,16 @@ class FieldChangeMiddleware(object):
         # These are:
         #
         #   - request.foreign_changes:  holds a QuerySet of all foreign ongoing ChangeSets
-        #   - request.actual_change:    None or an actual ongoing change of the logged in user.
+        #   - request.my_change:    None or an actual ongoing change of the logged in user.
 
         # If the current user is anonymous, set the attributes manually to default state
         if request.user.is_anonymous:
             request.foreign_changes = None
-            request.actual_change = None
+            request.my_change = None
             return self.get_response(request)
 
         # Set request attributes
         request.foreign_changes = ChangeSet.objects.filter(active=True).exclude(user=request.user)
-        request.actual_change = request.user.changesets.filter(active=True).first()
+        request.my_change = request.user.changesets.filter(active=True).first()
 
         return self.get_response(request)

@@ -55,11 +55,11 @@ class EndChangeView(PermissionRequiredMixin, View):
     permission_required = 'change.add_changeset'
 
     def get(self, request):
-        if request.actual_change is None:
+        if request.my_change is None:
             return HttpResponse('Not in Change!', status=409)
 
         return render(request, 'change/list.html', {
-            'changeset': request.actual_change
+            'changeset': request.my_change
         })
 
     def post(self, request):
@@ -70,12 +70,12 @@ class EndChangeView(PermissionRequiredMixin, View):
         changed to Accepted.
         """
 
-        if request.actual_change is None:
+        if request.my_change is None:
             return HttpResponse("You're currently not in a change", status=409), None
 
-        request.actual_change.active = False
-        request.actual_change.status = ACCEPTED
-        request.actual_change.save()
+        request.my_change.active = False
+        request.my_change.status = ACCEPTED
+        request.my_change.save()
 
         return redirect('home')
 
