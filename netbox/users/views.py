@@ -317,7 +317,7 @@ class ChangesView(LoginRequiredMixin, View):
         changes = ChangeSet.objects.filter(user=request.user).annotate(
             changedfield_count=models.Count('changedfield', distinct=True),
             changedobject_count=models.Count('changedobject', distinct=True)
-        )
+        ).order_by('-id')
         return render(request, self.template_name, {
             'table': ChangeTable(changes),
             'active_tab': 'changes',
