@@ -214,6 +214,9 @@ class ProvisionSet(models.Model):
         null=True,
     )
 
+    output_log = models.CharField(max_length=512, blank=True, null=True)
+    error_log = models.CharField(max_length=512, blank=True, null=True)
+
     def yamlify_extra_fields(self, instance):
         res = {}
         for field in instance.custom_field_values.all():

@@ -5,7 +5,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.safestring import mark_safe
 from django.views.generic import View
 from django.views.generic.edit import CreateView
-import gitlab
+from diplomacy import Diplomat
 
 from netbox import configuration
 from dcim.models import Device
@@ -80,133 +80,6 @@ class EndChangeView(PermissionRequiredMixin, View):
         return redirect('home')
 
 
-MR_TXT = """## Multiple Changes
-Provisioning started in Netbox by {}.
-"""
-
-CHANGE_TXT = """
-
-### Change #{}: {}
-Created in Netbox by {}.
-
-#### Executive Summary
-
-{}
-"""
-
-
-def check_actions(project, actions, branch):
-    treated = set()
-    new_actions = []
-    # if not git exists:
-    #    git clone configurations.GITLAB_CLONE_URL
-    # git pull
-    # ls host_vars/**/*
-    for f in project.repository_tree(path='host_vars', all=True, recursive=True, per_page=100):
-        # we only care for files
-        if f['type'] != 'blob':
-            continue
-        f = f['path']
-        if f in actions:
-            treated.add(f)
-            new_actions.append({
-                'action': 'update',
-                'file_path': f,
-                'content': actions[f],
-            })
-        else:
-            new_actions.append({
-                'action': 'delete',
-                'file_path': f,
-            })
-    for action in actions:
-        if action in treated:
-            continue
-        new_actions.append({
-            'action': 'create',
-            'file_path': action,
-            'content': actions[action],
-        })
-    return new_actions
-
-
-def check_branch_exists(project, branch_name):
-    try:
-        b = project.branches.get(branch_name)
-        if b:
-            return True
-    except gitlab.exceptions.GitlabError:
-        pass
-    return False
-
-
-def open_gitlab_mr(o, delete_branch=False):
-    devices = Device.objects.prefetch_related(
-             'interfaces__untagged_vlan',
-             'interfaces__tagged_vlans',
-             'interfaces__overlay_network',
-             'device_type').filter(primary_ip4__isnull=False)
-    gl = gitlab.Gitlab(configuration.GITLAB_URL, configuration.GITLAB_TOKEN)
-    project = gl.projects.get(configuration.GITLAB_PROJECT_ID)
-    actions = o.to_actions(devices)
-    mr_txt = MR_TXT.format(o.user.username)
-    changes_txt = ""
-    for change_set in o.changesets.all():
-        mr_txt += "* {}\n".format(change_set.change_information.name)
-        changes_txt += CHANGE_TXT.format(
-            change_set.id,
-            change_set.change_information.name,
-            change_set.user.username,
-            change_set.executive_summary().replace('\n', '\\\n'),
-        )
-    mr_txt += changes_txt
-    branch_name = 'provisioning_{}'.format(o.id)
-    commit_msg = 'Autocommit from Netbox (Provisioning #{})'.format(o.id)
-
-    if delete_branch and check_branch_exists(project, branch_name):
-        project.branches.delete(branch_name)
-
-    project.branches.create({
-        'branch': branch_name,
-        'ref': 'master'
-    })
-    actions = check_actions(project, actions, branch_name)
-    actions.append(o.create_inventory(devices))
-    actions.append(o.create_topology_graph(devices))
-    project.commits.create({
-        'id': project.id,
-        'branch': branch_name,
-        'commit_message': commit_msg,
-        'author_name': 'Netbox',
-        'actions': actions,
-    })
-    mr = project.mergerequests.create({
-        'title': 'Deployment #{}: {} Changes'.format(o.id, o.changesets.count()),
-        'description': mr_txt,
-        'source_branch': branch_name,
-        'target_branch': 'master',
-        'approvals_before_merge': 1,
-        'labels': ['netbox', 'unreviewed']
-    })
-
-    # set project approvals so the surveyor can do its funk if the approver is
-    # set
-    if configuration.GITLAB_APPROVER_ID:
-        mr_mras = mr.approvals.get()
-        mr_mras.approvals_before_merge = 1
-        mr_mras.save()
-
-        mr.approvals.set_approvers(
-            approver_ids=[configuration.GITLAB_APPROVER_ID]
-        )
-
-    o.mr_location = "{}/{}/merge_requests/{}".format(
-        configuration.GITLAB_URL, project.path_with_namespace, mr.iid
-    )
-
-    return 'You can review your merge request <a href="{}">here</a>!'.format(o.mr_location)
-
-
 class DeployView(PermissionRequiredMixin, View):
     """
     This view is for displaying provisioning details
@@ -235,14 +108,32 @@ class DeployView(PermissionRequiredMixin, View):
             change_set.provision_set = provision_set
             change_set.save()
 
-        try:
-            safe = mark_safe(open_gitlab_mr(provision_set))
-            messages.info(request, safe)
+        db = configuration.DATABASE
+        # postgresql is a given in the context of netbox
+        # TODO: is there a better way to obtain a connection string?
+        odin = Diplomat("odin", 'postgresql://{}:{}@{}/{}'.format(
+            db['USER'], db['PASSWORD'], db['HOST'], db['NAME']
+        ))
 
-        except gitlab.exceptions.GitlabError as e:
-            messages.warning(request,
-                             "Unable to connect to GitLab at the moment! Error message: {}".format(e)
-                             )
+        odin.wait()
+
+        if not odin.has_succeeded():
+            messages.warning(
+             request,
+             "Odin has failed! Error message: {}".format(diplo.error_output())
+            )
+
+        ansible = Diplomat(
+            "ansible-playbook", "-K", "-i", "_build/inventory.ini",
+            "_build/deploy.yml",
+            out=odin.output_file_name(),
+            err=odin.output_file_name()
+        )
+
+        provision_set.output_log = ansible.output_file_name()
+        provision_set.error_log = ansible.error_file_name()
+        provision_set.save()
+
         self.undeployed_changesets.update(status=IMPLEMENTED)
 
         return redirect('home')
