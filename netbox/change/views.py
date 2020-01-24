@@ -81,6 +81,9 @@ class EndChangeView(PermissionRequiredMixin, View):
         return redirect('home')
 
 
+JOBS = []
+
+
 class DeployView(PermissionRequiredMixin, View):
     """
     This view is for displaying provisioning details
@@ -121,7 +124,7 @@ class DeployView(PermissionRequiredMixin, View):
         if not odin.has_succeeded():
             messages.warning(
              request,
-             "Odin has failed! Error message: {}".format(diplo.error_output())
+             "Odin has failed! Error message: {}".format(odin.error())
             )
             provision_set.deployment_status = FAILED
             provision_set.save()
@@ -131,7 +134,7 @@ class DeployView(PermissionRequiredMixin, View):
             "ansible-playbook", "-K", "-i", "_build/inventory.ini",
             "_build/deploy.yml", "--check", "--diff", # the last two are for testing
             out=odin.output_file_name(),
-            err=odin.output_file_name()
+            err=odin.error_file_name()
         )
 
         def callback():
@@ -143,6 +146,8 @@ class DeployView(PermissionRequiredMixin, View):
             provision_set.save()
 
         ansible.register_exit_fn(callback)
+
+        ansible.write(configuration.BECOME_PASSWORD)
 
         provision_set.output_log = ansible.output_file_name()
         provision_set.error_log = ansible.error_file_name()

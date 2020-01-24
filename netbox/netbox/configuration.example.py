@@ -175,11 +175,6 @@ SHORT_TIME_FORMAT = 'H:i:s'
 DATETIME_FORMAT = 'N j, Y g:i a'
 SHORT_DATETIME_FORMAT = 'Y-m-d H:i'
 
-# Gitlab integration
-GITLAB_URL = 'gitlab.com'
-GITLAB_TOKEN = '1234'
-GITLAB_PROJECT_ID = '1'
-GITLAB_APPROVER_ID = None
-CHANGE_SESSION_TIMEOUT = 10
-NEED_CHANGE_FOR_WRITE = True
-TOPDESK_SURVEYOR_URL = 'http://topdesk-surveyor.com'
+# Deployment integration
+# TODO: this is not a good idea
+BECOME_PASSWORD = b""
