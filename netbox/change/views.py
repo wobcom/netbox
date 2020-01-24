@@ -10,7 +10,8 @@ from diplomacy import Diplomat
 from netbox import configuration
 from dcim.models import Device
 from .forms import ChangeInformationForm
-from .models import ChangeInformation, ChangeSet, ProvisionSet, ACCEPTED, IMPLEMENTED
+from .models import (ChangeInformation, ChangeSet, ProvisionSet, ACCEPTED,
+    IMPLEMENTED, RUNNING, FINISHED, FAILED)
 
 
 class ChangeFormView(PermissionRequiredMixin, CreateView):
@@ -122,16 +123,30 @@ class DeployView(PermissionRequiredMixin, View):
              request,
              "Odin has failed! Error message: {}".format(diplo.error_output())
             )
+            provision_set.deployment_status = FAILED
+            provision_set.save()
+            return redirect('home')
 
         ansible = Diplomat(
             "ansible-playbook", "-K", "-i", "_build/inventory.ini",
-            "_build/deploy.yml",
+            "_build/deploy.yml", "--check", "--diff", # the last two are for testing
             out=odin.output_file_name(),
             err=odin.output_file_name()
         )
 
+        def callback():
+            # TODO: what do we set here?
+            if ansible.has_succeeded():
+                provision_set.status = FINISHED
+            else:
+                provision_set.deployment_status = FAILED
+            provision_set.save()
+
+        ansible.register_exit_fn(callback)
+
         provision_set.output_log = ansible.output_file_name()
         provision_set.error_log = ansible.error_file_name()
+        provision_set.deployment_status = RUNNING
         provision_set.save()
 
         self.undeployed_changesets.update(status=IMPLEMENTED)

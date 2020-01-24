@@ -205,6 +205,12 @@ class ChangeSet(models.Model):
         return '#{}: {}'.format(self.id, self.change_information.name if self.change_information else '')
 
 
+RUNNING = 1
+FINISHED = 2
+FAILED = 3
+ABORTED = 4
+
+
 class ProvisionSet(models.Model):
     user = models.ForeignKey(
         to=User,
@@ -216,6 +222,15 @@ class ProvisionSet(models.Model):
 
     output_log = models.CharField(max_length=512, blank=True, null=True)
     error_log = models.CharField(max_length=512, blank=True, null=True)
+    status = models.SmallIntegerField(
+        default=DRAFT,
+        choices=[
+            (RUNNING, "Running"),
+            (FINISHED, "Finished"),
+            (FAILED, "Failed"),
+            (ABORTED, "Aborted"),
+        ]
+    )
 
     def yamlify_extra_fields(self, instance):
         res = {}
