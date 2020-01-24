@@ -22,9 +22,4 @@ class Migration(migrations.Migration):
             name='output_log',
             field=models.CharField(blank=True, max_length=512, null=True),
         ),
-        migrations.AlterField(
-            model_name='changeset',
-            name='user',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='changesets', to=settings.AUTH_USER_MODEL),
-        ),
     ]
