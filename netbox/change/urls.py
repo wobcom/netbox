@@ -10,5 +10,6 @@ urlpatterns = [
     path(r'form/', views.ChangeFormView.as_view(), name='form'),
     path(r'end_change/', views.EndChangeView.as_view(), name='end_change'),
     path(r'deploy/', views.DeployView.as_view(), name='deploy'),
-    path(r'provisions/<int:pk>/terminate', views.TerminateView.as_view(), name='terminate_provision'),
+
+    path(r'provisions/', views.ProvisionsView.as_view(), name='provisions'),
 ]
