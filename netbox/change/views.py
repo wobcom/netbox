@@ -9,10 +9,11 @@ from diplomacy import Diplomat
 
 from netbox import configuration
 from dcim.models import Device
+from utilities.views import ObjectListView
 from .forms import ChangeInformationForm
 from .models import (ChangeInformation, ChangeSet, ProvisionSet, ACCEPTED,
     IMPLEMENTED, RUNNING, FINISHED, FAILED)
-
+from . import tables
 
 class ChangeFormView(PermissionRequiredMixin, CreateView):
     """
@@ -172,3 +173,11 @@ class DetailView(PermissionRequiredMixin, View):
         """
         changeset = get_object_or_404(ChangeSet, pk=pk)
         return render(request, 'change/detail.html', {'changeset': changeset})
+
+
+# Provisions
+class ProvisionsView(PermissionRequiredMixin, ObjectListView):
+    permission_required = 'change:view_provisionset'
+    queryset = ProvisionSet.objects.all()
+    table = tables.ProvisionTable
+    template_name = 'change/provision_list.html'

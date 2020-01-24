@@ -212,6 +212,15 @@ ABORTED = 4
 
 
 class ProvisionSet(models.Model):
+    created = models.DateTimeField(
+        auto_now_add=True,
+        editable=False,
+        null=True,
+    )
+    updated = models.DateTimeField(
+        auto_now=True,
+        null=True,
+    )
     user = models.ForeignKey(
         to=User,
         on_delete=models.SET_NULL,

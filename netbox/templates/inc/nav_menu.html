@@ -497,7 +497,7 @@
                     <li>
                         <form class="navbar-form">
                         <div class="btn-group navbar-formv">
-                        {% if not request.actual_change %}
+                        {% if not request.my_change %}
                               <a href="{% url 'change:form' %}" class="btn btn-primary" title="Start change">
                                   <i class="fa fa-play"></i>
                               </a>
@@ -515,7 +515,17 @@
                                 </button>
                         {% endif %}
                             <ul class="dropdown-menu">
-                                <li><a href="{% url "change:deploy" %}">Deploy</a></li>
+                                <li>
+                                    <a href="{% url "change:deploy" %}">
+                                        Start provisioning
+                                    </a>
+                                </li>
+                                <li role="separator" class="divider"></li>
+                                <li>
+                                    <a href="{% url 'change:provisions' %}">
+                                        Provisions
+                                    </a>
+                                </li>
                             </ul>
                         </div>
                         </form>
