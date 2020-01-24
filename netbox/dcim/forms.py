@@ -2359,7 +2359,7 @@ class InterfaceBulkAddVLANForm(BootstrapMixin, BulkEditForm):
         models=kwargs.get('models', [])
 
         for model in models:
-            if self.cleaned_data['tagged']:
+            if self.cleaned_data['tagged'] and model.mode != IFACE_MODE_TAGGED_ALL:
                 for vlan in self.cleaned_data['vlans']:
                     if not model.tagged_vlans.filter(pk=vlan).exists():
                         model.tagged_vlans.add(vlan)
