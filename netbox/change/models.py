@@ -46,12 +46,6 @@ class ChangeInformation(models.Model):
         (5, 'Extern')
     ], default=0)
 
-    depends_on = models.ManyToManyField(
-        'ChangeSet',
-        related_name='dependants',
-        blank=True,
-    )
-
     def executive_summary(self, no_markdown=True):
         md = Markdownify(no_markdown=no_markdown)
         res = io.StringIO()
@@ -63,11 +57,6 @@ class ChangeInformation(models.Model):
         res.write('\n{}\n\n'.format(self.change_implications))
         res.write(md.bold('Implications if this change is rejected:'))
         res.write('\n{}\n\n'.format(self.ignore_implications))
-
-        if self.depends_on.exists():
-            res.write(md.h3('This change depends on the following changes\n'))
-            for depends in self.depends_on.all():
-                res.write('- {}\n'.format(depends))
 
         return res.getvalue()
 

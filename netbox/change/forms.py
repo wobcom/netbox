@@ -8,5 +8,4 @@ class ChangeInformationForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = ChangeInformation
         fields = '__all__'
-        exclude = ['depends_on', '']
 
