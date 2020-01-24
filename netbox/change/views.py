@@ -38,17 +38,6 @@ class ChangeFormView(PermissionRequiredMixin, CreateView):
 
         return result
 
-    def get_context_data(self, **kwargs):
-        ctx = super(ChangeFormView, self).get_context_data(**kwargs)
-        #ctx['affected_customers'] = AffectedCustomerInlineFormSet(prefix='affected_customers')
-        ctx['return_url'] = '/change/toggle'
-        ctx['obj_type'] = 'Change Request'
-
-        # TODO: add possible parent changes
-        #ctx['change_parents'] = TP.operator_change("")
-
-        return ctx
-
 
 class EndChangeView(PermissionRequiredMixin, View):
     """

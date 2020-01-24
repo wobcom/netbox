@@ -9,15 +9,12 @@ from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields import JSONField
-from django.db import models, transaction
-from django.shortcuts import redirect
+from django.db import models
 from django.utils import timezone
 
 from netbox import configuration
 from dcim.models import Device, Interface
 from dcim.constants import *
-from ipam.models import IPADDRESS_ROLE_LOOPBACK
-from ipam.constants import IPADDRESS_ROLE_ANYCAST
 from virtualization.models import VirtualMachine
 
 from change.utilities import Markdownify
@@ -35,7 +32,6 @@ class ChangeInformation(models.Model):
     name = models.CharField(max_length=256, verbose_name="Change Title")
     is_emergency = models.BooleanField(verbose_name="Is an emergency change")
     is_extensive = models.BooleanField(verbose_name="Is an extensive change")
-    affects_customer = models.BooleanField(verbose_name="Customers are affected")
     change_implications = models.TextField()
     ignore_implications = models.TextField()
     change_type = models.SmallIntegerField(choices=[
@@ -68,34 +64,12 @@ class ChangeInformation(models.Model):
         res.write(md.bold('Implications if this change is rejected:'))
         res.write('\n{}\n\n'.format(self.ignore_implications))
 
-        if self.affects_customer:
-            res.write(md.h3('This change affects customers'))
-            res.write('\nThe following customers are affected:\n')
-            for change in self.affectedcustomer_set.all():
-                res.write('- {}'.format(change.name))
-                if change.is_business:
-                    res.write(md.bold(' (Business Customer)'))
-                res.write(": {}\n".format(change.products_affected))
-
         if self.depends_on.exists():
             res.write(md.h3('This change depends on the following changes\n'))
             for depends in self.depends_on.all():
                 res.write('- {}\n'.format(depends))
 
         return res.getvalue()
-
-
-class AffectedCustomer(models.Model):
-    """Customers affected by a change"""
-    information = models.ForeignKey(
-        to=ChangeInformation,
-        on_delete=models.CASCADE,
-    )
-
-    name = models.CharField(max_length=128, verbose_name="Customer Name")
-    is_business = models.BooleanField(verbose_name="Is a business customer")
-    products_affected = models.CharField(max_length=128,
-                                         verbose_name="Affected Products")
 
 
 class ChangeSetManager(models.Manager):
