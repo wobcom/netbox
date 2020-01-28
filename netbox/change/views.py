@@ -84,9 +84,6 @@ class EndChangeView(PermissionRequiredMixin, View):
         return redirect('home')
 
 
-JOBS = []
-
-
 class DeployView(PermissionRequiredMixin, View):
     """
     This view is for displaying provisioning details
