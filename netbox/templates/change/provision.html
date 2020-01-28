@@ -1,0 +1,22 @@
+{% extends '_base.html' %}
+
+{% block header %}
+    <h1>{% block title %}Provisioning{% endblock %}</h1>
+    <p>
+    <small class="text-muted">Created {{ provision_set.created }} &middot; Updated <span title="{{ provision_set.updated }}">{{ provision_set.updated | timesince }}</span> ago</small>
+    </p>
+{% endblock %}
+{% block content %}
+    <div class="row">
+        <div class="col-md-6">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h3 class="panel-title">Containing Changes</h3>
+                </div>
+                <div class="panel-body">
+                    {% include 'inc/table.html' with table=changes_table%}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
