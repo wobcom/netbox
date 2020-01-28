@@ -18,41 +18,7 @@
             {% if unaccepted_changes > 0 %}
                 <div class="alert alert-danger" role="alert"><b>Warning:</b> There are changes currently in progress.</div>
             {% endif %}
-            <table class="table table-striped">
-                <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Status</th>
-                    <th>Title</th>
-                    <th>Author</th>
-                    <th>Last Update</th>
-                </tr>
-                </thead>
-                <tbody>
-                {% for changeset in undeployed_changesets %}
-                    <tr class="{% if changeset.status != ACCEPTED %}danger{% endif %}">
-                        <td>
-                            {{ changeset.id }}
-                        </td>
-                        <td>
-                            {{ changeset.get_status_display }}
-                        </td>
-                        <td>
-                            {{ changeset.change_information.name| default:"*Anonymous*" }}
-                        </td>
-                        <td>
-                            {{ changeset.user.username }}
-                        </td>
-                        <td>
-                            {{ changeset.updated | timesince }}
-                        </td>
-                    </tr>
-                {% endfor %}
-                {% if not undeployed_changesets %}
-                    <tr><td colspan="100" style="text-align: center">No undeployed change found.</td></tr>
-                {% endif %}
-                </tbody>
-            </table>
+            {% include 'inc/table.html' with table=undeployed_changesets_table %}
         </div>
     </div>
 {% endblock %}
