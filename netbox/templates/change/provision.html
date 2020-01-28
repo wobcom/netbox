@@ -9,14 +9,7 @@
 {% block content %}
     <div class="row">
         <div class="col-md-6">
-            <div class="panel panel-default">
-                <div class="panel-heading">
-                    <h3 class="panel-title">Containing Changes</h3>
-                </div>
-                <div class="panel-body">
-                    {% include 'inc/table.html' with table=changes_table%}
-                </div>
-            </div>
+            {% include 'panel_table.html' with table=changes_table heading='Containing changes' %}
         </div>
     </div>
 {% endblock %}
