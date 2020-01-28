@@ -10,6 +10,8 @@ PROVISION_UPDATED = '<span title="{{ record.updated }}">{{ record.updated | time
 
 PROVISION_CREATED = '<span title="{{ record.created }}">{{ record.created | timesince }}</span>'
 
+PROVISION_CHANGE_COUNT = '<span>{{ record.changesets.count }}</span>'
+
 
 class ChangeTable(BaseTable):
     pk = tables.LinkColumn('change:detail', args=[tables.A('pk')])
@@ -32,6 +34,7 @@ class ChangeTable(BaseTable):
 class ProvisionTable(BaseTable):
     pk = tables.LinkColumn('change:provisions', verbose_name="ID")
     user = tables.Column(verbose_name='Creator')
+    changes = tables.TemplateColumn(template_code=PROVISION_CHANGE_COUNT, orderable=False)
     updated = tables.TemplateColumn(template_code=PROVISION_UPDATED)
     created = tables.TemplateColumn(template_code=PROVISION_CREATED)
 
@@ -40,6 +43,7 @@ class ProvisionTable(BaseTable):
         fields = (
             'pk',
             'user',
+            'changes',
             'updated',
             'created',
         )
