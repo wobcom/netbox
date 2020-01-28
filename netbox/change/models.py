@@ -4,6 +4,7 @@ import yaml
 import graphviz
 from datetime import timedelta
 from collections import defaultdict
+from topdesk import Topdesk
 
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -26,39 +27,33 @@ NO_CHANGE = 0
 OWN_CHANGE = 1
 FOREIGN_CHANGE = 2
 
+TOPDESK_STATUS_RFC = 0
+TOPDESK_STATUS_ACCEPTED = 1
+TOPDESK_STATUS_REJECTED = 2
+TOPDESK_STATUS_STARTED = 3
+TOPDESK_STATUS_DONE = 4
+TOPDESK_STATUS_CLOSED = 5
+
 
 class ChangeInformation(models.Model):
     """Meta information about a change."""
     name = models.CharField(max_length=256, verbose_name="Change Title")
-    is_emergency = models.BooleanField(verbose_name="Is an emergency change")
-    is_extensive = models.BooleanField(verbose_name="Is an extensive change")
-    change_implications = models.TextField()
-    ignore_implications = models.TextField()
-    change_type = models.SmallIntegerField(choices=[
-        (1, 'Standard Change (vorabgenehmigt)')], default=1)
-    category = models.SmallIntegerField(choices=[(1, 'Netzwerk')], default=1)
-    subcategory = models.SmallIntegerField(choices=[
-        (0, '------------'),
-        (1, 'Routing/Switching'),
-        (2, 'Firewall'),
-        (3, 'CPE'),
-        (4, 'Access Netz'),
-        (5, 'Extern')
-    ], default=0)
+    topdesk_change_number = models.CharField(max_length=50, null=True)
 
     def executive_summary(self, no_markdown=True):
-        md = Markdownify(no_markdown=no_markdown)
-        res = io.StringIO()
-        if self.is_emergency:
-            res.write(md.bold('This change is an emergency change.'))
-            res.write('\n\n')
+        return self.name
 
-        res.write(md.bold('Implications if this change is accepted:'))
-        res.write('\n{}\n\n'.format(self.change_implications))
-        res.write(md.bold('Implications if this change is rejected:'))
-        res.write('\n{}\n\n'.format(self.ignore_implications))
+    def topdesk_change(self):
+        t = Topdesk(configuration.TOPDESK_URL,
+                    verify=configuration.TOPDESK_SSL_VERIFICATION,
+                    app_creds=(configuration.TOPDESK_USER, configuration.TOPDESK_TOKEN))
+        return t.operator_change(id_=self.topdesk_change_number)
 
-        return res.getvalue()
+    def topdesk_url(self):
+
+        base_url = "{}/tas/secure/contained/newchange?action=show&unid={}"
+
+        return base_url.format(configuration.TOPDESK_URL, self.topdesk_change()['id'])
 
 
 class ChangeSetManager(models.Manager):
@@ -163,6 +158,9 @@ class ChangeSet(models.Model):
         before = timezone.now() - threshold
 
         return self.updated > before
+
+    def topdesk_url(self):
+        return self.change_information.topdesk_url()
 
     def __str__(self):
         return '#{}: {}'.format(self.id, self.change_information.name if self.change_information else '')
