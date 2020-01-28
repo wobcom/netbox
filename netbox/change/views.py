@@ -115,9 +115,12 @@ class DeployView(PermissionRequiredMixin, View):
         db = configuration.DATABASE
         # postgresql is a given in the context of netbox
         # TODO: is there a better way to obtain a connection string?
-        odin = Diplomat("odin", 'postgresql://{}:{}@{}/{}'.format(
-            db['USER'], db['PASSWORD'], db['HOST'], db['NAME']
-        ))
+        odin = Diplomat(
+            configuration.ODIN_EXECUTABLE,
+            'postgresql://{}:{}@{}/{}'.format(
+                db['USER'], db['PASSWORD'], db['HOST'], db['NAME']
+            ),
+        )
 
         odin.wait()
 
@@ -146,8 +149,6 @@ class DeployView(PermissionRequiredMixin, View):
             provision_set.save()
 
         ansible.register_exit_fn(callback)
-
-        ansible.write(configuration.BECOME_PASSWORD)
 
         provision_set.output_log = ansible.output_file_name()
         provision_set.error_log = ansible.error_file_name()
