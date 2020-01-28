@@ -176,5 +176,4 @@ DATETIME_FORMAT = 'N j, Y g:i a'
 SHORT_DATETIME_FORMAT = 'Y-m-d H:i'
 
 # Deployment integration
-# TODO: this is not a good idea
-BECOME_PASSWORD = b""
+ODIN_EXECUTABLE = "odin"
