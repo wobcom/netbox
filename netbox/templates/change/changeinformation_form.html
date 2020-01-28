@@ -6,17 +6,7 @@
       <div class="panel-heading"><strong>Change Request</strong></div>
       <div class="panel-body">
         {% render_field form.name %}
-        <h5>What are the implications of this change?</h5>
-        {% render_field form.change_implications %}
-        <h5>What are the implications if we ignore this change?</h5>
-        {% render_field form.ignore_implications %}
-        {% render_field form.is_emergency %}
-        {% render_field form.is_extensive %}
-        {% render_field form.affects_customer %}
-        {% render_field form.change_type %}
-        {% render_field form.category %}
-        {% render_field form.subcategory %}
-        {% render_field form.depends_on %}
+        {% render_field form.topdesk_change_number %}
 
       </div>
     </div>
