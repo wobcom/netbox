@@ -12,4 +12,5 @@ urlpatterns = [
     path(r'deploy/', views.DeployView.as_view(), name='deploy'),
 
     path(r'provisions/', views.ProvisionsView.as_view(), name='provisions'),
+    path(r'provisions/<int:pk>/', views.ProvisionSetView.as_view(), name='provision_set'),
 ]

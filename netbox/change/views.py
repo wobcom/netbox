@@ -170,3 +170,17 @@ class ProvisionsView(PermissionRequiredMixin, ObjectListView):
     queryset = ProvisionSet.objects.all()
     table = tables.ProvisionTable
     template_name = 'change/provision_list.html'
+
+
+class ProvisionSetView(PermissionRequiredMixin, View):
+    permission_required = 'change:view_provisionset'
+
+    def get(self, request, pk):
+        provision_set = get_object_or_404(ProvisionSet, pk=pk)
+
+        changes_table = tables.ProvisioningChangesTable(data=provision_set.changesets.all())
+
+        return render(request, 'change/provision.html', context={
+            'provision_set': provision_set,
+            'changes_table': changes_table,
+        })
