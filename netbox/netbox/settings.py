@@ -245,8 +245,8 @@ LANGUAGE_CODE = 'en-us'
 USE_I18N = True
 USE_TZ = True
 
-# WSGI
-WSGI_APPLICATION = 'netbox.wsgi.application'
+# ASGI
+ASGI_APPLICATION = 'netbox.asgi.application'
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 USE_X_FORWARDED_HOST = True
 
