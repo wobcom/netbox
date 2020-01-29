@@ -13,8 +13,9 @@ urlpatterns = [
 
     path(r'provisions/', views.ProvisionsView.as_view(), name='provisions'),
     path(r'provisions/<int:pk>/', views.ProvisionSetView.as_view(), name='provision_set'),
+    path(r'provisions/<int:pk>/logs/', views.ProvisionSetLogView.as_view(), name='provision_set_logs'),
 ]
 
 websocket_urlpatterns = [
-    path(r'change/provisions/<int:pk>/logs/', consumers.LogfileConsumer),
+    path(r'change/provisions/<int:pk>/logs/ws/', consumers.LogfileConsumer),
 ]
