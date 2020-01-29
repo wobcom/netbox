@@ -25,3 +25,4 @@ python-gitlab
 django-codemirror2
 -e git+ssh://git@gitlab.service.wobcom.de/hellerve/diplomacy.git#egg=diplomacy
 ansible
+channels
