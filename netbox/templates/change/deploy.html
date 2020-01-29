@@ -15,7 +15,7 @@
                 </div>
             </div>
             <h4>Changes List</h4>
-            {% if unaccepted_changes > 0 %}
+            {% if unaccepted_changesets > 0 %}
                 <div class="alert alert-danger" role="alert"><b>Warning:</b> There are changes currently in progress.</div>
             {% endif %}
             {% include 'inc/table.html' with table=undeployed_changesets_table %}
