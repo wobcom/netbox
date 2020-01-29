@@ -188,6 +188,7 @@ INSTALLED_APPS = [
     'utilities',
     'virtualization',
     'drf_yasg',
+    'channels',
 ]
 
 # Only load django-rq if the webhook backend is enabled

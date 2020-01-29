@@ -1,8 +1,8 @@
 from __future__ import unicode_literals
 
-from django.urls import path
+from django.urls import path, re_path
 
-from . import views
+from . import views, consumers
 
 app_name = 'change'
 urlpatterns = [
@@ -13,4 +13,8 @@ urlpatterns = [
 
     path(r'provisions/', views.ProvisionsView.as_view(), name='provisions'),
     path(r'provisions/<int:pk>/', views.ProvisionSetView.as_view(), name='provision_set'),
+]
+
+websocket_urlpatterns = [
+    path(r'change/provisions/<int:pk>/logs/', consumers.LogfileConsumer),
 ]
