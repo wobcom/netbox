@@ -89,7 +89,8 @@ class DeployView(PermissionRequiredMixin, View):
 
         return render(request, 'change/deploy.html', context={
             'undeployed_changesets_table': tables.ProvisioningChangesTable(data=self.undeployed_changesets),
-            'unaccepted_changes': self.undeployed_changesets.exclude(status=ACCEPTED).count(),
+            'undeployed_changesets': self.undeployed_changesets.count(),
+            'unaccepted_changesets': self.undeployed_changesets.exclude(status=ACCEPTED).count(),
             'ACCEPTED': ACCEPTED
         })
 

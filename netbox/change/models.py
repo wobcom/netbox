@@ -37,12 +37,16 @@ class ChangeInformation(models.Model):
         return self.name
 
     def topdesk_change(self):
+        if not configuration.TOPDESK_URL:
+            return
         t = Topdesk(configuration.TOPDESK_URL,
                     verify=configuration.TOPDESK_SSL_VERIFICATION,
                     app_creds=(configuration.TOPDESK_USER, configuration.TOPDESK_TOKEN))
         return t.operator_change(id_=self.topdesk_change_number)
 
     def topdesk_url(self):
+        if not configuration.TOPDESK_URL:
+            return
 
         base_url = "{}/tas/secure/contained/newchange?action=show&unid={}"
 
