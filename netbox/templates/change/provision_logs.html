@@ -15,7 +15,7 @@
     websocket.onmessage = (msg) => {
         var data = JSON.parse(msg.data);
         if (data.scope === 'stdout') {
-            term.write(data.line);
+            term.write(data.line.replace('\n', '\r\n'));
         }
         console.log(data);
     }
