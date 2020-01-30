@@ -113,6 +113,11 @@ class DeployView(PermissionRequiredMixin, View):
             ),
         )
 
+        provision_set.output_log = odin.output_file_name()
+        provision_set.error_log = odin.error_file_name()
+        provision_set.deployment_status = RUNNING
+        provision_set.save()
+
         odin.wait()
 
         if not odin.has_succeeded():
@@ -141,12 +146,6 @@ class DeployView(PermissionRequiredMixin, View):
             provision_set.save()
 
         ansible.register_exit_fn(callback)
-
-        provision_set.output_log = ansible.output_file_name()
-        provision_set.error_log = ansible.error_file_name()
-        provision_set.pid = ansible.process().pid
-        provision_set.status = RUNNING
-        provision_set.save()
 
         self.undeployed_changesets.update(status=IMPLEMENTED)
 
