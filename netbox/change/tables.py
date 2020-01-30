@@ -8,9 +8,9 @@ UPDATED = "{{record.updated | timesince }}"
 
 PROVISION_STATUS = '<span class="label label-{% if record.status == 1 %}info{% elif record.status == 2 %}success{% elif record.status == 3%}danger{% elif record.status == 4 %}warning{% endif %}">{{record.get_status_display}}</span>'
 
-PROVISION_UPDATED = '<span title="{{ record.updated }}">{{ record.updated | timesince }}</span>'
+PROVISION_UPDATED = '<span title="{{ record.updated }}">{{ record.updated | timesince }} ago</span>'
 
-PROVISION_CREATED = '<span title="{{ record.created }}">{{ record.created | timesince }}</span>'
+PROVISION_CREATED = '<span title="{{ record.created }}">{{ record.created | timesince }} ago</span>'
 
 PROVISION_CHANGE_COUNT = '<span>{{ record.changesets.count }}</span>'
 
