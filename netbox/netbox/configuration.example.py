@@ -177,3 +177,4 @@ SHORT_DATETIME_FORMAT = 'Y-m-d H:i'
 
 # Deployment integration
 ODIN_EXECUTABLE = "odin"
+TOPDESK_URL = ""

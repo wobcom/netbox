@@ -10,6 +10,8 @@ from netbox import configuration
 
 
 def topdesk_number_validator(value):
+    if not configuration.TOPDESK_URL:
+        return
     topdesk = Topdesk(configuration.TOPDESK_URL,
                       verify=configuration.TOPDESK_SSL_VERIFICATION,
                       app_creds=(configuration.TOPDESK_USER, configuration.TOPDESK_TOKEN))
