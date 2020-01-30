@@ -31,10 +31,7 @@ class LogfileConsumer(WebsocketConsumer):
         self.send('Welcome')
 
         if self.provision_set.output_log is not None:
-            Thread(target=self.send_file, args=(self.provision_set.output_log, 'stdout')).start()
-
-        if self.provision_set.error_log is not None:
-            Thread(target=self.send_file, args=(self.provision_set.error_log, 'stderr')).start()
+            Thread(target=self.send_file, args=(self.provision_set.output_log,)).start()
 
     def disconnect(self, code):
         self.connected = False
