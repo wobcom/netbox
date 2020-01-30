@@ -28,8 +28,6 @@ class LogfileConsumer(WebsocketConsumer):
 
         self.connected = True
 
-        self.send('Welcome')
-
         if self.provision_set.output_log is not None:
             Thread(target=self.send_file, args=(self.provision_set.output_log,)).start()
 
