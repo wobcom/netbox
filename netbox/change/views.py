@@ -115,7 +115,7 @@ class DeployView(PermissionRequiredMixin, View):
 
         provision_set.output_log = odin.output_file_name()
         provision_set.error_log = odin.error_file_name()
-        provision_set.deployment_status = RUNNING
+        provision_set.status = RUNNING
         provision_set.save()
 
         odin.wait()
@@ -125,7 +125,7 @@ class DeployView(PermissionRequiredMixin, View):
              request,
              "Odin has failed! Error message: {}".format(odin.error())
             )
-            provision_set.deployment_status = FAILED
+            provision_set.status = FAILED
             provision_set.save()
             return redirect('home')
 
