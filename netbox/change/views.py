@@ -111,6 +111,7 @@ class DeployView(PermissionRequiredMixin, View):
             'postgresql://{}:{}@{}/{}'.format(
                 db['USER'], db['PASSWORD'], db['HOST'], db['NAME']
             ),
+            single_file=True
         )
 
         provision_set.output_log = odin.output_file_name()
@@ -133,7 +134,7 @@ class DeployView(PermissionRequiredMixin, View):
             "ansible-playbook", "-K", "-i", "_build/inventory.ini",
             "_build/deploy.yml", "--check", "--diff", # the last two are for testing
             out=odin.output_file_name(),
-            err=odin.error_file_name()
+            single_file=True,
         )
 
         def callback():
