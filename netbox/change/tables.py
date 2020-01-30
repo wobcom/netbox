@@ -6,6 +6,8 @@ from .models import ChangeSet, ProvisionSet
 
 UPDATED = "{{record.updated | timesince }}"
 
+PROVISION_STATUS = '<span class="label label-{% if record.status == 1 %}info{% elif record.status == 2 %}success{% elif record.status == 3%}danger{% elif record.status == 4 %}warning{% endif %}">{{record.get_status_display}}</span>'
+
 PROVISION_UPDATED = '<span title="{{ record.updated }}">{{ record.updated | timesince }}</span>'
 
 PROVISION_CREATED = '<span title="{{ record.created }}">{{ record.created | timesince }}</span>'
@@ -21,7 +23,6 @@ CHANGE_AUTHOR = '{{ record.user.username }}'
 
 class ChangeTable(BaseTable):
     pk = tables.LinkColumn('change:detail', args=[tables.A('pk')])
-    status = tables.Column()
     changedfield_count = tables.Column(verbose_name='Changed Fields')
     changedobject_count = tables.Column(verbose_name='Changed Objects')
     updated = tables.TemplateColumn(template_code=UPDATED, verbose_name='Updated')
@@ -41,6 +42,7 @@ class ProvisionTable(BaseTable):
     pk = tables.LinkColumn('change:provision_set',
                            verbose_name="ID",
                            args=[tables.A('pk')])
+    status = tables.TemplateColumn(template_code=PROVISION_STATUS)
     user = tables.Column(verbose_name='Creator')
     changes = tables.TemplateColumn(template_code=PROVISION_CHANGE_COUNT, orderable=False)
     updated = tables.TemplateColumn(template_code=PROVISION_UPDATED)
@@ -50,6 +52,7 @@ class ProvisionTable(BaseTable):
         model = ProvisionSet
         fields = (
             'pk',
+            'status',
             'user',
             'changes',
             'updated',
