@@ -9,6 +9,16 @@
             </ol>
         </div>
     </div>
+    <div class="pull-right noprint">
+        {% if perms.change.edit_provisionset %}
+            <a href="" class="btn btn-warning">
+                <i class="glyphicon glyphicon-repeat"></i> Retry
+            </a>
+            <a href="" class="btn btn-danger" {% if provision_set.status != 1 %} disabled="" {% endif %}>
+                <i class="glyphicon glyphicon-ban-circle"></i> Abort
+            </a>
+        {% endif %}
+    </div>
     <h1>{% block title %}Provisioning #{{ provision_set.pk }}{% endblock %}</h1>
     <p>
     <small class="text-muted">Created {{ provision_set.created }} &middot; Updated <span title="{{ provision_set.updated }}">{{ provision_set.updated | timesince }}</span> ago</small>
