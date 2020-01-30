@@ -1,29 +1,49 @@
 {% extends '_base.html' %}
 
 {% block header %}
-    <div class="col-sm-12 col-md-12">
-        <ol class="breadcrumb">
-            <li><a href="{% url 'change:provisions' %}">Provisions</a></li>
-            <li>#{{ provision_set.id }}</li>
-        </ol>
+    <div class="row noprint">
+        <div class="col-sm-12 col-md-12">
+            <ol class="breadcrumb">
+                <li><a href="{% url 'change:provisions' %}">Provisions</a></li>
+                <li>#{{ provision_set.id }}</li>
+            </ol>
         </div>
-    <h1>{% block title %}Provisioning{% endblock %}</h1>
+    </div>
+    <h1>{% block title %}Provisioning #{{ provision_set.pk }}{% endblock %}</h1>
     <p>
     <small class="text-muted">Created {{ provision_set.created }} &middot; Updated <span title="{{ provision_set.updated }}">{{ provision_set.updated | timesince }}</span> ago</small>
     </p>
-    <ul class="nav nav-tabs">
-        <li role="presentation"{% if not active_tab %} class="active"{% endif %}>
-            <a href="{% url 'change:provision_set' pk=provision_set.pk %}">Provisioning</a>
-        </li>
-        <li role="presentation"{% if active_tab == 'logs' %} class="active"{% endif %}>
-            <a href="{% url 'change:provision_set_logs' pk=provision_set.pk %}">Logs</a>
-        </li>
-    </ul>
 {% endblock %}
+
 {% block content %}
     <div class="row">
+        <div class="col-md-6">
+            <div id="terminal_output"></div>
+        </div>
         <div class="col-md-6">
             {% include 'panel_table.html' with table=changes_table heading='Containing changes' %}
         </div>
     </div>
+{% endblock %}
+
+{% block javascript %}
+    <script type="application/javascript">
+    document.addEventListener('DOMContentLoaded', () => {
+        var term = new Terminal();
+        var fit_addon = new FitAddon.FitAddon();
+        term.loadAddon(fit_addon);
+        term.open(document.getElementById('terminal_output'));
+        fit_addon.fit();
+
+        websocket = new WebSocket((location.protocol.startsWith('https') ? 'wss' : 'ws') + '://' + location.host + '/change/provisions/{{ provision_set.pk }}/logs/ws/');
+        websocket.onmessage = (msg) => {
+            var data = JSON.parse(msg.data);
+            if (data.scope === 'default') {
+                term.write(data.line.replace('\n', '\r\n'));
+            }
+            console.log(data);
+        }
+    })
+
+    </script>
 {% endblock %}

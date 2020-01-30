@@ -215,15 +215,3 @@ class ProvisionSetView(PermissionRequiredMixin, View):
             'provision_set': provision_set,
             'changes_table': changes_table,
         })
-
-
-class ProvisionSetLogView(PermissionRequiredMixin, View):
-    permission_required = 'change:view_provisionset'
-
-    def get(self, request, pk):
-        provision_set = get_object_or_404(ProvisionSet, pk=pk)
-
-        return render(request, 'change/provision_logs.html', context={
-            'provision_set': provision_set,
-            'active_tab': 'logs',
-        })
