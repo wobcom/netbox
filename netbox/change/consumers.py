@@ -6,7 +6,10 @@ from threading import Thread
 from channels.generic.websocket import WebsocketConsumer
 from channels.exceptions import DenyConnection
 
+from asgiref.sync import async_to_sync
+
 from .models import ProvisionSet
+from.globals import active_provisioning
 
 
 class LogfileConsumer(WebsocketConsumer):
@@ -47,3 +50,16 @@ class LogfileConsumer(WebsocketConsumer):
                 time.sleep(1)
                 continue
             yield line
+
+
+class ProvisionStatusConsumer(WebsocketConsumer):
+
+    def connect(self):
+        self.accept()
+
+        self.send(active_provisioning.locked())
+
+        async_to_sync(self.channel_layer.group_add)("provision_status", self.channel_name)
+
+    def disconnect(self, code):
+        async_to_sync(self.channel_layer.group_discard)("provision_status", self.channel_name)
