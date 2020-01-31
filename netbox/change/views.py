@@ -142,10 +142,11 @@ class DeployView(PermissionRequiredMixin, View):
 
         def callback():
             # TODO: what do we set here?
+            provision_set.pid = None
             if ansible.has_succeeded():
                 provision_set.status = FINISHED
             else:
-                provision_set.deployment_status = FAILED
+                provision_set.status = FAILED
             provision_set.save()
 
         ansible.register_exit_fn(callback)
@@ -153,7 +154,7 @@ class DeployView(PermissionRequiredMixin, View):
         provision_set.output_log = ansible.output_file_name()
         provision_set.error_log = ansible.error_file_name()
         provision_set.pid = ansible.process().pid
-        provision_set.deployment_status = RUNNING
+        provision_set.status = RUNNING
         provision_set.save()
 
         self.undeployed_changesets.update(status=IMPLEMENTED)
@@ -181,7 +182,7 @@ class TerminateView(PermissionRequiredMixin, View):
         except ProcessLookupError:
             return HttpResponse('Provision process was not found!', status=400)
 
-        provision_set.deployment_status = ABORTED
+        provision_set.status = ABORTED
         provision_set.pid = None
         provision_set.save()
 
