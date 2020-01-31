@@ -182,8 +182,8 @@ class ProvisionSet(models.Model):
         null=True,
     )
 
-    output_log = models.CharField(max_length=512, blank=True, null=True)
-    error_log = models.CharField(max_length=512, blank=True, null=True)
+    output_log_file = models.CharField(max_length=512, blank=True, null=True)
+    output_log = models.TextField(blank=True, null=True)
     status = models.SmallIntegerField(
         default=DRAFT,
         choices=[
@@ -193,6 +193,11 @@ class ProvisionSet(models.Model):
             (ABORTED, "Aborted"),
         ]
     )
+
+    def persist_output_log(self):
+        with open(self.output_log_file, 'r') as output_log_file:
+            self.output_log = ''.join(output_log_file.readlines())
+        self.output_log_file = None
 
 
 class ChangedObjectManager(models.Manager):

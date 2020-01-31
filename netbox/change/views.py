@@ -114,8 +114,7 @@ class DeployView(PermissionRequiredMixin, View):
             single_file=True
         )
 
-        provision_set.output_log = odin.output_file_name()
-        provision_set.error_log = odin.error_file_name()
+        provision_set.output_log_file = odin.output_file_name()
         provision_set.status = RUNNING
         provision_set.save()
 
@@ -127,6 +126,7 @@ class DeployView(PermissionRequiredMixin, View):
              "Odin has failed! Error message: {}".format(odin.error())
             )
             provision_set.status = FAILED
+            provision_set.persist_output_log()
             provision_set.save()
             return redirect('home')
 
@@ -143,6 +143,7 @@ class DeployView(PermissionRequiredMixin, View):
                 provision_set.status = FINISHED
             else:
                 provision_set.status = FAILED
+            provision_set.persist_output_log()
             provision_set.save()
 
         ansible.register_exit_fn(callback)
