@@ -1,9 +1,5 @@
-import io
 import pickle
-import yaml
-import graphviz
 from datetime import timedelta
-from collections import defaultdict
 from topdesk import Topdesk
 
 from django.contrib.auth.models import User
