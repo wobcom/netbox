@@ -28,7 +28,12 @@
 {% block content %}
     <div class="row">
         <div class="col-md-6">
-            <div id="terminal_output"></div>
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <strong>Logs</strong>
+                </div>
+                <div id="terminal_output"></div>
+            </div>
         </div>
         <div class="col-md-6">
             {% include 'panel_table.html' with table=changes_table heading='Containing changes' %}
@@ -39,7 +44,9 @@
 {% block javascript %}
     <script type="application/javascript">
     document.addEventListener('DOMContentLoaded', () => {
-        var term = new Terminal();
+        var term = new Terminal({
+            rows: 50,
+        });
         var fit_addon = new FitAddon.FitAddon();
         term.loadAddon(fit_addon);
         term.open(document.getElementById('terminal_output'));
