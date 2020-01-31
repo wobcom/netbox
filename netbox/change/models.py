@@ -14,7 +14,6 @@ from dcim.models import Device, Interface
 from dcim.constants import *
 from virtualization.models import VirtualMachine
 
-from change.utilities import Markdownify
 from dcim.constants import *
 from configuration.models import RouteMap, BGPCommunity, BGPCommunityList
 
