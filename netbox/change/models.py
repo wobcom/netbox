@@ -136,6 +136,8 @@ class ChangeSet(models.Model):
         :param user: user for which the state should be checked, maybe None
         :return: integer value corresponding to *_CHANGE constants
         """
+        if user.is_anonymous:
+            return NO_CHANGE
         try:
             c = ChangeSet.objects.get(active=True, user=user)
             return OWN_CHANGE
