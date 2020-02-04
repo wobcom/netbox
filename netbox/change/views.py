@@ -158,14 +158,19 @@ class DeployView(PermissionRequiredMixin, View):
 
         def callback():
             # TODO: what do we set here?
-            globals.active_provisioning.release()
             send_provision_status(provision_set, status=False)
             globals.provisioning_pid = None
+            globals.active_provisioning.release()
             if ansible.has_succeeded():
                 provision_set.status = FINISHED
                 self.undeployed_changesets.update(status=IMPLEMENTED)
             else:
-                provision_set.status = FAILED
+                # find out whether it was aborted
+                ret = ansible.process().returncode
+                if ret < 0 and signal.SIGABRT == abs(ret):
+                    provision_set.status = ABORTED
+                else:
+                    provision_set.status = FAILED
             provision_set.persist_output_log()
             provision_set.save()
 
@@ -196,11 +201,6 @@ class TerminateView(PermissionRequiredMixin, View):
             os.kill(globals.provisioning_pid, signal.SIGABRT)
         except ProcessLookupError:
             return HttpResponse('Provision process was not found!', status=400)
-
-        globals.provisioning_pid = None
-        provision_set.status = ABORTED
-        provision_set.persist_output_log()
-        provision_set.save()
 
         # TODO: where should we redirect?
         return redirect('change:provision_set', pk=provision_set.pk)

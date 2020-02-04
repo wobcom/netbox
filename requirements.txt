@@ -27,3 +27,4 @@ django-codemirror2
 ansible
 channels
 -e git+https://gitlab.com/wobcompublic/topdesk/#egg=topdesk
+channels_redis
