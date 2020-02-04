@@ -507,3 +507,12 @@ PER_PAGE_DEFAULTS = [
 if PAGINATE_COUNT not in PER_PAGE_DEFAULTS:
     PER_PAGE_DEFAULTS.append(PAGINATE_COUNT)
     PER_PAGE_DEFAULTS = sorted(PER_PAGE_DEFAULTS)
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [(configuration.REDIS['HOST'], configuration.REDIS['PORT'])],
+        },
+    },
+}

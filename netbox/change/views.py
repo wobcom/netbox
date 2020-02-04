@@ -1,11 +1,15 @@
 import os
 import signal
+import json
 
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.http import HttpResponse
+from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import View
 from django.views.generic.edit import CreateView
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 from diplomacy import Diplomat
 
 from netbox import configuration
@@ -14,6 +18,18 @@ from .forms import ChangeInformationForm
 from .models import (ChangeInformation, ChangeSet, ProvisionSet, ACCEPTED,
     IMPLEMENTED, RUNNING, FINISHED, FAILED, ABORTED)
 from . import tables, globals
+
+
+def send_provision_status(provision_set, status):
+    """
+    Sends provision status to channels group 'provision_status'.
+    :param provision_set:
+    :param status: True if started, False if stopped
+    """
+    async_to_sync(get_channel_layer().group_send)('provision_status', {
+        'type': 'provision_status_message',
+        'text': json.dumps({'provision_set_pk': provision_set.pk, 'provision_status': str(int(status))})
+    })
 
 
 class ChangeFormView(PermissionRequiredMixin, CreateView):
@@ -93,9 +109,18 @@ class DeployView(PermissionRequiredMixin, View):
         })
 
     def post(self, request):
+        acquired = globals.active_provisioning.acquire(blocking=False)
+        if not acquired:
+            messages.error(
+                request,
+                'Provisioning can not be started, another provisioning is already running.'
+            )
+            return redirect('change:deploy')
 
         provision_set = ProvisionSet(user=request.user)
         provision_set.save()
+
+        send_provision_status(provision_set, status=True)
 
         self.undeployed_changesets.update(provision_set=provision_set)
 
@@ -134,6 +159,7 @@ class DeployView(PermissionRequiredMixin, View):
         def callback():
             # TODO: what do we set here?
             globals.active_provisioning.release()
+            send_provision_status(provision_set, status=False)
             globals.provisioning_pid = None
             if ansible.has_succeeded():
                 provision_set.status = FINISHED

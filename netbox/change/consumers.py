@@ -8,8 +8,8 @@ from channels.exceptions import DenyConnection
 
 from asgiref.sync import async_to_sync
 
-from .models import ProvisionSet
-from.globals import active_provisioning
+from .models import ProvisionSet, RUNNING
+from . import globals
 
 
 class LogfileConsumer(WebsocketConsumer):
@@ -59,9 +59,22 @@ class ProvisionStatusConsumer(WebsocketConsumer):
     def connect(self):
         self.accept()
 
-        self.send(active_provisioning.locked())
+        init_message = {
+            'provision_set_pk': None,
+            'provision_status': str(int(globals.active_provisioning.locked())),
+        }
+
+        try:
+            init_message['provision_set_pk'] = ProvisionSet.objects.filter(status=RUNNING).order_by('created').last().pk
+        except ProvisionSet.DoesNotExist:
+            pass
+
+        self.send(json.dumps(init_message))
 
         async_to_sync(self.channel_layer.group_add)("provision_status", self.channel_name)
 
     def disconnect(self, code):
         async_to_sync(self.channel_layer.group_discard)("provision_status", self.channel_name)
+
+    def provision_status_message(self, event):
+        self.send(event['text'])

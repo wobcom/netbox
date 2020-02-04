@@ -530,10 +530,13 @@
                         </div>
                         </form>
                     </li>
-                    {% if request.foreign_changes %}
-                        <li style="background: #f0ad4e;" class="dropdown">
-                            <a href="#" style="color: white;" class="dropdown-toggle" data-toggle="dropdown"><i class="glyphicon glyphicon-warning-sign"></i></a>
-                            <ul class="dropdown-menu">
+                    <li style="background: #f0ad4e;" class="dropdown" id="alert-dropdown">
+                        <a href="#" style="color: white;" class="dropdown-toggle" data-toggle="dropdown"><i class="glyphicon glyphicon-warning-sign"></i></a>
+                        <ul class="dropdown-menu">
+                            <li id="provision-alert">
+                                <a><i class="glyphicon glyphicon-cog" style="animation: spin 2s linear infinite"></i> Deployment in progress.</a>
+                            </li>
+                            {% if request.foreign_changes %}
                                 <li>
                                     <a><b>These people are currently<br>making a change:</b></a>
                                 </li>
@@ -542,9 +545,9 @@
                                         <a>{{ changeset.user.username }}</a>
                                     </li>
                                 {% endfor %}
-                            </ul>
-                        </li>
-                    {% endif %}
+                            {% endif %}
+                        </ul>
+                    </li>
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown" title="{{ request.user }}" role="button" aria-haspopup="true" aria-expanded="false">
                             <i class="fa fa-user"></i>
@@ -582,3 +585,37 @@
         </div>
     </div>
 </nav>
+
+<script type="application/javascript">
+    document.addEventListener('DOMContentLoaded', () => {
+        var websocket = new WebSocket((location.protocol.startsWith('https') ? 'wss' : 'ws') + '://' + location.host + '/change/provisions/status/');
+        websocket.onmessage = (msg) => {
+            let data = JSON.parse(msg.data);
+            console.log(data);
+            if (data.provision_status === "1") {
+                $('#alert-dropdown').show();
+                $('#provision-alert').show();
+                $('#provision-alert a').attr('href', '{% url 'change:provisions' %}' + data.provision_set_pk + '/');
+            } else if (data.provision_status === "0") {
+                $('#provision-alert').hide();
+                if ({% if request.foreign_changes %}false{% else %}true{% endif %}) {
+                    $('#alert-dropdown').hide();
+                }
+            }
+        };
+    })
+
+</script>
+
+<style type="text/css">
+    #alert-dropdown {
+        {% if not request.foreign_changes %} display: none;{% endif %}
+    }
+    #provision-alert {
+        display: none;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
