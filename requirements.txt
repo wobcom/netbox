@@ -23,4 +23,5 @@ pycryptodome==3.8.2
 xmltodict==0.11.0
 python-gitlab
 django-codemirror2
-diplomacy
+-e git+ssh://git@gitlab.service.wobcom.de/hellerve/diplomacy.git#egg=diplomacy
+ansible

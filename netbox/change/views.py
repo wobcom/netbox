@@ -1,3 +1,6 @@
+import os
+import signal
+
 from django.contrib import messages
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.http import HttpResponse
@@ -11,7 +14,7 @@ from netbox import configuration
 from dcim.models import Device
 from .forms import ChangeInformationForm
 from .models import (ChangeInformation, ChangeSet, ProvisionSet, ACCEPTED,
-    IMPLEMENTED, RUNNING, FINISHED, FAILED)
+    IMPLEMENTED, RUNNING, FINISHED, FAILED, ABORTED)
 
 
 class ChangeFormView(PermissionRequiredMixin, CreateView):
@@ -81,9 +84,6 @@ class EndChangeView(PermissionRequiredMixin, View):
         return redirect('home')
 
 
-JOBS = []
-
-
 class DeployView(PermissionRequiredMixin, View):
     """
     This view is for displaying provisioning details
@@ -142,21 +142,51 @@ class DeployView(PermissionRequiredMixin, View):
 
         def callback():
             # TODO: what do we set here?
+            provision_set.pid = None
             if ansible.has_succeeded():
                 provision_set.status = FINISHED
             else:
-                provision_set.deployment_status = FAILED
+                provision_set.status = FAILED
             provision_set.save()
 
         ansible.register_exit_fn(callback)
 
         provision_set.output_log = ansible.output_file_name()
         provision_set.error_log = ansible.error_file_name()
-        provision_set.deployment_status = RUNNING
+        provision_set.pid = ansible.process().pid
+        provision_set.status = RUNNING
         provision_set.save()
 
         self.undeployed_changesets.update(status=IMPLEMENTED)
 
+        return redirect('home')
+
+
+class TerminateView(PermissionRequiredMixin, View):
+    """
+    This view is for terminating Ansible deployments preemptively.
+    """
+    permission_required = 'change.deploy_changeset'
+
+    def get(self, request, pk=None):
+        """
+        This view terminates the provision set.
+        """
+        provision_set = get_object_or_404(ProvisionSet, pk=pk)
+
+        if not provision_set.pid:
+            return HttpResponse('Provision was not started!', status=409)
+
+        try:
+            os.kill(provision_set.pid, signal.SIGABRT)
+        except ProcessLookupError:
+            return HttpResponse('Provision process was not found!', status=400)
+
+        provision_set.status = ABORTED
+        provision_set.pid = None
+        provision_set.save()
+
+        # TODO: where should we redirect?
         return redirect('home')
 
 
