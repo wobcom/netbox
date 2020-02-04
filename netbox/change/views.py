@@ -1,22 +1,20 @@
 import os
 import signal
 
-from django.contrib import messages
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.utils.safestring import mark_safe
 from django.views.generic import View
 from django.views.generic.edit import CreateView
 from diplomacy import Diplomat
 
 from netbox import configuration
-from dcim.models import Device
 from utilities.views import ObjectListView
 from .forms import ChangeInformationForm
 from .models import (ChangeInformation, ChangeSet, ProvisionSet, ACCEPTED,
     IMPLEMENTED, RUNNING, FINISHED, FAILED, ABORTED)
-from . import tables
+from . import tables, globals
+
 
 class ChangeFormView(PermissionRequiredMixin, CreateView):
     """
@@ -99,9 +97,7 @@ class DeployView(PermissionRequiredMixin, View):
         provision_set = ProvisionSet(user=request.user)
         provision_set.save()
 
-        for change_set in self.undeployed_changesets:
-            change_set.provision_set = provision_set
-            change_set.save()
+        self.undeployed_changesets.update(provision_set=provision_set)
 
         db = configuration.DATABASE
         # postgresql is a given in the context of netbox
@@ -121,14 +117,10 @@ class DeployView(PermissionRequiredMixin, View):
         odin.wait()
 
         if not odin.has_succeeded():
-            messages.warning(
-             request,
-             "Odin has failed! Error message: {}".format(odin.error())
-            )
             provision_set.status = FAILED
             provision_set.persist_output_log()
             provision_set.save()
-            return redirect('home')
+            return redirect('change:provision_set', pk=provision_set.pk)
 
         ansible = Diplomat(
             "ansible-playbook", "-K", "-i", "_build/inventory.ini",
@@ -137,11 +129,15 @@ class DeployView(PermissionRequiredMixin, View):
             single_file=True,
         )
 
+        globals.provisioning_pid = ansible._process.pid
+
         def callback():
             # TODO: what do we set here?
-            provision_set.pid = None
+            globals.active_provisioning.release()
+            globals.provisioning_pid = None
             if ansible.has_succeeded():
                 provision_set.status = FINISHED
+                self.undeployed_changesets.update(status=IMPLEMENTED)
             else:
                 provision_set.status = FAILED
             provision_set.persist_output_log()
@@ -149,9 +145,7 @@ class DeployView(PermissionRequiredMixin, View):
 
         ansible.register_exit_fn(callback)
 
-        self.undeployed_changesets.update(status=IMPLEMENTED)
-
-        return redirect('home')
+        return redirect('change:provision_set', pk=provision_set.pk)
 
 
 class TerminateView(PermissionRequiredMixin, View):
@@ -166,20 +160,24 @@ class TerminateView(PermissionRequiredMixin, View):
         """
         provision_set = get_object_or_404(ProvisionSet, pk=pk)
 
-        if not provision_set.pid:
+        if provision_set.status != RUNNING:
+            return HttpResponse('Not running Provisioning can not be terminated!', status=409)
+
+        if not globals.provisioning_pid:
             return HttpResponse('Provision was not started!', status=409)
 
         try:
-            os.kill(provision_set.pid, signal.SIGABRT)
+            os.kill(globals.provisioning_pid, signal.SIGABRT)
         except ProcessLookupError:
             return HttpResponse('Provision process was not found!', status=400)
 
+        globals.provisioning_pid = None
         provision_set.status = ABORTED
-        provision_set.pid = None
+        provision_set.persist_output_log()
         provision_set.save()
 
         # TODO: where should we redirect?
-        return redirect('home')
+        return redirect('change:provision_set', pk=provision_set.pk)
 
 
 class DetailView(PermissionRequiredMixin, View):

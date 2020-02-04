@@ -11,15 +11,21 @@
     </div>
     <div class="pull-right noprint">
         {% if perms.change.edit_provisionset %}
-            <a href="" class="btn btn-warning">
-                <i class="glyphicon glyphicon-repeat"></i> Retry
-            </a>
-            <a href="" class="btn btn-danger" {% if provision_set.status != 1 %} disabled="" {% endif %}>
-                <i class="glyphicon glyphicon-ban-circle"></i> Abort
+            <a href="{% url 'change:terminate_provision_set' pk=provision_set.pk %}">
+                <button class="btn btn-danger"{% if provision_set.status != 1 %} disabled="" title="Not running processes cannot be terminated!"{% endif %}>
+                    <i class="glyphicon glyphicon-ban-circle"></i> Terminate
+                </button>
             </a>
         {% endif %}
     </div>
-    <h1>{% block title %}Provisioning #{{ provision_set.pk }}{% endblock %}</h1>
+    <h1>
+        {% block title %}Provisioning #{{ provision_set.pk }}{% endblock %}
+        <small>
+            <span class="label label-{% if provision_set.status == 1 %}info{% elif provision_set.status == 2 %}success{% elif provision_set.status == 3%}danger{% elif provision_set.status == 4 %}warning{% endif %}">
+                {{provision_set.get_status_display}}
+            </span>
+        </small>
+    </h1>
     <p>
     <small class="text-muted">Created {{ provision_set.created }} &middot; Updated <span title="{{ provision_set.updated }}">{{ provision_set.updated | timesince }}</span> ago</small>
     </p>
@@ -51,7 +57,7 @@
         term.loadAddon(fit_addon);
         term.open(document.getElementById('terminal_output'));
         fit_addon.fit();
-        {% if not provision_set.output_log %}
+        {% if provision_set.output_log %}
         term.write(`{{ provision_set.output_log }}`.replace(/\n/g, '\r\n'));
         {% else %}
         var websocket = new WebSocket((location.protocol.startsWith('https') ? 'wss' : 'ws') + '://' + location.host + '/change/provisions/{{ provision_set.pk }}/logs/ws/');
