@@ -11,11 +11,9 @@
     </div>
     <div class="pull-right noprint">
         {% if perms.change.edit_provisionset %}
-            <a href="{% url 'change:terminate_provision_set' pk=provision_set.pk %}">
-                <button class="btn btn-danger"{% if provision_set.status != 1 %} disabled="" title="Not running processes cannot be terminated!"{% endif %}>
-                    <i class="glyphicon glyphicon-ban-circle"></i> Terminate
-                </button>
-            </a>
+            <button class="btn btn-danger"{% if provision_set.status != 1 %} disabled="" title="Not running processes cannot be terminated!"{% endif %} data-toggle="modal" data-target="#termination-modal">
+                <i class="glyphicon glyphicon-ban-circle"></i> Terminate
+            </button>
         {% endif %}
     </div>
     <h1>
@@ -29,6 +27,25 @@
     <p>
     <small class="text-muted">Created {{ provision_set.created }} &middot; Updated <span title="{{ provision_set.updated }}">{{ provision_set.updated | timesince }}</span> ago</small>
     </p>
+
+    {# Modal dialog for termination #}
+    <div class="modal fade" tabindex="-1" role="dialog" aria-labelledby="termination-modal-label" id="termination-modal">
+        <div class="modal-dialog modal-sm" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="termination-modal-label">Modal title</h4>
+                </div>
+                <div class="modal-body">
+                    Do you really want to terminate this provisioning?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    <a href="{% url 'change:terminate_provision_set' pk=provision_set.pk %}" type="button" class="btn btn-danger">Terminate</a>
+                </div>
+            </div>
+        </div>
+    </div>
 {% endblock %}
 
 {% block content %}
