@@ -158,9 +158,9 @@ class DeployView(PermissionRequiredMixin, View):
 
         def callback():
             # TODO: what do we set here?
-            send_provision_status(provision_set, status=False)
             globals.provisioning_pid = None
             globals.active_provisioning.release()
+            send_provision_status(provision_set, status=False)
             if ansible.has_succeeded():
                 provision_set.status = FINISHED
                 self.undeployed_changesets.update(status=IMPLEMENTED)
