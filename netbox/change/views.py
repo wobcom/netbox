@@ -223,7 +223,7 @@ class DetailView(PermissionRequiredMixin, View):
 # Provisions
 class ProvisionsView(PermissionRequiredMixin, ObjectListView):
     permission_required = 'change:view_provisionset'
-    queryset = ProvisionSet.objects.all()
+    queryset = ProvisionSet.objects.order_by('-created')
     table = tables.ProvisionTable
     template_name = 'change/provision_list.html'
 
