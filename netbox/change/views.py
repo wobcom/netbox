@@ -32,6 +32,11 @@ def send_provision_status(provision_set, status):
     })
 
 
+def prepare_provisioning_stage(stage_configuration, provision_set):
+
+    return [[e.format(provision_set=provision_set) for e in job] for job in stage_configuration]
+
+
 def run_provisioning_stage(stage_configuration, finished_callback=lambda status: status):
     """
     runs a given provisioning stage
@@ -186,7 +191,9 @@ class DeployView(PermissionRequiredMixin, View):
             provision_set.persist_output_log()
             provision_set.save()
 
-        log_file_path = run_provisioning_stage(configuration.PROVISIONING_STAGE_1, provisioning_finished)
+        log_file_path = run_provisioning_stage(
+            prepare_provisioning_stage(configuration.PROVISIONING_STAGE_1, provision_set),
+            provisioning_finished)
         provision_set.output_log_file = log_file_path
         provision_set.save()
 
