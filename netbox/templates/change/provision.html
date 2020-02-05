@@ -19,7 +19,7 @@
     <h1>
         {% block title %}Provisioning #{{ provision_set.pk }}{% endblock %}
         <small>
-            <span class="label label-{% if provision_set.status == 1 %}info{% elif provision_set.status == 2 %}success{% elif provision_set.status == 3%}danger{% elif provision_set.status == 4 %}warning{% endif %}">
+            <span class="label label-{% if provision_set.status == RUNNING %}info{% elif provision_set.status == FINISHED %}success{% elif provision_set.status == FAILED %}danger{% elif provision_set.status == ABORTED %}warning{% endif %}">
                 {{provision_set.get_status_display}}
             </span>
         </small>

@@ -239,4 +239,8 @@ class ProvisionSetView(PermissionRequiredMixin, View):
         return render(request, 'change/provision.html', context={
             'provision_set': provision_set,
             'changes_table': changes_table,
+            'RUNNING': RUNNING,
+            'FINISHED': FINISHED,
+            'FAILED': FAILED,
+            'ABORTED': ABORTED,
         })
