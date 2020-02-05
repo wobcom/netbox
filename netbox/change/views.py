@@ -32,6 +32,58 @@ def send_provision_status(provision_set, status):
     })
 
 
+def run_provisioning_stage(stage_configuration, finished_callback=lambda status: status):
+    """
+    runs a given provisioning stage
+
+    the finished callback must be a function with an status argument, status is set to one out of:
+        FINISHED, ABORTED, FAILED
+
+    :param stage_configuration: tuple of tuples with the command specification
+    :param finished_callback: callback function an end of the run func(status)
+    :return: temp log file path
+    """
+    def callback(job):
+        globals.provisioning_pid = None
+        globals.active_provisioning.release()
+        if job.has_succeeded():
+            finished_callback(status=FINISHED)
+        else:
+            # find out whether it was aborted
+            ret = job.process().returncode
+            if ret < 0 and signal.SIGABRT == abs(ret):
+                finished_callback(status=ABORTED)
+            else:
+                finished_callback(status=FAILED)
+
+    def job_exit_callback_creator(jobs):
+        if len(jobs) == 0:
+            return callback
+
+        def job_exit_callback(job):
+            if not job.has_succeeded():
+                callback(job)
+                return
+            new_job = Diplomat(
+                *jobs[0],
+                out=job.output_file_name(),
+                single_file=True,
+            )
+            globals.provisioning_pid = new_job.process().pid
+            new_job.register_exit_fn(job_exit_callback_creator(jobs[1:]))
+
+        return job_exit_callback
+
+    if len(stage_configuration) == 0:
+        raise ValueError('Empty stage configuration')
+
+    initial_job = Diplomat(*stage_configuration[0], single_file=True)
+    globals.provisioning_pid = initial_job.process().pid
+    initial_job.register_exit_fn(job_exit_callback_creator(stage_configuration[1:]))
+
+    return initial_job.output_file_name()
+
+
 class ChangeFormView(PermissionRequiredMixin, CreateView):
     """
     This view is for displaying the change form and
@@ -124,57 +176,19 @@ class DeployView(PermissionRequiredMixin, View):
 
         self.undeployed_changesets.update(provision_set=provision_set)
 
-        db = configuration.DATABASE
-        # postgresql is a given in the context of netbox
-        # TODO: is there a better way to obtain a connection string?
-        odin = Diplomat(
-            configuration.ODIN_EXECUTABLE,
-            'postgresql://{}:{}@{}/{}'.format(
-                db['USER'], db['PASSWORD'], db['HOST'], db['NAME']
-            ),
-            single_file=True
-        )
-
-        provision_set.output_log_file = odin.output_file_name()
-        provision_set.status = RUNNING
-        provision_set.save()
-
-        odin.wait()
-
-        if not odin.has_succeeded():
-            provision_set.status = FAILED
-            provision_set.persist_output_log()
-            provision_set.save()
-            return redirect('change:provision_set', pk=provision_set.pk)
-
-        ansible = Diplomat(
-            "ansible-playbook", "-K", "-i", "_build/inventory.ini",
-            "_build/deploy.yml", "--check", "--diff", # the last two are for testing
-            out=odin.output_file_name(),
-            single_file=True,
-        )
-
-        globals.provisioning_pid = ansible._process.pid
-
-        def callback():
-            # TODO: what do we set here?
-            globals.provisioning_pid = None
-            globals.active_provisioning.release()
+        def provisioning_finished(status):
+            provision_set.status = status
             send_provision_status(provision_set, status=False)
-            if ansible.has_succeeded():
-                provision_set.status = FINISHED
+
+            if status == FINISHED:
                 self.undeployed_changesets.update(status=IMPLEMENTED)
-            else:
-                # find out whether it was aborted
-                ret = ansible.process().returncode
-                if ret < 0 and signal.SIGABRT == abs(ret):
-                    provision_set.status = ABORTED
-                else:
-                    provision_set.status = FAILED
+
             provision_set.persist_output_log()
             provision_set.save()
 
-        ansible.register_exit_fn(callback)
+        log_file_path = run_provisioning_stage(configuration.PROVISIONING_STAGE_1, provisioning_finished)
+        provision_set.output_log_file = log_file_path
+        provision_set.save()
 
         return redirect('change:provision_set', pk=provision_set.pk)
 
