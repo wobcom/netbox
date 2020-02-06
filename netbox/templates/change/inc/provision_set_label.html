@@ -1,0 +1,3 @@
+<span class="label label-{% if provision_set.status == provision_set.RUNNING %}info{% elif provision_set.status == provision_set.FINISHED %}success{% elif provision_set.status == provision_set.FAILED %}danger{% elif provision_set.status == provision_set.ABORTED %}warning{% elif provision_set.status == provision_set.REVIEWING %}primary{% endif %}">
+    {{provision_set.get_status_display}}
+</span>

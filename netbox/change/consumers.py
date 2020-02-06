@@ -8,7 +8,7 @@ from channels.exceptions import DenyConnection
 
 from asgiref.sync import async_to_sync
 
-from .models import ProvisionSet, RUNNING
+from .models import ProvisionSet
 from . import globals
 
 
@@ -65,7 +65,7 @@ class ProvisionStatusConsumer(WebsocketConsumer):
         }
 
         try:
-            init_message['provision_set_pk'] = ProvisionSet.objects.filter(status=RUNNING).order_by('created').last().pk
+            init_message['provision_set_pk'] = ProvisionSet.objects.filter(status=ProvisionSet.RUNNING).order_by('created').last().pk
         except ProvisionSet.DoesNotExist:
             pass
 

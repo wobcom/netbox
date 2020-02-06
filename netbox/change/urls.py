@@ -13,7 +13,8 @@ urlpatterns = [
 
     path(r'provisions/', views.ProvisionsView.as_view(), name='provisions'),
     path(r'provisions/<int:pk>/', views.ProvisionSetView.as_view(), name='provision_set'),
-    path(r'provisions/<int:pk>/terminate', views.TerminateView.as_view(), name='terminate_provision_set')
+    path(r'provisions/<int:pk>/terminate', views.TerminateView.as_view(), name='terminate_provision_set'),
+    path(r'provisions/<int:pk>/second_stage/', views.SecondStageView.as_view(), name='second_stage'),
 ]
 
 websocket_urlpatterns = [

@@ -1,14 +1,12 @@
 import django_tables2 as tables
 
 from utilities.tables import BaseTable
-from .models import ChangeSet, ProvisionSet, FINISHED, RUNNING, FAILED, ABORTED
+from .models import ChangeSet, ProvisionSet
 
 
 UPDATED = "{{record.updated | timesince }}"
 
-PROVISION_STATUS = '<span class="label label-{{% if record.status == {} %}}info{{% elif record.status == {} %}}success{{% elif record.status == {}%}}danger{{% elif record.status == {} %}}warning{{% endif %}}">{{{{ record.get_status_display }}}}</span>'.format(
-    RUNNING, FINISHED, FAILED, ABORTED
-)
+PROVISION_STATUS = "{% include 'change/inc/provision_set_label.html' with provision_set=record %}"
 
 PROVISION_UPDATED = '<span title="{{ record.updated }}">{{ record.updated | timesince }} ago</span>'
 

@@ -14,6 +14,6 @@ def perm_available(user, perm):
     if change_state != OWN_CHANGE \
             and configuration.NEED_CHANGE_FOR_WRITE \
             and not perm.split('.')[-1].startswith('view')\
-            and perm != 'change.add_changeset':
+            and not perm.split('.')[0] == 'change':
         return False
     return True

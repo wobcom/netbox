@@ -1,5 +1,5 @@
 import pickle
-from datetime import timedelta
+from datetime import timedelta, datetime
 from topdesk import Topdesk
 
 from django.contrib.auth.models import User
@@ -54,20 +54,15 @@ class ChangeSetManager(models.Manager):
             .select_related('change_information', 'user')
 
 
-# These are the states that a change set can be in
-DRAFT = 1
-IN_REVIEW = 2
-ACCEPTED = 3
-IMPLEMENTED = 4
-REJECTED = 5
-FAILED = 6
-
-
 class ChangeSet(models.Model):
     """
-    A change set always refers to a ticket, has a set of changes, and can be
-    serialized to YAML.
+    A change set always refers to a ticket.
     """
+    DRAFT = 1
+    IN_REVIEW = 2
+    ACCEPTED = 3
+    IMPLEMENTED = 4
+
     objects = ChangeSetManager()
     active = models.BooleanField(default=False)
     change_information = models.ForeignKey(
@@ -108,8 +103,6 @@ class ChangeSet(models.Model):
             (IN_REVIEW, 'Under Review'),
             (ACCEPTED, 'Accepted'),
             (IMPLEMENTED, 'Implemented'),
-            (REJECTED, 'Rejected'),
-            (FAILED, 'Failed'),
         )
     )
 
@@ -160,13 +153,14 @@ class ChangeSet(models.Model):
         return '#{}: {}'.format(self.id, self.change_information.name if self.change_information else '')
 
 
-RUNNING = 1
-FINISHED = 2
-FAILED = 3
-ABORTED = 4
-
-
 class ProvisionSet(models.Model):
+
+    RUNNING = 1
+    FINISHED = 2
+    FAILED = 3
+    ABORTED = 4
+    REVIEWING = 5
+
     created = models.DateTimeField(
         auto_now_add=True,
         editable=False,
@@ -187,19 +181,41 @@ class ProvisionSet(models.Model):
     output_log_file = models.CharField(max_length=512, blank=True, null=True)
     output_log = models.TextField(blank=True, null=True)
     status = models.SmallIntegerField(
-        default=DRAFT,
+        default=RUNNING,
         choices=[
             (RUNNING, "Running"),
             (FINISHED, "Finished"),
             (FAILED, "Failed"),
             (ABORTED, "Aborted"),
+            (REVIEWING, "Reviewing"),
         ]
     )
 
-    def persist_output_log(self):
+    def __init__(self, *args, **kwargs):
+        super(ProvisionSet, self).__init__(*args, **kwargs)
+        if self.active_exists() and not self.pk:
+            raise AlreadyExistsError('An unfinished provision already exists.')
+
+    def persist_output_log(self, append=False):
         with open(self.output_log_file, 'r') as output_log_file:
-            self.output_log = ''.join(output_log_file.readlines())
+            if append:
+                self.output_log += '\n'
+                self.output_log += ''.join(output_log_file.readlines())
+            else:
+                self.output_log = ''.join(output_log_file.readlines())
         self.output_log_file = None
+
+    @property
+    def timeout(self):
+        return self.updated + timedelta(seconds=configuration.PROVISIONING_TIMEOUT)
+
+    @property
+    def timed_out(self):
+        return timezone.now() > self.timeout
+
+    @classmethod
+    def active_exists(cls):
+        return cls.objects.filter(status__in=(cls.RUNNING, cls.REVIEWING)).exists()
 
 
 class ChangedObjectManager(models.Manager):
@@ -298,3 +314,7 @@ class ChangedObject(models.Model):
         return "{} #{} was {}.".format(self.changed_object_type,
                                        self.changed_object_id,
                                        'deleted' if self.deleted else 'added')
+
+
+class AlreadyExistsError(Exception):
+    pass
