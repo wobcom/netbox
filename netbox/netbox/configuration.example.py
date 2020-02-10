@@ -176,5 +176,10 @@ DATETIME_FORMAT = 'N j, Y g:i a'
 SHORT_DATETIME_FORMAT = 'Y-m-d H:i'
 
 # Deployment integration
-ODIN_EXECUTABLE = "odin"
 TOPDESK_URL = ""
+PROVISIONING_STAGE_1 = (
+)
+PROVISIONING_STAGE_2= (
+    ("ansible-playbook", "-K", "-i", "_build/inventory.ini", "_build/deploy.yml", "--check", "--diff"),
+)
+PROVISIONING_TIMEOUT = 10

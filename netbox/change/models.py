@@ -155,6 +155,7 @@ class ChangeSet(models.Model):
 
 class ProvisionSet(models.Model):
 
+    NOT_STARTED = 0
     RUNNING = 1
     FINISHED = 2
     FAILED = 3
@@ -181,8 +182,9 @@ class ProvisionSet(models.Model):
     output_log_file = models.CharField(max_length=512, blank=True, null=True)
     output_log = models.TextField(blank=True, null=True)
     status = models.SmallIntegerField(
-        default=RUNNING,
+        default=NOT_STARTED,
         choices=[
+            (NOT_STARTED, "Not Started"),
             (RUNNING, "Running"),
             (FINISHED, "Finished"),
             (FAILED, "Failed"),
@@ -194,6 +196,7 @@ class ProvisionSet(models.Model):
     def __init__(self, *args, **kwargs):
         super(ProvisionSet, self).__init__(*args, **kwargs)
         if self.active_exists() and not self.pk:
+            print(self.active_exists())
             raise AlreadyExistsError('An unfinished provision already exists.')
 
     def persist_output_log(self, append=False):

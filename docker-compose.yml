@@ -12,20 +12,9 @@ services:
       - "5432:5432"
     expose:
       - "5432"
-  app:
-    environment:
-      DATABASE_URL: postgres://netbox:netbox@db/netbox
-      DJANGO_MANAGEPY_MIGRATE: 'on'
-      DJANGO_MANAGEPY_COLLECTSTATIC: 'on'
-    build:
-      context: .
-      dockerfile: ./Dockerfile
-    links:
-      - db:db
-    volumes:
-      - netbox-sync:/code:nocopy
+  redis:
+    image: redis:latest
     ports:
-      - "8000:8000"
-volumes:
-  netbox-sync:
-    external: true
+      - "6379:6379"
+    expose:
+      - "6379"

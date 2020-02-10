@@ -202,6 +202,7 @@ class DeployView(PermissionRequiredMixin, View):
             prepare_provisioning_stage(configuration.PROVISIONING_STAGE_1, provision_set),
             provisioning_finished)
         provision_set.output_log_file = log_file_path
+        provision_set.status = ProvisionSet.RUNNING
         provision_set.save()
 
         return redirect('change:provision_set', pk=provision_set.pk)
