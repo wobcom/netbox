@@ -516,3 +516,12 @@ CHANNEL_LAYERS = {
         },
     },
 }
+
+if not configuration.PROVISIONING_STAGE_1:
+    configuration.PROVISIONING_STAGE_1 = ()
+
+if not configuration.PROVISIONING_STAGE_2:
+    configuration.PROVISIONING_STAGE_2 = ()
+
+if not configuration.PROVISIONING_TIMEOUT:
+    configuration.PROVISIONING_TIMEOUT = None

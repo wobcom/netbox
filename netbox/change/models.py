@@ -210,10 +210,14 @@ class ProvisionSet(models.Model):
 
     @property
     def timeout(self):
+        if configuration.PROVISIONING_TIMEOUT is None:
+            return None
         return self.updated + timedelta(seconds=configuration.PROVISIONING_TIMEOUT)
 
     @property
     def timed_out(self):
+        if self.timed_out is None:
+            return False
         return timezone.now() > self.timeout
 
     @classmethod
