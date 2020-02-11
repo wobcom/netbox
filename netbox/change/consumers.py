@@ -30,10 +30,10 @@ class LogfileConsumer(WebsocketConsumer):
 
         self.connected = True
 
+        self.send(json.dumps({'scope': 'default', 'line': self.provision_set.output_log}))
+
         if self.provision_set.output_log_file is not None:
             Thread(target=self.send_file, args=(self.provision_set.output_log_file,)).start()
-        else:
-            self.send(json.dumps({'scope': 'default', 'line': self.provision_set.output_log}))
 
     def disconnect(self, code):
         self.connected = False

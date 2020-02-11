@@ -138,7 +138,7 @@
         term.loadAddon(fit_addon);
         term.open(document.getElementById('terminal_output'));
         fit_addon.fit();
-        {% if provision_set.output_log %}
+        {% if provision_set.status != provision_set.RUNNING %}
         term.write(`{{ provision_set.output_log }}`.replace(/\n/g, '\r\n'));
         {% else %}
         var websocket = new WebSocket((location.protocol.startsWith('https') ? 'wss' : 'ws') + '://' + location.host + '/change/provisions/{{ provision_set.pk }}/logs/ws/');
