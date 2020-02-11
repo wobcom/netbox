@@ -529,6 +529,6 @@ if not configuration.PROVISIONING_TIMEOUT:
 if not configuration.PID_FILE:
     configuration.PID_FILE = os.path.join(BASE_DIR, 'provisioning.pid')
 
-if not os.path.isdir(os.path.dirname(configuration.PID_FILE)):
+if not os.path.isdir(os.path.dirname(os.path.realpath(configuration.PID_FILE))):
     print('Path of PID_FILE does not exist! {}'.format(os.path.realpath(configuration.PID_FILE)))
     exit(1)

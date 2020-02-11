@@ -18,14 +18,30 @@ def topdesk_number_validator(value):
     try:
         topdesk.operator_change(id_=quote(value))
     except HttpException:
-        raise ValidationError("%(value)s is not an existing Topdesk ticket number.",
-                              params={'value': value})
+        raise ValidationError({
+            'topdesk_change_number': "{} is not an existing Topdesk ticket number.".format(value)
+        })
 
 
 class ChangeInformationForm(BootstrapMixin, forms.ModelForm):
-    topdesk_change_number = forms.CharField(validators=(topdesk_number_validator,))
+    topdesk_change_number = forms.CharField(
+        label='TOPdesk Change',
+        help_text='Follows the scheme CHXXXX-XXXX',
+        required=False
+    )
 
     class Meta:
         model = ChangeInformation
         fields = '__all__'
 
+    def clean(self):
+        topdesk_number = self.cleaned_data.get("topdesk_change_number")
+        is_emergency = self.cleaned_data.get("is_emergency")
+
+        if not is_emergency:
+            topdesk_number_validator(topdesk_number)
+
+        if is_emergency and topdesk_number:
+            raise ValidationError({
+                'topdesk_change_number': "Cannot set TOPdesk change number on emergency change"
+            })

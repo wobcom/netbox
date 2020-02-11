@@ -26,13 +26,14 @@ FOREIGN_CHANGE = 2
 class ChangeInformation(models.Model):
     """Meta information about a change."""
     name = models.CharField(max_length=256, verbose_name="Change Title")
-    topdesk_change_number = models.CharField(max_length=50, null=True)
+    topdesk_change_number = models.CharField(max_length=50, null=True, blank=True)
+    is_emergency = models.BooleanField(default=False)
 
     def executive_summary(self, no_markdown=True):
         return self.name
 
     def topdesk_change(self):
-        if not configuration.TOPDESK_URL:
+        if not configuration.TOPDESK_URL or self.is_emergency:
             return
         t = Topdesk(configuration.TOPDESK_URL,
                     verify=configuration.TOPDESK_SSL_VERIFICATION,
@@ -40,7 +41,7 @@ class ChangeInformation(models.Model):
         return t.operator_change(id_=self.topdesk_change_number)
 
     def topdesk_url(self):
-        if not configuration.TOPDESK_URL:
+        if not configuration.TOPDESK_URL or self.is_emergency:
             return
 
         base_url = "{}/tas/secure/contained/newchange?action=show&unid={}"
@@ -83,15 +84,6 @@ class ChangeSet(models.Model):
         to=User,
         on_delete=models.SET_NULL,
         related_name='changesets',
-        blank=True,
-        null=True
-    )
-    provision_log = JSONField(
-        blank=True,
-        null=True
-    )
-    mr_location = models.CharField(
-        max_length=256,
         blank=True,
         null=True
     )
