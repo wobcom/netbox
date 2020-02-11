@@ -179,7 +179,9 @@ SHORT_DATETIME_FORMAT = 'Y-m-d H:i'
 TOPDESK_URL = ""
 PROVISIONING_STAGE_1 = (
 )
-PROVISIONING_STAGE_2= (
+PROVISIONING_STAGE_2 = (
     ("ansible-playbook", "-K", "-i", "_build/inventory.ini", "_build/deploy.yml", "--check", "--diff"),
 )
 PROVISIONING_TIMEOUT = 10
+
+PID_FILE = 'foo.pid'

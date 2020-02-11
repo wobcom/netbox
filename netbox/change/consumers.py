@@ -9,7 +9,6 @@ from channels.exceptions import DenyConnection
 from asgiref.sync import async_to_sync
 
 from .models import ProvisionSet
-from . import globals
 
 
 class LogfileConsumer(WebsocketConsumer):
@@ -59,17 +58,21 @@ class ProvisionStatusConsumer(WebsocketConsumer):
     def connect(self):
         self.accept()
 
-        init_message = {
-            'provision_set_pk': None,
-            'provision_status': str(int(globals.active_provisioning.locked())),
+        message = {
+            'provisioning_set_pk': None,
+            'provision_status': '0'
         }
 
-        try:
-            init_message['provision_set_pk'] = ProvisionSet.objects.filter(status=ProvisionSet.RUNNING).order_by('created').last().pk
-        except ProvisionSet.DoesNotExist:
-            pass
+        running_provision_set = ProvisionSet.objects.filter(status__in=(ProvisionSet.RUNNING,
+                                                                        ProvisionSet.REVIEWING))
 
-        self.send(json.dumps(init_message))
+        if running_provision_set.exists():
+            message = {
+                'provisioning_set_pk': running_provision_set.first().pk,
+                'provision_status': '1',
+            }
+
+        self.send(json.dumps(message))
 
         async_to_sync(self.channel_layer.group_add)("provision_status", self.channel_name)
 

@@ -216,7 +216,7 @@ class ProvisionSet(models.Model):
 
     @property
     def timed_out(self):
-        if self.timed_out is None:
+        if self.timeout is None:
             return False
         return timezone.now() > self.timeout
 
@@ -321,6 +321,22 @@ class ChangedObject(models.Model):
         return "{} #{} was {}.".format(self.changed_object_type,
                                        self.changed_object_id,
                                        'deleted' if self.deleted else 'added')
+
+
+class PID:
+
+    @classmethod
+    def set(cls, pid):
+        with open(configuration.PID_FILE, 'w') as file:
+            file.write(str(pid))
+
+    @classmethod
+    def get(cls):
+        try:
+            with open(configuration.PID_FILE, 'r') as file:
+                return int(file.read())
+        except FileNotFoundError:
+            return None
 
 
 class AlreadyExistsError(Exception):

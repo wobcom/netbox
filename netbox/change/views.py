@@ -10,6 +10,7 @@ from django.views.generic import View
 from django.views.generic.edit import CreateView
 from django.views.decorators.cache import never_cache
 from django.utils import timezone
+from django.db import IntegrityError
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from diplomacy import Diplomat
@@ -17,8 +18,8 @@ from diplomacy import Diplomat
 from netbox import configuration
 from utilities.views import ObjectListView
 from .forms import ChangeInformationForm
-from .models import ChangeInformation, ChangeSet, AlreadyExistsError, ProvisionSet
-from . import tables, globals
+from .models import ChangeInformation, ChangeSet, AlreadyExistsError, ProvisionSet, PID
+from . import tables
 
 
 def send_provision_status(provision_set, status):
@@ -50,8 +51,7 @@ def run_provisioning_stage(stage_configuration, finished_callback=lambda status:
     :return: temp log file path
     """
     def callback(job):
-        globals.provisioning_pid = None
-        globals.active_provisioning.release()
+        PID.set(None)
         if job.has_succeeded():
             finished_callback(status=ProvisionSet.FINISHED)
         else:
@@ -75,7 +75,7 @@ def run_provisioning_stage(stage_configuration, finished_callback=lambda status:
                 out=job.output_file_name(),
                 single_file=True,
             )
-            globals.provisioning_pid = new_job.process().pid
+            PID.set(new_job.process().pid)
             new_job.register_exit_fn(job_exit_callback_creator(jobs[1:]))
 
         return job_exit_callback
@@ -84,7 +84,7 @@ def run_provisioning_stage(stage_configuration, finished_callback=lambda status:
         raise ValueError('Empty stage configuration')
 
     initial_job = Diplomat(*stage_configuration[0], single_file=True)
-    globals.provisioning_pid = initial_job.process().pid
+    PID.set(initial_job.process().pid)
     initial_job.register_exit_fn(job_exit_callback_creator(stage_configuration[1:]))
 
     return initial_job.output_file_name()
@@ -170,9 +170,6 @@ class DeployView(PermissionRequiredMixin, View):
     def post(self, request):
         try:
             provision_set = ProvisionSet(user=request.user)
-            acquired = globals.active_provisioning.acquire(blocking=False)
-            if not acquired:
-                raise AlreadyExistsError('Another provisioning is already running')
         except AlreadyExistsError:
             messages.error(
                 request,
@@ -212,13 +209,6 @@ class SecondStageView(PermissionRequiredMixin, View):
     permission_required = 'change.change_provisionset'
 
     def post(self, request, pk=None):
-        acquired = globals.active_provisioning.acquire(blocking=False)
-        if not acquired:
-            messages.error(
-                request,
-                'Provisioning can not be started, another provisioning is already running.'
-            )
-            return redirect('change:deploy')
 
         provision_set = ProvisionSet.objects.get(pk=pk)
 
@@ -265,11 +255,13 @@ class TerminateView(PermissionRequiredMixin, View):
             provision_set.save()
             return redirect('change:provision_set', pk=provision_set.pk)
 
-        if not globals.provisioning_pid:
+        pid = PID.get()
+
+        if not pid:
             return HttpResponse('Provision was not started!', status=409)
 
         try:
-            os.kill(globals.provisioning_pid, signal.SIGABRT)
+            os.kill(pid, signal.SIGABRT)
         except ProcessLookupError:
             return HttpResponse('Provision process was not found!', status=400)
 
