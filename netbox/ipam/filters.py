@@ -7,10 +7,14 @@ from netaddr.core import AddrFormatError
 from dcim.models import Site, Device, Interface
 from extras.filters import CustomFieldFilterSet
 from tenancy.filtersets import TenancyFilterSet
+from tenancy.models import Tenant
 from utilities.filters import NameSlugSearchFilterSet, NumericInFilter, TagFilter
 from virtualization.models import VirtualMachine
 from .constants import IPADDRESS_ROLE_CHOICES, IPADDRESS_STATUS_CHOICES, PREFIX_STATUS_CHOICES, VLAN_STATUS_CHOICES
-from .models import Aggregate, IPAddress, Prefix, RIR, Role, Service, VLAN, VLANGroup, VRF
+from .models import (
+    Aggregate, IPAddress, Prefix, RIR, Role, Service, OverlayNetwork, VLAN, OverlayNetworkGroup,
+    VLANGroup, VRF
+)
 
 
 class VRFFilter(TenancyFilterSet, CustomFieldFilterSet):
@@ -360,11 +364,28 @@ class IPAddressFilter(TenancyFilterSet, CustomFieldFilterSet):
 
     def filter_device(self, queryset, name, value):
         try:
-            device = Device.objects.select_related('device_type').get(**{name: value})
+            device = Device.objects.prefetch_related('device_type').get(**{name: value})
             vc_interface_ids = [i['id'] for i in device.vc_interfaces.values('id')]
             return queryset.filter(interface_id__in=vc_interface_ids)
         except Device.DoesNotExist:
             return queryset.none()
+
+
+class OverlayNetworkGroupFilter(django_filters.FilterSet):
+    site_id = django_filters.ModelMultipleChoiceFilter(
+        queryset=Site.objects.all(),
+        label='Site (ID)',
+    )
+    site = django_filters.ModelMultipleChoiceFilter(
+        field_name='site__slug',
+        queryset=Site.objects.all(),
+        to_field_name='slug',
+        label='Site (slug)',
+    )
+
+    class Meta:
+        model = OverlayNetworkGroup
+        fields = ['name', 'slug']
 
 
 class VLANGroupFilter(NameSlugSearchFilterSet):
@@ -382,6 +403,72 @@ class VLANGroupFilter(NameSlugSearchFilterSet):
     class Meta:
         model = VLANGroup
         fields = ['id', 'name', 'slug']
+
+
+class OverlayNetworkFilter(CustomFieldFilterSet, django_filters.FilterSet):
+    id__in = NumericInFilter(
+        field_name='id',
+        lookup_expr='in'
+    )
+    q = django_filters.CharFilter(
+        method='search',
+        label='Search',
+    )
+    site_id = django_filters.ModelMultipleChoiceFilter(
+        queryset=Site.objects.all(),
+        label='Site (ID)',
+    )
+    site = django_filters.ModelMultipleChoiceFilter(
+        field_name='site__slug',
+        queryset=Site.objects.all(),
+        to_field_name='slug',
+        label='Site (slug)',
+    )
+    group_id = django_filters.ModelMultipleChoiceFilter(
+        queryset=OverlayNetworkGroup.objects.all(),
+        label='Group (ID)',
+    )
+    group = django_filters.ModelMultipleChoiceFilter(
+        field_name='group__slug',
+        queryset=OverlayNetworkGroup.objects.all(),
+        to_field_name='slug',
+        label='Group',
+    )
+    tenant_id = django_filters.ModelMultipleChoiceFilter(
+        queryset=Tenant.objects.all(),
+        label='Tenant (ID)',
+    )
+    tenant = django_filters.ModelMultipleChoiceFilter(
+        field_name='tenant__slug',
+        queryset=Tenant.objects.all(),
+        to_field_name='slug',
+        label='Tenant (slug)',
+    )
+    role_id = django_filters.ModelMultipleChoiceFilter(
+        queryset=Role.objects.all(),
+        label='Role (ID)',
+    )
+    role = django_filters.ModelMultipleChoiceFilter(
+        field_name='role__slug',
+        queryset=Role.objects.all(),
+        to_field_name='slug',
+        label='Role (slug)',
+    )
+    tag = TagFilter()
+
+    class Meta:
+        model = OverlayNetwork
+        fields = ['vxlan_prefix', 'name']
+
+    def search(self, queryset, name, value):
+        if not value.strip():
+            return queryset
+        qs_filter = Q(name__icontains=value) | Q(description__icontains=value)
+        try:
+            qs_filter |= Q(vxlan_prefix=int(value.strip()))
+        except ValueError:
+            pass
+        return queryset.filter(qs_filter)
 
 
 class VLANFilter(TenancyFilterSet, CustomFieldFilterSet):

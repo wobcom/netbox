@@ -1,0 +1,22 @@
+{% load render_table from django_tables2 %}
+
+<div class="panel panel-default">
+    {% if heading %}
+        <div class="panel-heading">
+            <strong>Versions</strong>
+        </div>
+    {% endif %}
+    {% if table.rows %}
+        {% render_table table 'inc/table.html' %}
+    {% else %}
+        <div class="panel-body text-muted">None</div>
+    {% endif %}
+    <div class="panel-footer">
+        {% if permissions.delete %}
+            <a href="{% url 'dcim:platform_version_bulk_delete' %}" class="btn btn-xs btn-danger"><span class="glyphicon glyphicon-trash" aria-hidden="true"></span> Delete Selected</a>
+            <div class="pull-right">
+                <a href="{% url 'dcim:platform_version_add' %}?return_url={% url 'dcim:platform' slug=platform.slug %}&platform={{ platform.pk }}" class="btn btn-xs btn-primary"><i class="glyphicon glyphicon-plus"></i> Add platform version</a>
+            </div>
+        {% endif %}
+    </div>
+</div>

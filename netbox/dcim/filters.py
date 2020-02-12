@@ -1,9 +1,8 @@
 import django_filters
 from django.contrib.auth.models import User
-from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
 
-from extras.filters import CustomFieldFilterSet
+from extras.filters import CustomFieldFilterSet, LocalConfigContextFilter
 from tenancy.filtersets import TenancyFilterSet
 from tenancy.models import Tenant
 from utilities.constants import COLOR_CHOICES
@@ -16,8 +15,8 @@ from .constants import *
 from .models import (
     Cable, ConsolePort, ConsolePortTemplate, ConsoleServerPort, ConsoleServerPortTemplate, Device, DeviceBay,
     DeviceBayTemplate, DeviceRole, DeviceType, FrontPort, FrontPortTemplate, Interface, InterfaceTemplate,
-    InventoryItem, Manufacturer, Platform, PowerFeed, PowerOutlet, PowerOutletTemplate, PowerPanel, PowerPort,
-    PowerPortTemplate, Rack, RackGroup, RackReservation, RackRole, RearPort, RearPortTemplate, Region, Site,
+    InventoryItem, Manufacturer, Platform, PlatformVersion, PowerFeed, PowerOutlet, PowerOutletTemplate, PowerPanel,
+    PowerPort, PowerPortTemplate, Rack, RackGroup, RackReservation, RackRole, RearPort, RearPortTemplate, Region, Site,
     VirtualChassis,
 )
 
@@ -160,12 +159,15 @@ class RackFilter(TenancyFilterSet, CustomFieldFilterSet):
         to_field_name='slug',
         label='Role (slug)',
     )
+    serial = django_filters.CharFilter(
+        lookup_expr='iexact'
+    )
     tag = TagFilter()
 
     class Meta:
         model = Rack
         fields = [
-            'id', 'name', 'facility_id', 'serial', 'asset_tag', 'type', 'width', 'u_height', 'desc_units',
+            'id', 'name', 'facility_id', 'asset_tag', 'type', 'width', 'u_height', 'desc_units',
             'outer_width', 'outer_depth', 'outer_unit',
         ]
 
@@ -421,7 +423,25 @@ class PlatformFilter(NameSlugSearchFilterSet):
         fields = ['id', 'name', 'slug', 'napalm_driver']
 
 
-class DeviceFilter(TenancyFilterSet, CustomFieldFilterSet):
+class PlatformVersionFilter(NameSlugSearchFilterSet):
+    platform_id = django_filters.ModelMultipleChoiceFilter(
+        field_name='platform',
+        queryset=Platform.objects.all(),
+        label='Platform (ID)',
+    )
+    platform = django_filters.ModelMultipleChoiceFilter(
+        field_name='platform__slug',
+        queryset=Platform.objects.all(),
+        to_field_name='slug',
+        label='Platform (slug)',
+    )
+
+    class Meta:
+        model = PlatformVersion
+        fields = ['id', 'name']
+
+
+class DeviceFilter(LocalConfigContextFilter, TenancyFilterSet, CustomFieldFilterSet):
     id__in = NumericInFilter(
         field_name='id',
         lookup_expr='in'
@@ -465,6 +485,10 @@ class DeviceFilter(TenancyFilterSet, CustomFieldFilterSet):
         queryset=Platform.objects.all(),
         to_field_name='slug',
         label='Platform (slug)',
+    )
+    platform_version_id = django_filters.ModelMultipleChoiceFilter(
+        queryset=PlatformVersion.objects.all(),
+        label='Platform Version (ID)',
     )
     region_id = TreeNodeMultipleChoiceFilter(
         queryset=Region.objects.all(),
@@ -519,6 +543,9 @@ class DeviceFilter(TenancyFilterSet, CustomFieldFilterSet):
         field_name='interfaces__mac_address',
         label='MAC address',
     )
+    serial = django_filters.CharFilter(
+        lookup_expr='iexact'
+    )
     has_primary_ip = django_filters.BooleanFilter(
         method='_has_primary_ip',
         label='Has a primary IP',
@@ -560,7 +587,7 @@ class DeviceFilter(TenancyFilterSet, CustomFieldFilterSet):
 
     class Meta:
         model = Device
-        fields = ['id', 'name', 'serial', 'asset_tag', 'face', 'position', 'vc_position', 'vc_priority']
+        fields = ['id', 'name', 'asset_tag', 'face', 'position', 'vc_position', 'vc_priority']
 
     def search(self, queryset, name, value):
         if not value.strip():
@@ -742,6 +769,16 @@ class InterfaceFilter(django_filters.FilterSet):
             Q(description__icontains=value)
         ).distinct()
 
+    def search(self, queryset, name, value):
+        if not value.strip():
+            return queryset
+        qs_filter = (
+            Q(name__icontains=value) |
+            Q(device__name__icontains=value) |
+            Q(description__icontains=value)
+        )
+        return queryset.filter(qs_filter)
+
     def filter_device(self, queryset, name, value):
         try:
             device = Device.objects.get(**{name: value})
@@ -847,10 +884,13 @@ class InventoryItemFilter(DeviceComponentFilterSet):
         to_field_name='slug',
         label='Manufacturer (slug)',
     )
+    serial = django_filters.CharFilter(
+        lookup_expr='iexact'
+    )
 
     class Meta:
         model = InventoryItem
-        fields = ['id', 'name', 'part_id', 'serial', 'asset_tag', 'discovered']
+        fields = ['id', 'name', 'part_id', 'asset_tag', 'discovered']
 
     def search(self, queryset, name, value):
         if not value.strip():
@@ -922,13 +962,28 @@ class CableFilter(django_filters.FilterSet):
     color = django_filters.MultipleChoiceFilter(
         choices=COLOR_CHOICES
     )
-    device = django_filters.CharFilter(
-        method='filter_connected_device',
-        field_name='name'
+    device_id = MultiValueNumberFilter(
+        method='filter_device'
     )
-    device_id = django_filters.CharFilter(
-        method='filter_connected_device',
-        field_name='pk'
+    device = MultiValueNumberFilter(
+        method='filter_device',
+        field_name='device__name'
+    )
+    rack_id = MultiValueNumberFilter(
+        method='filter_device',
+        field_name='device__rack_id'
+    )
+    rack = MultiValueNumberFilter(
+        method='filter_device',
+        field_name='device__rack__name'
+    )
+    site_id = MultiValueNumberFilter(
+        method='filter_device',
+        field_name='device__site_id'
+    )
+    site = MultiValueNumberFilter(
+        method='filter_device',
+        field_name='device__site__slug'
     )
 
     class Meta:
@@ -940,15 +995,12 @@ class CableFilter(django_filters.FilterSet):
             return queryset
         return queryset.filter(label__icontains=value)
 
-    def filter_connected_device(self, queryset, name, value):
-        if not value.strip():
-            return queryset
-        try:
-            device = Device.objects.get(**{name: value})
-        except ObjectDoesNotExist:
-            return queryset.none()
-        cable_pks = device.get_cables(pk_list=True)
-        return queryset.filter(pk__in=cable_pks)
+    def filter_device(self, queryset, name, value):
+        queryset = queryset.filter(
+            Q(**{'_termination_a_{}__in'.format(name): value}) |
+            Q(**{'_termination_b_{}__in'.format(name): value})
+        )
+        return queryset
 
 
 class ConsoleConnectionFilter(django_filters.FilterSet):

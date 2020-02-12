@@ -1,0 +1,58 @@
+{% extends '_base.html' %}
+
+{% block content %}
+    <div class="row">
+        <div class="col-md-6 col-md-offset-3">
+            <div class="row">
+                <h3>Deploy Changes</h3>
+                <div class="pull-right">
+                    {% if undeployed_changesets %}
+                        <form method="post" action="{% url 'change:deploy' %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger">Deploy Changes</button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+            <h4>Changes List</h4>
+            {% if unaccepted_changes > 0 %}
+                <div class="alert alert-danger" role="alert"><b>Warning:</b> There are changes currently in progress.</div>
+            {% endif %}
+            <table class="table table-striped">
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Status</th>
+                    <th>Title</th>
+                    <th>Author</th>
+                    <th>Last Update</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for changeset in undeployed_changesets %}
+                    <tr class="{% if changeset.status != ACCEPTED %}danger{% endif %}">
+                        <td>
+                            {{ changeset.id }}
+                        </td>
+                        <td>
+                            {{ changeset.get_status_display }}
+                        </td>
+                        <td>
+                            {{ changeset.change_information.name| default:"*Anonymous*" }}
+                        </td>
+                        <td>
+                            {{ changeset.user.username }}
+                        </td>
+                        <td>
+                            {{ changeset.updated | timesince }}
+                        </td>
+                    </tr>
+                {% endfor %}
+                {% if not undeployed_changesets %}
+                    <tr><td colspan="100" style="text-align: center">No undeployed change found.</td></tr>
+                {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

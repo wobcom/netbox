@@ -1,13 +1,14 @@
 import django_tables2 as tables
 from django_tables2.utils import Accessor
+from django.utils.safestring import mark_safe
 
 from tenancy.tables import COL_TENANT
 from utilities.tables import BaseTable, BooleanColumn, ColorColumn, ToggleColumn
 from .models import (
-    Cable, ConsolePort, ConsolePortTemplate, ConsoleServerPort, ConsoleServerPortTemplate, Device, DeviceBay,
+    Cable, ConsolePort, ConsolePortTemplate, ConsoleServerPort, ConsoleServerPortTemplate, Device, DeviceLicense, DeviceBay,
     DeviceBayTemplate, DeviceRole, DeviceType, FrontPort, FrontPortTemplate, Interface, InterfaceTemplate,
-    InventoryItem, Manufacturer, Platform, PowerFeed, PowerOutlet, PowerOutletTemplate, PowerPanel, PowerPort,
-    PowerPortTemplate, Rack, RackGroup, RackReservation, RackRole, RearPort, RearPortTemplate, Region, Site,
+    InventoryItem, Manufacturer, Platform, PlatformVersion, PowerFeed, PowerOutlet, PowerOutletTemplate, PowerPanel,
+    PowerPort, PowerPortTemplate, Rack, RackGroup, RackReservation, RackRole, RearPort, RearPortTemplate, Region, Site,
     VirtualChassis,
 )
 
@@ -74,7 +75,8 @@ RACKROLE_ACTIONS = """
 
 RACK_ROLE = """
 {% if record.role %}
-    <label class="label" style="background-color: #{{ record.role.color }}">{{ value }}</label>
+    {% load helpers %}
+    <label class="label" style="color: {{ record.role.color|fgcolor }}; background-color: #{{ record.role.color }}">{{ value }}</label>
 {% else %}
     &mdash;
 {% endif %}
@@ -119,6 +121,10 @@ DEVICEROLE_VM_COUNT = """
 <a href="{% url 'virtualization:virtualmachine_list' %}?role={{ record.slug }}">{{ value }}</a>
 """
 
+PLATFORM_LINK = """
+<a href="{% url 'dcim:platform' slug=record.slug %}">{{ value }}</a>
+"""
+
 PLATFORM_DEVICE_COUNT = """
 <a href="{% url 'dcim:device_list' %}?platform={{ record.slug }}">{{ value }}</a>
 """
@@ -133,6 +139,23 @@ PLATFORM_ACTIONS = """
 </a>
 {% if perms.dcim.change_platform %}
     <a href="{% url 'dcim:platform_edit' slug=record.slug %}?return_url={{ request.path }}" class="btn btn-xs btn-warning"><i class="glyphicon glyphicon-pencil" aria-hidden="true"></i></a>
+{% endif %}
+{% if perms.dcim.change_platform and perms.dcim.add_platformversion %}
+    <a href="{% url 'dcim:platform_version_add' %}?platform={{ record.pk }}" class="btn btn-xs btn-primary"><i class="glyphicon glyphicon-plus" aria-hidden="true"></i></a>
+{% endif %}
+"""
+
+PLATFORM_VERSION_DEVICE_COUNT = """
+<a href="{% url 'dcim:device_list' %}?platform_version_id={{ record.id }}">{{ value }}</a>
+"""
+
+PLATFORM_VERSION_VM_COUNT = """
+<a href="{% url 'virtualization:virtualmachine_list' %}?platform_version_id={{ record.id }}">{{ value }}</a>
+"""
+
+PLATFORM_VERSION_ACTIONS = """
+{% if perms.dcim.delete_platformversion %}
+    <a href="{% url 'dcim:platform_version_delete' pk=record.pk %}?return_url={% url 'dcim:platform' slug=record.platform.slug %}" class="btn btn-xs btn-danger" title="Delete Version"><i class="glyphicon glyphicon-trash" aria-hidden="true"></i></a>
 {% endif %}
 """
 
@@ -511,6 +534,9 @@ class DeviceRoleTable(BaseTable):
 
 class PlatformTable(BaseTable):
     pk = ToggleColumn()
+    name = tables.TemplateColumn(
+        template_code=PLATFORM_LINK
+    )
     device_count = tables.TemplateColumn(
         template_code=PLATFORM_DEVICE_COUNT,
         accessor=Accessor('devices.count'),
@@ -523,6 +549,11 @@ class PlatformTable(BaseTable):
         orderable=False,
         verbose_name='VMs'
     )
+    versions = tables.ManyToManyColumn(
+        verbose_name="Versions",
+        transform=lambda pv: pv.name,
+        separator=mark_safe('<br>')
+    )
     actions = tables.TemplateColumn(
         template_code=PLATFORM_ACTIONS,
         attrs={'td': {'class': 'text-right noprint'}},
@@ -531,7 +562,35 @@ class PlatformTable(BaseTable):
 
     class Meta(BaseTable.Meta):
         model = Platform
-        fields = ('pk', 'name', 'manufacturer', 'device_count', 'vm_count', 'slug', 'napalm_driver', 'actions')
+        fields = ('pk', 'name', 'manufacturer', 'versions', 'device_count', 'vm_count', 'slug', 'napalm_driver', 'vagrant_box', 'actions')
+
+
+class PlatformVersionTable(BaseTable):
+    pk = ToggleColumn()
+
+    device_count = tables.TemplateColumn(
+        template_code=PLATFORM_VERSION_DEVICE_COUNT,
+        accessor=Accessor('devices.count'),
+        orderable=False,
+        verbose_name='Devices',
+    )
+
+    vm_count = tables.TemplateColumn(
+        template_code=PLATFORM_VERSION_VM_COUNT,
+        accessor=Accessor('virtual_machines.count'),
+        orderable=False,
+        verbose_name='VMs'
+    )
+
+    actions = tables.TemplateColumn(
+        template_code=PLATFORM_VERSION_ACTIONS,
+        attrs={'td': {'class': 'text-right noprint'}},
+        verbose_name=''
+    )
+
+    class Meta(BaseTable.Meta):
+        model = PlatformVersion
+        fields = ('pk', 'name', 'device_count', 'vm_count', 'actions')
 
 
 #
@@ -585,6 +644,14 @@ class DeviceImportTable(BaseTable):
         empty_text = False
 
 
+class DeviceLicenseTable(BaseTable):
+    pk = ToggleColumn()
+
+    class Meta(BaseTable.Meta):
+        model = DeviceLicense
+        fields = ('pk', 'device', 'license')
+
+
 #
 # Device components
 #
@@ -622,6 +689,19 @@ class InterfaceTable(BaseTable):
     class Meta(BaseTable.Meta):
         model = Interface
         fields = ('name', 'type', 'lag', 'enabled', 'mgmt_only', 'description')
+
+
+class InterfacePKTable(BaseTable):
+    pk = ToggleColumn()
+    name = tables.LinkColumn()
+    device = tables.LinkColumn(
+        viewname='dcim:device',
+        args=[Accessor('device.pk')]
+    )
+
+    class Meta(BaseTable.Meta):
+        model = Interface
+        fields = ('pk', 'name', 'device', 'form_factor', 'lag', 'enabled', 'mgmt_only', 'description', 'mode')
 
 
 class FrontPortTable(BaseTable):
@@ -729,6 +809,7 @@ class PowerConnectionTable(BaseTable):
         viewname='dcim:device',
         accessor=Accessor('connected_endpoint.device'),
         args=[Accessor('connected_endpoint.device.pk')],
+        order_by='_connected_poweroutlet__device',
         verbose_name='PDU'
     )
     outlet = tables.Column(

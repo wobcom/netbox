@@ -1,0 +1,24 @@
+{% extends '_base.html' %}
+
+{% block title %}{{ overlay_network_group }} - Overlay Networks{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-sm-12 col-md-12">
+        <ol class="breadcrumb">
+            <li><a href="{% url 'ipam:overlay_networkgroup_list' %}">Overlay Network Groups</a></li>
+            {% if overlay_network_group.site %}
+                <li><a href="{% url 'dcim:site' slug=overlay_network_group.site.slug %}">{{ overlay_network_group.site }}</a></li>
+            {% endif %}
+            <li>{{ overlay_network_group }}</li>
+        </ol>
+    </div>
+</div>
+    {% include 'ipam/inc/overlay_networkgroup_header.html' %}
+    <div class="row">
+        <div class="col-md-12">
+            {% include 'utilities/obj_table.html' with table=overlay_network_table table_template='panel_table.html' heading='Overlay Networks' bulk_edit_url='ipam:overlay_network_bulk_edit' bulk_delete_url='ipam:overlay_network_bulk_delete' %}
+        </div>
+    </div>
+{% endblock %}
+

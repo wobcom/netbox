@@ -48,7 +48,8 @@ class TenantForm(BootstrapMixin, CustomFieldForm):
     class Meta:
         model = Tenant
         fields = [
-            'name', 'slug', 'group', 'description', 'comments', 'tags',
+            'name', 'slug', 'group', 'description', 'comments',
+            'tags',
         ]
         widgets = {
             'group': APISelect(
@@ -148,7 +149,7 @@ class TenancyForm(ChainedFieldsMixin, forms.Form):
 
         # Initialize helper selector
         instance = kwargs.get('instance')
-        if instance and instance.tenant is not None:
+        if instance and instance.tenant_id is not None:
             initial = kwargs.get('initial', {}).copy()
             initial['tenant_group'] = instance.tenant.group
             kwargs['initial'] = initial

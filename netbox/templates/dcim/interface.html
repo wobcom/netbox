@@ -82,6 +82,10 @@
                         {% endif %}
                     </td>
                 </tr>
+                  <tr>
+                      <td>CLAG ID</td>
+                      <td><span>{{ interface.clag_id|placeholder }}</span></td>
+                  </tr>
                 <tr>
                     <td>Description</td>
                     <td>{{ interface.description|placeholder }} </td>
@@ -98,8 +102,19 @@
                     <td>802.1Q Mode</td>
                     <td>{{ interface.get_mode_display }}</td>
                 </tr>
+                <tr>
+                    <td>Overlay Network</td>
+                    <td>
+                        {% if interface.overlay_network %}
+                            <a href="{{ interface.overlay_network.get_absolute_url }}">{{ interface.overlay_network }}</a>
+                        {% else %}
+                            <span class="text-muted">None</span>
+                        {% endif %}
+                    </td>
+                </tr>
             </table>
         </div>
+        {% include 'inc/custom_fields_panel.html' with obj=interface %}
         {% include 'extras/inc/tags_panel.html' with tags=interface.tags.all %}
     </div>
 	<div class="col-md-6">

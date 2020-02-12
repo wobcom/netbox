@@ -1,3 +1,87 @@
+v2.6.6 (FUTURE)
+
+## Enhancements
+
+* [#3259](https://github.com/netbox-community/netbox/issues/3259) - Add `rack` and `site` filters for cables
+
+---
+
+v2.6.5 (2019-09-25)
+
+## Enhancements
+
+* [#3297](https://github.com/netbox-community/netbox/issues/3297) - Include reserved units when calculating rack utilization
+* [#3347](https://github.com/netbox-community/netbox/issues/3347) - Extend upgrade script to automatically remove stale content types
+* [#3352](https://github.com/netbox-community/netbox/issues/3352) - Enable filtering changelog API by `changed_object_id`
+* [#3515](https://github.com/netbox-community/netbox/issues/3515) - Enable export templates for inventory items
+* [#3524](https://github.com/netbox-community/netbox/issues/3524) - Enable bulk editing of power outlet/power port associations
+* [#3529](https://github.com/netbox-community/netbox/issues/3529) - Enable filtering circuits list by region
+
+## Bug Fixes
+
+* [#3435](https://github.com/netbox-community/netbox/issues/3435) - Change IP/prefix CSV export to reference VRF name instead of RD
+* [#3464](https://github.com/netbox-community/netbox/issues/3464) - Fix foreground text color on color picker fields
+* [#3519](https://github.com/netbox-community/netbox/issues/3519) - Prevent cables from being terminated to virtual/wireless interfaces via API
+* [#3521](https://github.com/netbox-community/netbox/issues/3521) - Fix error in `parseURL` related to variables in API URL
+* [#3531](https://github.com/netbox-community/netbox/issues/3531) - Fixed rack role foreground color
+* [#3534](https://github.com/netbox-community/netbox/issues/3534) - Added blank option for untagged VLANs
+* [#3540](https://github.com/netbox-community/netbox/issues/3540) - Fixed virtual machine interface edit with new inline vlan edit fields
+* [#3543](https://github.com/netbox-community/netbox/issues/3543) - Added inline VLAN editing to virtual machine interfaces
+
+---
+
+v2.6.4 (2019-09-19)
+
+## Enhancements
+
+* [#2160](https://github.com/netbox-community/netbox/issues/2160) - Add bulk editing for interface VLAN assignment
+* [#3027](https://github.com/netbox-community/netbox/issues/3028) - Add `local_context_data` boolean filter for devices
+* [#3318](https://github.com/netbox-community/netbox/issues/3318) - Increase length of platform name and slug to 100 characters
+* [#3341](https://github.com/netbox-community/netbox/issues/3341) - Enable inline VLAN assignment while editing an interface
+* [#3485](https://github.com/netbox-community/netbox/issues/3485) - Enable embedded graphs for devices
+* [#3510](https://github.com/netbox-community/netbox/issues/3510) - Add minimum/maximum prefix length enforcement for `IPNetworkVar`
+
+## Bug Fixes
+
+* [#3489](https://github.com/netbox-community/netbox/issues/3489) - Prevent exception triggered by webhook upon object deletion
+* [#3501](https://github.com/netbox-community/netbox/issues/3501) - Fix rendering of checkboxes on custom script forms
+* [#3511](https://github.com/netbox-community/netbox/issues/3511) - Correct API URL for nested device bays
+* [#3513](https://github.com/netbox-community/netbox/issues/3513) - Fix assignment of tags when creating front/rear ports
+* [#3514](https://github.com/netbox-community/netbox/issues/3514) - Label TextVar fields when rendering custom script forms
+
+---
+
+v2.6.3 (2019-09-04)
+
+## New Features
+
+### Custom Scripts ([#3415](https://github.com/netbox-community/netbox/issues/3415))
+
+Custom scripts allow for the execution of arbitrary code via the NetBox UI. They can be used to automatically create, manipulate, or clean up objects or perform other tasks within NetBox. Scripts are defined as Python files which contain one or more subclasses of `extras.scripts.Script`. Variable fields can be defined within scripts, which render as form fields within the web UI to prompt the user for input data. Scripts are executed and information is logged via the web UI. Please see [the docs](https://netbox.readthedocs.io/en/stable/additional-features/custom-scripts/) for more detail.
+
+Note: There are currently no API endpoints for this feature. These are planned for the upcoming v2.7 release.
+
+## Enhancements
+
+* [#3386](https://github.com/netbox-community/netbox/issues/3386) - Add `mac_address` filter for virtual machines
+* [#3391](https://github.com/netbox-community/netbox/issues/3391) - Update Bootstrap CSS to v3.4.1
+* [#3405](https://github.com/netbox-community/netbox/issues/3405) - Fix population of power port/outlet details on device creation
+* [#3422](https://github.com/netbox-community/netbox/issues/3422) - Prevent navigation menu from overlapping page content
+* [#3430](https://github.com/netbox-community/netbox/issues/3430) - Linkify platform field on device view
+* [#3454](https://github.com/netbox-community/netbox/issues/3454) - Enable filtering circuits by region
+* [#3456](https://github.com/netbox-community/netbox/issues/3456) - Enable bulk editing of tag color
+
+## Bug Fixes
+
+* [#3392](https://github.com/netbox-community/netbox/issues/3392) - Add database index for ObjectChange time
+* [#3420](https://github.com/netbox-community/netbox/issues/3420) - Serial number filter for racks, devices, and inventory items is now case-insensitive
+* [#3428](https://github.com/netbox-community/netbox/issues/3428) - Fixed cache invalidation issues ([#3300](https://github.com/netbox-community/netbox/issues/3300), [#3363](https://github.com/netbox-community/netbox/issues/3363), [#3379](https://github.com/netbox-community/netbox/issues/3379), [#3382](https://github.com/netbox-community/netbox/issues/3382)) by switching to `prefetch_related()` instead of `select_related()` and removing use of `update()`
+* [#3421](https://github.com/netbox-community/netbox/issues/3421) - Fix exception when ordering power connections list by PDU
+* [#3424](https://github.com/netbox-community/netbox/issues/3424) - Fix tag coloring for non-linked tags
+* [#3426](https://github.com/netbox-community/netbox/issues/3426) - Improve API error handling for ChoiceFields
+
+---
+
 v2.6.2 (2019-08-02)
 
 ## Enhancements

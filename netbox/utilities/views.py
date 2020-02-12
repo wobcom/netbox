@@ -7,6 +7,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import transaction, IntegrityError
 from django.db.models import Count, ProtectedError
+from django.db.models.query import QuerySet
 from django.forms import CharField, Form, ModelMultipleChoiceField, MultipleHiddenInput, Textarea
 from django.http import HttpResponse, HttpResponseServerError
 from django.shortcuts import get_object_or_404, redirect, render
@@ -137,9 +138,18 @@ class ObjectListView(View):
         permissions = {p: request.user.has_perm(perm_base_name.format(p)) for p in ['add', 'change', 'delete']}
 
         # Construct the table based on the user's permissions
-        table = self.table(self.queryset)
-        if 'pk' in table.base_columns and (permissions['change'] or permissions['delete']):
-            table.columns.show('pk')
+        if isinstance(self.table, dict):
+            table = {}
+            for k, v in self.table.items():
+                t = v(self.table_querysets[k])
+                if 'pk' in t.base_columns and (permissions['change'] or permissions['delete']):
+                    t.columns.show('pk')
+                table[k] = t
+        else:
+            t = self.table(self.queryset)
+            if 'pk' in t.base_columns and (permissions['change'] or permissions['delete']):
+                t.columns.show('pk')
+            table = {'table': t}
 
         # Construct queryset for tags list
         if hasattr(model, 'tags'):
@@ -152,16 +162,17 @@ class ObjectListView(View):
             'paginator_class': EnhancedPaginator,
             'per_page': request.GET.get('per_page', settings.PAGINATE_COUNT)
         }
-        RequestConfig(request, paginate).configure(table)
+        for t in table.values():
+            RequestConfig(request, paginate).configure(t)
 
         context = {
             'content_type': content_type,
-            'table': table,
             'permissions': permissions,
             'filter_form': self.filter_form(request.GET, label_suffix='') if self.filter_form else None,
             'tags': tags,
         }
         context.update(self.extra_context())
+        context.update(table)
 
         return render(request, self.template_name, context)
 
@@ -530,9 +541,13 @@ class BulkEditView(GetReturnURLMixin, View):
 
                             # Update standard fields. If a field is listed in _nullify, delete its value.
                             for name in standard_fields:
-                                if name in form.nullable_fields and name in nullified_fields:
+                                if name in form.nullable_fields and name in nullified_fields and isinstance(form.cleaned_data[name], QuerySet):
+                                    getattr(obj, name).set([])
+                                elif name in form.nullable_fields and name in nullified_fields:
                                     setattr(obj, name, '' if isinstance(form.fields[name], CharField) else None)
-                                elif form.cleaned_data[name] not in (None, ''):
+                                elif isinstance(form.cleaned_data[name], QuerySet) and form.cleaned_data[name]:
+                                    getattr(obj, name).set(form.cleaned_data[name])
+                                elif form.cleaned_data[name] not in (None, '') and not isinstance(form.cleaned_data[name], QuerySet):
                                     setattr(obj, name, form.cleaned_data[name])
                             obj.full_clean()
                             obj.save()

@@ -18,7 +18,7 @@ from timezone_field import TimeZoneField
 from extras.models import ConfigContextModel, CustomFieldModel, ObjectChange, TaggedItem
 from utilities.fields import ColorField
 from utilities.managers import NaturalOrderingManager
-from utilities.models import ChangeLoggedModel
+from utilities.models import ChangeLoggedModel, BaseManager
 from utilities.utils import serialize_object, to_meters
 from .constants import *
 from .exceptions import LoopDetected
@@ -31,21 +31,24 @@ class ComponentTemplateModel(models.Model):
     class Meta:
         abstract = True
 
-    def log_change(self, user, request_id, action):
+    def instantiate(self, device):
         """
-        Log an ObjectChange including the parent DeviceType.
+        Instantiate a new component on the specified Device.
         """
-        ObjectChange(
-            user=user,
-            request_id=request_id,
+        raise NotImplementedError()
+
+    def to_objectchange(self, action):
+        return ObjectChange(
             changed_object=self,
-            related_object=self.device_type,
+            object_repr=str(self),
             action=action,
+            related_object=self.device_type,
             object_data=serialize_object(self)
-        ).save()
+        )
 
 
 class ComponentModel(models.Model):
+    objects = BaseManager()
     description = models.CharField(
         max_length=100,
         blank=True
@@ -54,23 +57,21 @@ class ComponentModel(models.Model):
     class Meta:
         abstract = True
 
-    def log_change(self, user, request_id, action):
-        """
-        Log an ObjectChange including the parent Device/VM.
-        """
+    def to_objectchange(self, action):
+        # Annotate the parent Device/VM
         try:
             parent = getattr(self, 'device', None) or getattr(self, 'virtual_machine', None)
         except ObjectDoesNotExist:
             # The parent device/VM has already been deleted
             parent = None
-        ObjectChange(
-            user=user,
-            request_id=request_id,
+
+        return ObjectChange(
             changed_object=self,
-            related_object=parent,
+            object_repr=str(self),
             action=action,
+            related_object=parent,
             object_data=serialize_object(self)
-        ).save()
+        )
 
     @property
     def parent(self):
@@ -78,6 +79,8 @@ class ComponentModel(models.Model):
 
 
 class CableTermination(models.Model):
+    objects = BaseManager()
+
     cable = models.ForeignKey(
         to='dcim.Cable',
         on_delete=models.SET_NULL,
@@ -594,14 +597,17 @@ class Rack(ChangeLoggedModel, CustomFieldModel):
 
         # Record the original site assignment for this rack.
         _site_id = None
-        if self.pk:
+        if self.pk and not kwargs.get("force_insert", True):
             _site_id = Rack.objects.get(pk=self.pk).site_id
 
         super().save(*args, **kwargs)
 
         # Update racked devices if the assigned Site has been changed.
         if _site_id is not None and self.site_id != _site_id:
-            Device.objects.filter(rack=self).update(site_id=self.site.pk)
+            devices = Device.objects.filter(rack=self)
+            for device in devices:
+                device.site = self.site
+                device.save()
 
     def to_csv(self):
         return (
@@ -658,7 +664,7 @@ class Rack(ChangeLoggedModel, CustomFieldModel):
 
         # Add devices to rack units list
         if self.pk:
-            for device in Device.objects.select_related('device_type__manufacturer', 'device_role')\
+            for device in Device.objects.prefetch_related('device_type__manufacturer', 'device_role')\
                     .annotate(devicebay_count=Count('device_bays'))\
                     .exclude(pk=exclude)\
                     .filter(rack=self, position__gt=0)\
@@ -691,7 +697,7 @@ class Rack(ChangeLoggedModel, CustomFieldModel):
         """
 
         # Gather all devices which consume U space within the rack
-        devices = self.devices.select_related('device_type').filter(position__gte=1).exclude(pk__in=exclude)
+        devices = self.devices.prefetch_related('device_type').filter(position__gte=1).exclude(pk__in=exclude)
 
         # Initialize the rack unit skeleton
         units = list(range(1, self.u_height + 1))
@@ -729,10 +735,21 @@ class Rack(ChangeLoggedModel, CustomFieldModel):
 
     def get_utilization(self):
         """
-        Determine the utilization rate of the rack and return it as a percentage.
+        Determine the utilization rate of the rack and return it as a percentage. Occupied and reserved units both count
+        as utilized.
         """
-        u_available = len(self.get_available_units())
-        return int(float(self.u_height - u_available) / self.u_height * 100)
+        # Determine unoccupied units
+        available_units = self.get_available_units()
+
+        # Remove reserved units
+        for u in self.get_reserved_units():
+            if u in available_units:
+                available_units.remove(u)
+
+        occupied_unit_count = self.u_height - len(available_units)
+        percentage = int(float(occupied_unit_count) / self.u_height * 100)
+
+        return percentage
 
     def get_power_utilization(self):
         """
@@ -1010,6 +1027,12 @@ class ConsolePortTemplate(ComponentTemplateModel):
     def __str__(self):
         return self.name
 
+    def instantiate(self, device):
+        return ConsolePort(
+            device=device,
+            name=self.name
+        )
+
 
 class ConsoleServerPortTemplate(ComponentTemplateModel):
     """
@@ -1032,6 +1055,12 @@ class ConsoleServerPortTemplate(ComponentTemplateModel):
 
     def __str__(self):
         return self.name
+
+    def instantiate(self, device):
+        return ConsoleServerPort(
+            device=device,
+            name=self.name
+        )
 
 
 class PowerPortTemplate(ComponentTemplateModel):
@@ -1067,6 +1096,14 @@ class PowerPortTemplate(ComponentTemplateModel):
 
     def __str__(self):
         return self.name
+
+    def instantiate(self, device):
+        return PowerPort(
+            device=device,
+            name=self.name,
+            maximum_draw=self.maximum_draw,
+            allocated_draw=self.allocated_draw
+        )
 
 
 class PowerOutletTemplate(ComponentTemplateModel):
@@ -1111,6 +1148,18 @@ class PowerOutletTemplate(ComponentTemplateModel):
             raise ValidationError(
                 "Parent power port ({}) must belong to the same device type".format(self.power_port)
             )
+
+    def instantiate(self, device):
+        if self.power_port:
+            power_port = PowerPort.objects.get(device=device, name=self.power_port.name)
+        else:
+            power_port = None
+        return PowerOutlet(
+            device=device,
+            name=self.name,
+            power_port=power_port,
+            feed_leg=self.feed_leg
+        )
 
 
 class InterfaceTemplate(ComponentTemplateModel):
@@ -1158,6 +1207,14 @@ class InterfaceTemplate(ComponentTemplateModel):
         Backward-compatibility for form_factor
         """
         self.type = value
+
+    def instantiate(self, device):
+        return Interface(
+            device=device,
+            name=self.name,
+            type=self.type,
+            mgmt_only=self.mgmt_only
+        )
 
 
 class FrontPortTemplate(ComponentTemplateModel):
@@ -1213,6 +1270,19 @@ class FrontPortTemplate(ComponentTemplateModel):
                 )
             )
 
+    def instantiate(self, device):
+        if self.rear_port:
+            rear_port = RearPort.objects.get(device=device, name=self.rear_port.name)
+        else:
+            rear_port = None
+        return FrontPort(
+            device=device,
+            name=self.name,
+            type=self.type,
+            rear_port=rear_port,
+            rear_port_position=self.rear_port_position
+        )
+
 
 class RearPortTemplate(ComponentTemplateModel):
     """
@@ -1243,6 +1313,14 @@ class RearPortTemplate(ComponentTemplateModel):
     def __str__(self):
         return self.name
 
+    def instantiate(self, device):
+        return RearPort(
+            device=device,
+            name=self.name,
+            type=self.type,
+            positions=self.positions
+        )
+
 
 class DeviceBayTemplate(ComponentTemplateModel):
     """
@@ -1265,6 +1343,12 @@ class DeviceBayTemplate(ComponentTemplateModel):
 
     def __str__(self):
         return self.name
+
+    def instantiate(self, device):
+        return DeviceBay(
+            device=device,
+            name=self.name
+        )
 
 
 #
@@ -1315,11 +1399,12 @@ class Platform(ChangeLoggedModel):
     specifying a NAPALM driver.
     """
     name = models.CharField(
-        max_length=50,
+        max_length=100,
         unique=True
     )
     slug = models.SlugField(
-        unique=True
+        unique=True,
+        max_length=100
     )
     manufacturer = models.ForeignKey(
         to='dcim.Manufacturer',
@@ -1341,8 +1426,24 @@ class Platform(ChangeLoggedModel):
         verbose_name='NAPALM arguments',
         help_text='Additional arguments to pass when initiating the NAPALM driver (JSON format)'
     )
+    vagrant_box = models.CharField(
+        max_length=50,
+        unique=False,
+        blank=True,
+        null=True,
+        verbose_name='Vagrant Box',
+        help_text='Vagrant Box (e.g. "debian/stretch64") to use in simulation'
+    )
+    vagrant_box_version = models.CharField(
+        max_length=50,
+        unique=False,
+        blank=True,
+        null=True,
+        verbose_name='Vagrant Box version',
+        help_text='Vagrant Box version to use in simulation'
+    )
 
-    csv_headers = ['name', 'slug', 'manufacturer', 'napalm_driver', 'napalm_args']
+    csv_headers = ['name', 'slug', 'manufacturer', 'napalm_driver', 'napalm_args', 'vagrant_box', 'vagrant_box_version']
 
     class Meta:
         ordering = ['name']
@@ -1361,6 +1462,23 @@ class Platform(ChangeLoggedModel):
             self.napalm_driver,
             self.napalm_args,
         )
+
+
+class PlatformVersion(ChangeLoggedModel):
+    """
+    Platform version refers the exact version of the platform running on the device.
+    """
+    name = models.CharField(
+        max_length=50
+    )
+    platform = models.ForeignKey(to=Platform, related_name='versions', on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ['name', 'platform']
+        ordering = ['platform', 'name']
+
+    def __str__(self):
+        return "{} {}".format(self.platform, self.name)
 
 
 class Device(ChangeLoggedModel, ConfigContextModel, CustomFieldModel):
@@ -1398,6 +1516,14 @@ class Device(ChangeLoggedModel, ConfigContextModel, CustomFieldModel):
         related_name='devices',
         blank=True,
         null=True
+    )
+    platform_version = models.ForeignKey(
+        to='dcim.PlatformVersion',
+        on_delete=models.SET_NULL,
+        related_name='devices',
+        blank=True,
+        null=True,
+        verbose_name='Version'
     )
     name = models.CharField(
         max_length=64,
@@ -1611,14 +1737,6 @@ class Device(ChangeLoggedModel, ConfigContextModel, CustomFieldModel):
                         self.primary_ip6),
                 })
 
-        # Validate manufacturer/platform
-        if hasattr(self, 'device_type') and self.platform:
-            if self.platform.manufacturer and self.platform.manufacturer != self.device_type.manufacturer:
-                raise ValidationError({
-                    'platform': "The assigned platform is limited to {} device types, but this device's type belongs "
-                                "to {}.".format(self.platform.manufacturer, self.device_type.manufacturer)
-                })
-
         # A Device can only be assigned to a Cluster in the same Site (or no Site)
         if self.cluster and self.cluster.site is not None and self.cluster.site != self.site:
             raise ValidationError({
@@ -1640,49 +1758,36 @@ class Device(ChangeLoggedModel, ConfigContextModel, CustomFieldModel):
         # If this is a new Device, instantiate all of the related components per the DeviceType definition
         if is_new:
             ConsolePort.objects.bulk_create(
-                [ConsolePort(device=self, name=template.name) for template in
-                 self.device_type.consoleport_templates.all()]
+                [x.instantiate(self) for x in self.device_type.consoleport_templates.all()]
             )
             ConsoleServerPort.objects.bulk_create(
-                [ConsoleServerPort(device=self, name=template.name) for template in
-                 self.device_type.consoleserverport_templates.all()]
+                [x.instantiate(self) for x in self.device_type.consoleserverport_templates.all()]
             )
             PowerPort.objects.bulk_create(
-                [PowerPort(device=self, name=template.name) for template in
-                 self.device_type.powerport_templates.all()]
+                [x.instantiate(self) for x in self.device_type.powerport_templates.all()]
             )
             PowerOutlet.objects.bulk_create(
-                [PowerOutlet(device=self, name=template.name) for template in
-                 self.device_type.poweroutlet_templates.all()]
+                [x.instantiate(self) for x in self.device_type.poweroutlet_templates.all()]
             )
             Interface.objects.bulk_create(
-                [Interface(device=self, name=template.name, type=template.type,
-                           mgmt_only=template.mgmt_only) for template in self.device_type.interface_templates.all()]
+                [x.instantiate(self) for x in self.device_type.interface_templates.all()]
             )
-            RearPort.objects.bulk_create([
-                RearPort(
-                    device=self,
-                    name=template.name,
-                    type=template.type,
-                    positions=template.positions
-                ) for template in self.device_type.rearport_templates.all()
-            ])
-            FrontPort.objects.bulk_create([
-                FrontPort(
-                    device=self,
-                    name=template.name,
-                    type=template.type,
-                    rear_port=RearPort.objects.get(device=self, name=template.rear_port.name),
-                    rear_port_position=template.rear_port_position,
-                ) for template in self.device_type.frontport_templates.all()
-            ])
+            RearPort.objects.bulk_create(
+                [x.instantiate(self) for x in self.device_type.rearport_templates.all()]
+            )
+            FrontPort.objects.bulk_create(
+                [x.instantiate(self) for x in self.device_type.frontport_templates.all()]
+            )
             DeviceBay.objects.bulk_create(
-                [DeviceBay(device=self, name=template.name) for template in
-                 self.device_type.device_bay_templates.all()]
+                [x.instantiate(self) for x in self.device_type.device_bay_templates.all()]
             )
 
         # Update Site and Rack assignment for any child Devices
-        Device.objects.filter(parent_bay__device=self).update(site=self.site, rack=self.rack)
+        devices = Device.objects.filter(parent_bay__device=self)
+        for device in devices:
+            device.site = self.site
+            device.rack = self.rack
+            device.save()
 
     def to_csv(self):
         return (
@@ -1739,6 +1844,11 @@ class Device(ChangeLoggedModel, ConfigContextModel, CustomFieldModel):
         """
         return self.virtual_chassis.master if self.virtual_chassis else None
 
+    def count_bgp_sessions(self):
+        return self.interfaces\
+            .annotate(session_count=Count('bgp_sessions'))\
+            .aggregate(res=Sum('session_count'))['res']
+
     @property
     def vc_interfaces(self):
         """
@@ -1773,6 +1883,20 @@ class Device(ChangeLoggedModel, ConfigContextModel, CustomFieldModel):
 
     def get_status_class(self):
         return STATUS_CLASSES[self.status]
+
+
+class DeviceLicense(models.Model):
+    license = models.FileField()
+    device = models.ForeignKey(
+        Device,
+        on_delete=models.CASCADE,
+        related_name="licenses",
+        blank=True,
+        null=True
+    )
+
+    def __str__(self):
+        return self.license.name
 
 
 #
@@ -2076,7 +2200,7 @@ class PowerOutlet(CableTermination, ComponentModel):
 # Interfaces
 #
 
-class Interface(CableTermination, ComponentModel):
+class Interface(CableTermination, ComponentModel, CustomFieldModel):
     """
     A network interface within a Device or VirtualMachine. A physical Interface can connect to exactly one other
     Interface.
@@ -2166,6 +2290,24 @@ class Interface(CableTermination, ComponentModel):
         blank=True,
         verbose_name='Tagged VLANs'
     )
+    overlay_network = models.ForeignKey(
+        to='ipam.OverlayNetwork',
+        related_name='interfaces',
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+        verbose_name='Overlay Network'
+    )
+    clag_id = models.PositiveIntegerField(
+        blank=True,
+        null=True,
+        verbose_name='CLAG ID',
+    )
+    custom_field_values = GenericRelation(
+        to='extras.CustomFieldValue',
+        content_type_field='obj_type',
+        object_id_field='obj_id'
+    )
 
     objects = InterfaceManager()
     tags = TaggableManager(through=TaggedItem)
@@ -2194,7 +2336,6 @@ class Interface(CableTermination, ComponentModel):
             self.get_type_display(),
             self.enabled,
             self.mac_address,
-            self.mtu,
             self.mgmt_only,
             self.description,
             self.get_mode_display(),
@@ -2238,7 +2379,7 @@ class Interface(CableTermination, ComponentModel):
             })
 
         # Only a LAG can have LAG members
-        if self.type != IFACE_TYPE_LAG and self.member_interfaces.exists():
+        if self.type not in AGGREGATABLE_IFACE_TYPES and self.member_interfaces.exists():
             raise ValidationError({
                 'type': "Cannot change interface type; it has LAG members ({}).".format(
                     ", ".join([iface.name for iface in self.member_interfaces.all()])
@@ -2264,27 +2405,20 @@ class Interface(CableTermination, ComponentModel):
 
         return super().save(*args, **kwargs)
 
-    def log_change(self, user, request_id, action):
-        """
-        Include the connected Interface (if any).
-        """
-
-        # It's possible that an Interface can be deleted _after_ its parent Device/VM, in which case trying to resolve
-        # the component parent will raise DoesNotExist. For more discussion, see
-        # https://github.com/netbox-community/netbox/issues/2323
+    def to_objectchange(self, action):
+        # Annotate the parent Device/VM
         try:
             parent_obj = self.device or self.virtual_machine
         except ObjectDoesNotExist:
             parent_obj = None
 
-        ObjectChange(
-            user=user,
-            request_id=request_id,
+        return ObjectChange(
             changed_object=self,
-            related_object=parent_obj,
+            object_repr=str(self),
             action=action,
+            related_object=parent_obj,
             object_data=serialize_object(self)
-        ).save()
+        )
 
     # TODO: Remove in v2.7
     @property
@@ -2344,7 +2478,15 @@ class Interface(CableTermination, ComponentModel):
 
     @property
     def is_lag(self):
-        return self.type == IFACE_TYPE_LAG
+        return self.type in AGGREGATABLE_IFACE_TYPES
+
+    @property
+    def is_bridge(self):
+        return self.type == IFACE_TYPE_BRIDGE
+
+    @property
+    def is_ontep(self):
+        return self.type == IFACE_TYPE_ONTEP
 
     @property
     def count_ipaddresses(self):
@@ -2719,6 +2861,22 @@ class Cable(ChangeLoggedModel):
         blank=True,
         null=True
     )
+    # Cache the associated device (where applicable) for the A and B terminations. This enables filtering of Cables by
+    # their associated Devices.
+    _termination_a_device = models.ForeignKey(
+        to=Device,
+        on_delete=models.CASCADE,
+        related_name='+',
+        blank=True,
+        null=True
+    )
+    _termination_b_device = models.ForeignKey(
+        to=Device,
+        on_delete=models.CASCADE,
+        related_name='+',
+        blank=True,
+        null=True
+    )
 
     csv_headers = [
         'termination_a_type', 'termination_a_id', 'termination_b_type', 'termination_b_id', 'type', 'status', 'label',
@@ -2766,8 +2924,22 @@ class Cable(ChangeLoggedModel):
         type_a = self.termination_a_type.model
         type_b = self.termination_b_type.model
 
+        # Validate interface types
+        if type_a == 'interface' and self.termination_a.type in NONCONNECTABLE_IFACE_TYPES:
+            raise ValidationError({
+                'termination_a_id': 'Cables cannot be terminated to {} interfaces'.format(
+                    self.termination_a.get_type_display()
+                )
+            })
+        if type_b == 'interface' and self.termination_b.type in NONCONNECTABLE_IFACE_TYPES:
+            raise ValidationError({
+                'termination_b_id': 'Cables cannot be terminated to {} interfaces'.format(
+                    self.termination_b.get_type_display()
+                )
+            })
+
         # Check that termination types are compatible
-        if type_b not in COMPATIBLE_TERMINATION_TYPES.get(type_a):
+        if type_b not in COMPATIBLE_TERMINATION_TYPES.get(type_a, []):
             raise ValidationError("Incompatible termination types: {} and {}".format(
                 self.termination_a_type, self.termination_b_type
             ))
@@ -2807,20 +2979,6 @@ class Cable(ChangeLoggedModel):
                 self.termination_b, self.termination_b.cable_id
             ))
 
-        # Virtual interfaces cannot be connected
-        endpoint_a, endpoint_b, _ = self.get_path_endpoints()
-        if (
-            (
-                isinstance(endpoint_a, Interface) and
-                endpoint_a.type == IFACE_TYPE_VIRTUAL
-            ) or
-            (
-                isinstance(endpoint_b, Interface) and
-                endpoint_b.type == IFACE_TYPE_VIRTUAL
-            )
-        ):
-            raise ValidationError("Cannot connect to a virtual interface")
-
         # Validate length and length_unit
         if self.length is not None and self.length_unit is None:
             raise ValidationError("Must specify a unit when setting a cable length")
@@ -2832,6 +2990,12 @@ class Cable(ChangeLoggedModel):
         # Store the given length (if any) in meters for use in database ordering
         if self.length and self.length_unit:
             self._abs_length = to_meters(self.length, self.length_unit)
+
+        # Store the parent Device for the A and B terminations (if applicable) to enable filtering
+        if hasattr(self.termination_a, 'device'):
+            self._termination_a_device = self.termination_a.device
+        if hasattr(self.termination_b, 'device'):
+            self._termination_b_device = self.termination_b.device
 
         super().save(*args, **kwargs)
 

@@ -56,6 +56,12 @@ class VRF(ChangeLoggedModel, CustomFieldModel):
         content_type_field='obj_type',
         object_id_field='obj_id'
     )
+    imports = models.ManyToManyField(
+        'self',
+        related_name='imported',
+        symmetrical=False,
+        blank=True
+    )
 
     tags = TaggableManager(through=TaggedItem)
 
@@ -382,7 +388,7 @@ class Prefix(ChangeLoggedModel, CustomFieldModel):
     def to_csv(self):
         return (
             self.prefix,
-            self.vrf.rd if self.vrf else None,
+            self.vrf.name if self.vrf else None,
             self.tenant.name if self.tenant else None,
             self.site.name if self.site else None,
             self.vlan.group.name if self.vlan and self.vlan.group else None,
@@ -647,47 +653,32 @@ class IPAddress(ChangeLoggedModel, CustomFieldModel):
 
         super().save(*args, **kwargs)
 
-    def log_change(self, user, request_id, action):
-        """
-        Include the connected Interface (if any).
-        """
-
-        # It's possible that an IPAddress can be deleted _after_ its parent Interface, in which case trying to resolve
-        # the interface will raise DoesNotExist.
+    def to_objectchange(self, action):
+        # Annotate the assigned Interface (if any)
         try:
             parent_obj = self.interface
         except ObjectDoesNotExist:
             parent_obj = None
 
-        ObjectChange(
-            user=user,
-            request_id=request_id,
+        return ObjectChange(
             changed_object=self,
-            related_object=parent_obj,
+            object_repr=str(self),
             action=action,
+            related_object=parent_obj,
             object_data=serialize_object(self)
-        ).save()
+        )
 
     def to_csv(self):
-
-        # Determine if this IP is primary for a Device
-        if self.family == 4 and getattr(self, 'primary_ip4_for', False):
-            is_primary = True
-        elif self.family == 6 and getattr(self, 'primary_ip6_for', False):
-            is_primary = True
-        else:
-            is_primary = False
-
         return (
             self.address,
-            self.vrf.rd if self.vrf else None,
+            self.vrf.name if self.vrf else None,
             self.tenant.name if self.tenant else None,
             self.get_status_display(),
             self.get_role_display(),
             self.device.identifier if self.device else None,
             self.virtual_machine.name if self.virtual_machine else None,
             self.interface.name if self.interface else None,
-            is_primary,
+            self.is_primary,
             self.dns_name,
             self.description,
         )
@@ -708,6 +699,16 @@ class IPAddress(ChangeLoggedModel, CustomFieldModel):
         return None
 
     @property
+    def is_primary(self):
+        # Determine if this IP is primary for a Device
+        if self.family == 4 and getattr(self, 'primary_ip4_for', False):
+            return True
+        elif self.family == 6 and getattr(self, 'primary_ip6_for', False):
+            return True
+        return False
+
+
+    @property
     def virtual_machine(self):
         if self.interface:
             return self.interface.virtual_machine
@@ -718,6 +719,57 @@ class IPAddress(ChangeLoggedModel, CustomFieldModel):
 
     def get_role_class(self):
         return ROLE_CHOICE_CLASSES[self.role]
+
+
+class OverlayNetworkGroup(ChangeLoggedModel):
+    """
+    A OverlayNetwork group is an arbitrary collection of OverlayNetworks within which VxLAN Prefixs and names must be unique.
+    """
+    name = models.CharField(
+        max_length=50
+    )
+    slug = models.SlugField()
+    site = models.ForeignKey(
+        to='dcim.Site',
+        on_delete=models.PROTECT,
+        related_name='overlay_network_groups',
+        blank=True,
+        null=True
+    )
+
+    csv_headers = ['name', 'slug', 'site']
+
+    class Meta:
+        ordering = ['site', 'name']
+        unique_together = [
+            ['site', 'name'],
+            ['site', 'slug'],
+        ]
+        verbose_name = 'Overlay Network group'
+        verbose_name_plural = 'Overlay Network groups'
+
+    def __str__(self):
+        return self.name
+
+    def get_absolute_url(self):
+        return reverse('ipam:overlay_networkgroup_overlay_networks', args=[self.pk])
+
+    def to_csv(self):
+        return (
+            self.name,
+            self.slug,
+            self.site.name if self.site else None,
+        )
+
+    def get_next_available_vxlan_prefix(self):
+        """
+        Return the first available VxLAN Prefix (1-1677) in the group.
+        """
+        vxlan_prefixs = self.overlay_networks.values_list('vxlan_prefix', flat=True)
+        for i in range(1, 4095):
+            if i not in vxlan_prefixs:
+                return i
+        return None
 
 
 class VLANGroup(ChangeLoggedModel):
@@ -771,6 +823,103 @@ class VLANGroup(ChangeLoggedModel):
         return None
 
 
+class OverlayNetwork(ChangeLoggedModel, CustomFieldModel):
+    """
+    """
+    site = models.ForeignKey(
+        to='dcim.Site',
+        on_delete=models.PROTECT,
+        related_name='overlay_networks',
+        blank=True,
+        null=True
+    )
+    group = models.ForeignKey(
+        to='ipam.OverlayNetworkGroup',
+        on_delete=models.PROTECT,
+        related_name='overlay_networks',
+        blank=True,
+        null=True
+    )
+    vxlan_prefix = models.PositiveSmallIntegerField(
+        verbose_name='VxLAN Prefix',
+        validators=[MinValueValidator(1), MaxValueValidator(1677)]
+    )
+    name = models.CharField(
+        max_length=64
+    )
+    tenant = models.ForeignKey(
+        to='tenancy.Tenant',
+        on_delete=models.PROTECT,
+        related_name='overlay_networks',
+    )
+    role = models.ForeignKey(
+        to='ipam.Role',
+        on_delete=models.SET_NULL,
+        related_name='overlay_networks',
+        blank=True,
+        null=True
+    )
+    description = models.CharField(
+        max_length=100,
+        blank=True
+    )
+    custom_field_values = GenericRelation(
+        to='extras.CustomFieldValue',
+        content_type_field='obj_type',
+        object_id_field='obj_id'
+    )
+
+    tags = TaggableManager(through=TaggedItem)
+
+    csv_headers = ['site', 'group_name', 'vxlan_prefix', 'name', 'tenant', 'role', 'description']
+
+    class Meta:
+        ordering = ['site', 'group', 'vxlan_prefix']
+        unique_together = [
+            ['group', 'vxlan_prefix'],
+            ['group', 'name'],
+        ]
+        verbose_name = 'Overlay Network'
+        verbose_name_plural = 'Overlay Networks'
+
+    def __str__(self):
+        return self.display_name or super().__str__()
+
+    def get_absolute_url(self):
+        return reverse('ipam:overlay_network', args=[self.pk])
+
+    def clean(self):
+
+        # Validate Overlay Network group
+        if self.group and self.group.site != self.site:
+            raise ValidationError({
+                'group': "Overlay Network group must belong to the assigned site ({}).".format(self.site)
+            })
+
+    def to_csv(self):
+        return (
+            self.site.name if self.site else None,
+            self.group.name if self.group else None,
+            self.vxlan_prefix,
+            self.name,
+            self.tenant.name if self.tenant else None,
+            self.role.name if self.role else None,
+            self.description,
+        )
+
+    @property
+    def display_name(self):
+        if self.vxlan_prefix and self.name:
+            return "{} ({})".format(self.vxlan_prefix, self.name)
+        return None
+
+    def get_members(self):
+        # Return all interfaces assigned to this Overlay Network
+        return Interface.objects.filter(
+            Q(overlay_network=self.pk)
+        ).distinct()
+
+
 class VLAN(ChangeLoggedModel, CustomFieldModel):
     """
     A VLAN is a distinct layer two forwarding domain identified by a 12-bit integer (1-4094). Each VLAN must be assigned
@@ -805,8 +954,6 @@ class VLAN(ChangeLoggedModel, CustomFieldModel):
         to='tenancy.Tenant',
         on_delete=models.PROTECT,
         related_name='vlans',
-        blank=True,
-        null=True
     )
     status = models.PositiveSmallIntegerField(
         choices=VLAN_STATUS_CHOICES,
@@ -816,6 +963,13 @@ class VLAN(ChangeLoggedModel, CustomFieldModel):
     role = models.ForeignKey(
         to='ipam.Role',
         on_delete=models.SET_NULL,
+        related_name='vlans',
+        blank=True,
+        null=True
+    )
+    overlay_network = models.ForeignKey(
+        to='ipam.OverlayNetwork',
+        on_delete=models.PROTECT,
         related_name='vlans',
         blank=True,
         null=True
@@ -832,13 +986,14 @@ class VLAN(ChangeLoggedModel, CustomFieldModel):
 
     tags = TaggableManager(through=TaggedItem)
 
-    csv_headers = ['site', 'group_name', 'vid', 'name', 'tenant', 'status', 'role', 'description']
+    csv_headers = ['site', 'group_name', 'vid', 'name', 'tenant', 'status', 'role', 'description', 'overlay_network']
 
     class Meta:
         ordering = ['site', 'group', 'vid']
         unique_together = [
             ['group', 'vid'],
             ['group', 'name'],
+            ['overlay_network', 'vid'],
         ]
         verbose_name = 'VLAN'
         verbose_name_plural = 'VLANs'

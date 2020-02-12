@@ -1,6 +1,5 @@
 from django.test import TestCase
 
-from dcim.constants import *
 from dcim.models import *
 
 
@@ -152,6 +151,137 @@ class RackTestCase(TestCase):
         self.assertTrue(pdu)
 
 
+class DeviceTestCase(TestCase):
+
+    def setUp(self):
+
+        self.site = Site.objects.create(name='Test Site 1', slug='test-site-1')
+        manufacturer = Manufacturer.objects.create(name='Test Manufacturer 1', slug='test-manufacturer-1')
+        self.device_type = DeviceType.objects.create(
+            manufacturer=manufacturer, model='Test Device Type 1', slug='test-device-type-1'
+        )
+        self.device_role = DeviceRole.objects.create(
+            name='Test Device Role 1', slug='test-device-role-1', color='ff0000'
+        )
+
+        # Create DeviceType components
+        ConsolePortTemplate(
+            device_type=self.device_type,
+            name='Console Port 1'
+        ).save()
+
+        ConsoleServerPortTemplate(
+            device_type=self.device_type,
+            name='Console Server Port 1'
+        ).save()
+
+        ppt = PowerPortTemplate(
+            device_type=self.device_type,
+            name='Power Port 1',
+            maximum_draw=1000,
+            allocated_draw=500
+        )
+        ppt.save()
+
+        PowerOutletTemplate(
+            device_type=self.device_type,
+            name='Power Outlet 1',
+            power_port=ppt,
+            feed_leg=POWERFEED_LEG_A
+        ).save()
+
+        InterfaceTemplate(
+            device_type=self.device_type,
+            name='Interface 1',
+            type=IFACE_TYPE_1GE_FIXED,
+            mgmt_only=True
+        ).save()
+
+        rpt = RearPortTemplate(
+            device_type=self.device_type,
+            name='Rear Port 1',
+            type=PORT_TYPE_8P8C,
+            positions=8
+        )
+        rpt.save()
+
+        FrontPortTemplate(
+            device_type=self.device_type,
+            name='Front Port 1',
+            type=PORT_TYPE_8P8C,
+            rear_port=rpt,
+            rear_port_position=2
+        ).save()
+
+        DeviceBayTemplate(
+            device_type=self.device_type,
+            name='Device Bay 1'
+        ).save()
+
+    def test_device_creation(self):
+        """
+        Ensure that all Device components are copied automatically from the DeviceType.
+        """
+        d = Device(
+            site=self.site,
+            device_type=self.device_type,
+            device_role=self.device_role,
+            name='Test Device 1'
+        )
+        d.save()
+
+        ConsolePort.objects.get(
+            device=d,
+            name='Console Port 1'
+        )
+
+        ConsoleServerPort.objects.get(
+            device=d,
+            name='Console Server Port 1'
+        )
+
+        pp = PowerPort.objects.get(
+            device=d,
+            name='Power Port 1',
+            maximum_draw=1000,
+            allocated_draw=500
+        )
+
+        PowerOutlet.objects.get(
+            device=d,
+            name='Power Outlet 1',
+            power_port=pp,
+            feed_leg=POWERFEED_LEG_A
+        )
+
+        Interface.objects.get(
+            device=d,
+            name='Interface 1',
+            type=IFACE_TYPE_1GE_FIXED,
+            mgmt_only=True
+        )
+
+        rp = RearPort.objects.get(
+            device=d,
+            name='Rear Port 1',
+            type=PORT_TYPE_8P8C,
+            positions=8
+        )
+
+        FrontPort.objects.get(
+            device=d,
+            name='Front Port 1',
+            type=PORT_TYPE_8P8C,
+            rear_port=rp,
+            rear_port_position=2
+        )
+
+        DeviceBay.objects.get(
+            device=d,
+            name='Device Bay 1'
+        )
+
+
 class CableTestCase(TestCase):
 
     def setUp(self):
@@ -213,7 +343,7 @@ class CableTestCase(TestCase):
 
     def test_cable_validates_compatibale_types(self):
         """
-        The clean method should have a check to ensure only compatiable port types can be connected by a cable
+        The clean method should have a check to ensure only compatible port types can be connected by a cable
         """
         # An interface cannot be connected to a power port
         cable = Cable(termination_a=self.interface1, termination_b=self.power_port1)
@@ -230,27 +360,36 @@ class CableTestCase(TestCase):
 
     def test_cable_front_port_cannot_connect_to_corresponding_rear_port(self):
         """
-        A cable cannot connect a front port to its sorresponding rear port
+        A cable cannot connect a front port to its corresponding rear port
         """
         cable = Cable(termination_a=self.front_port, termination_b=self.rear_port)
         with self.assertRaises(ValidationError):
             cable.clean()
 
-    def test_cable_cannot_be_connected_to_an_existing_connection(self):
+    def test_cable_cannot_terminate_to_an_existing_connection(self):
         """
-        Either side of a cable cannot be terminated when that side aready has a connection
+        Either side of a cable cannot be terminated when that side already has a connection
         """
         # Try to create a cable with the same interface terminations
         cable = Cable(termination_a=self.interface2, termination_b=self.interface1)
         with self.assertRaises(ValidationError):
             cable.clean()
 
-    def test_cable_cannot_connect_to_a_virtual_inteface(self):
+    def test_cable_cannot_terminate_to_a_virtual_inteface(self):
         """
-        A cable connection cannot include a virtual interface
+        A cable cannot terminate to a virtual interface
         """
-        virtual_interface = Interface(device=self.device1, name="V1", type=0)
+        virtual_interface = Interface(device=self.device1, name="V1", type=IFACE_TYPE_VIRTUAL)
         cable = Cable(termination_a=self.interface2, termination_b=virtual_interface)
+        with self.assertRaises(ValidationError):
+            cable.clean()
+
+    def test_cable_cannot_terminate_to_a_wireless_inteface(self):
+        """
+        A cable cannot terminate to a wireless interface
+        """
+        wireless_interface = Interface(device=self.device1, name="W1", type=IFACE_TYPE_80211A)
+        cable = Cable(termination_a=self.interface2, termination_b=wireless_interface)
         with self.assertRaises(ValidationError):
             cable.clean()
 

@@ -14,5 +14,6 @@ urlpatterns = [
     path(r'user-key/', views.UserKeyView.as_view(), name='userkey'),
     path(r'user-key/edit/', views.UserKeyEditView.as_view(), name='userkey_edit'),
     path(r'session-key/delete/', views.SessionKeyDeleteView.as_view(), name='sessionkey_delete'),
+    path(r'changes/', views.ChangesView.as_view(), name='changes'),
 
 ]

@@ -4,7 +4,8 @@ from django_tables2.utils import Accessor
 from dcim.models import Interface
 from tenancy.tables import COL_TENANT
 from utilities.tables import BaseTable, BooleanColumn, ToggleColumn
-from .models import Aggregate, IPAddress, Prefix, RIR, Role, Service, VLAN, VLANGroup, VRF
+from .models import Aggregate, IPAddress, Prefix, RIR, Role, Service, OverlayNetwork,\
+            VLAN, OverlayNetworkGroup, VLANGroup, VRF
 
 RIR_UTILIZATION = """
 <div class="progress">
@@ -111,6 +112,60 @@ STATUS_LABEL = """
     <span class="label label-{{ record.get_status_class }}">{{ record.get_status_display }}</span>
 {% else %}
     <span class="label label-success">Available</span>
+{% endif %}
+"""
+
+overlay_network_LINK = """
+{% if record.pk %}
+    <a href="{{ record.get_absolute_url }}">{{ record.vxlan_prefix }}</a>
+{% elif perms.ipam.add_overlay_network %}
+    <a href="{% url 'ipam:overlay_network_add' %}?vxlan_prefix={{ record.vxlan_prefix }}&group={{ overlay_network_group.pk }}{% if overlay_network_group.site %}&site={{ overlay_network_group.site.pk }}{% endif %}" class="btn btn-xs btn-success">{{ record.available }} overlay_network{{ record.available|pluralize }} available</a>
+{% else %}
+    {{ record.available }} overlay_network{{ record.available|pluralize }} available
+{% endif %}
+"""
+
+overlay_network_PREFIXES = """
+{% for prefix in record.prefixes.all %}
+    <a href="{% url 'ipam:prefix' pk=prefix.pk %}">{{ prefix }}</a>{% if not forloop.last %}<br />{% endif %}
+{% empty %}
+    &mdash;
+{% endfor %}
+"""
+
+overlay_network_ROLE_LINK = """
+{% if record.role %}
+    <a href="{% url 'ipam:overlay_network_list' %}?role={{ record.role.slug }}">{{ record.role }}</a>
+{% else %}
+    &mdash;
+{% endif %}
+"""
+
+overlay_networkGROUP_ACTIONS = """
+<a href="{% url 'ipam:overlay_networkgroup_changelog' pk=record.pk %}" class="btn btn-default btn-xs" title="Changelog">
+    <i class="fa fa-history"></i>
+</a>
+{% with next_vid=record.get_next_available_vid %}
+    {% if next_vid and perms.ipam.add_overlay_network %}
+        <a href="{% url 'ipam:overlay_network_add' %}?site={{ record.site_id }}&group={{ record.pk }}&vid={{ next_vid }}" title="Add overlay_network" class="btn btn-xs btn-success">
+            <i class="glyphicon glyphicon-plus" aria-hidden="true"></i>
+        </a>
+    {% endif %}
+{% endwith %}
+{% if perms.ipam.change_overlay_networkgroup %}
+    <a href="{% url 'ipam:overlay_networkgroup_edit' pk=record.pk %}" class="btn btn-xs btn-warning"><i class="glyphicon glyphicon-pencil" aria-hidden="true"></i></a>
+{% endif %}
+"""
+
+overlay_network_MEMBER_UNTAGGED = """
+{% if record.untagged_overlay_network_id == overlay_network.pk %}
+    <i class="glyphicon glyphicon-ok">
+{% endif %}
+"""
+
+overlay_network_MEMBER_ACTIONS = """
+{% if perms.dcim.change_interface %}
+    <a href="{% if record.device %}{% url 'dcim:interface_edit' pk=record.pk %}{% else %}{% url 'virtualization:interface_edit' pk=record.pk %}{% endif %}" class="btn btn-xs btn-warning"><i class="glyphicon glyphicon-pencil"></i></a>
 {% endif %}
 """
 
@@ -388,6 +443,24 @@ class InterfaceIPAddressTable(BaseTable):
 
 
 #
+# OverlayNetwork groups
+#
+
+class OverlayNetworkGroupTable(BaseTable):
+    pk = ToggleColumn()
+    name = tables.LinkColumn(verbose_name='Name')
+    site = tables.LinkColumn('dcim:site', args=[Accessor('site.slug')], verbose_name='Site')
+    overlay_network_count = tables.Column(verbose_name='OverlayNetworks')
+    slug = tables.Column(verbose_name='Slug')
+    actions = tables.TemplateColumn(template_code=overlay_networkGROUP_ACTIONS, attrs={'td': {'class': 'text-right'}},
+                                    verbose_name='')
+
+    class Meta(BaseTable.Meta):
+        model = OverlayNetworkGroup
+        fields = ('pk', 'name', 'site', 'overlay_network_count', 'slug', 'actions')
+
+
+#
 # VLAN groups
 #
 
@@ -406,6 +479,71 @@ class VLANGroupTable(BaseTable):
 
 
 #
+# OverlayNetworks
+#
+
+class OverlayNetworkTable(BaseTable):
+    pk = ToggleColumn()
+    vxlan_prefix = tables.TemplateColumn(overlay_network_LINK, verbose_name='VxLAN Prefix')
+    site = tables.LinkColumn('dcim:site', args=[Accessor('site.slug')])
+    group = tables.LinkColumn('ipam:overlay_networkgroup_overlay_networks', args=[Accessor('group.pk')], verbose_name='Group')
+    tenant = tables.TemplateColumn(template_code=COL_TENANT)
+    role = tables.TemplateColumn(overlay_network_ROLE_LINK)
+    interface = tables.LinkColumn('dcim:interface', args=[Accessor('interface.id')], verbose_name='Interface')
+
+    class Meta(BaseTable.Meta):
+        model = OverlayNetwork
+        fields = ('pk', 'vxlan_prefix', 'site', 'group', 'name', 'tenant', 'role', 'description', 'interfaces')
+        row_attrs = {
+            'class': lambda record: 'success' if not isinstance(record, OverlayNetwork) else '',
+        }
+
+
+class OverlayNetworkDetailTable(OverlayNetworkTable):
+
+    class Meta(OverlayNetworkTable.Meta):
+        fields = ('pk', 'vxlan_prefix', 'site', 'group', 'name', 'tenant', 'role', 'description', 'interfaces')
+
+
+class OverlayNetworkMemberTable(BaseTable):
+    parent = tables.LinkColumn(order_by=['device', 'virtual_machine'])
+    name = tables.LinkColumn(verbose_name='Interface')
+    untagged = tables.TemplateColumn(
+        template_code=overlay_network_MEMBER_UNTAGGED,
+        orderable=False
+    )
+    actions = tables.TemplateColumn(
+        template_code=overlay_network_MEMBER_ACTIONS,
+        attrs={'td': {'class': 'text-right'}},
+        verbose_name=''
+    )
+
+    class Meta(BaseTable.Meta):
+        model = Interface
+        fields = ('parent', 'name', 'untagged', 'actions')
+
+
+class InterfaceOverlayNetworkTable(BaseTable):
+    """
+    List OverlayNetworks assigned to a specific Interface.
+    """
+    vid = tables.LinkColumn('ipam:overlay_network', args=[Accessor('pk')], verbose_name='ID')
+    tagged = BooleanColumn()
+    site = tables.LinkColumn('dcim:site', args=[Accessor('site.slug')])
+    group = tables.Column(accessor=Accessor('group.name'), verbose_name='Group')
+    tenant = tables.TemplateColumn(template_code=COL_TENANT)
+    role = tables.TemplateColumn(overlay_network_ROLE_LINK)
+
+    class Meta(BaseTable.Meta):
+        model = OverlayNetwork
+        fields = ('vid', 'tagged', 'site', 'group', 'name', 'tenant', 'role', 'description')
+
+    def __init__(self, interface, *args, **kwargs):
+        self.interface = interface
+        super().__init__(*args, **kwargs)
+
+
+#
 # VLANs
 #
 
@@ -417,10 +555,11 @@ class VLANTable(BaseTable):
     tenant = tables.TemplateColumn(template_code=COL_TENANT)
     status = tables.TemplateColumn(STATUS_LABEL)
     role = tables.TemplateColumn(VLAN_ROLE_LINK)
+    overlay_network = tables.LinkColumn('ipam:overlay_network', args=[Accessor('overlay_network.pk')])
 
     class Meta(BaseTable.Meta):
         model = VLAN
-        fields = ('pk', 'vid', 'site', 'group', 'name', 'tenant', 'status', 'role', 'description')
+        fields = ('pk', 'vid', 'site', 'group', 'name', 'tenant', 'status', 'role', 'description', 'overlay_network')
         row_attrs = {
             'class': lambda record: 'success' if not isinstance(record, VLAN) else '',
         }
@@ -431,7 +570,7 @@ class VLANDetailTable(VLANTable):
     tenant = tables.TemplateColumn(template_code=COL_TENANT)
 
     class Meta(VLANTable.Meta):
-        fields = ('pk', 'vid', 'site', 'group', 'name', 'prefixes', 'tenant', 'status', 'role', 'description')
+        fields = ('pk', 'vid', 'site', 'group', 'name', 'prefixes', 'tenant', 'status', 'role', 'description', 'overlay_network')
 
 
 class VLANMemberTable(BaseTable):

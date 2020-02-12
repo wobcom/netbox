@@ -1,6 +1,7 @@
 from django import forms
 from django.core.exceptions import MultipleObjectsReturned
 from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db.models import Count
 from taggit.forms import TagField
 
 from dcim.models import Site, Rack, Device, Interface
@@ -17,7 +18,10 @@ from virtualization.models import VirtualMachine
 from .constants import (
     IP_PROTOCOL_CHOICES, IPADDRESS_ROLE_CHOICES, IPADDRESS_STATUS_CHOICES, PREFIX_STATUS_CHOICES, VLAN_STATUS_CHOICES,
 )
-from .models import Aggregate, IPAddress, Prefix, RIR, Role, Service, VLAN, VLANGroup, VRF
+from .models import (
+    Aggregate, IPAddress, Prefix, RIR, Role, Service, OverlayNetwork, VLAN, OverlayNetworkGroup,
+    VLANGroup, VRF
+)
 
 IP_FAMILY_CHOICES = [
     ('', 'All'),
@@ -38,10 +42,24 @@ class VRFForm(BootstrapMixin, TenancyForm, CustomFieldForm):
         required=False
     )
 
+    def __init__(self, *args, **kwargs):
+        instance = kwargs.get('instance')
+        super().__init__(*args, **kwargs)
+        qs = VRF.objects
+        if instance.id:
+            import_list = instance.imported.values_list('pk', flat=True)
+            # qs = qs.exclude(pk=instance.pk).exclude(pk__in=import_list)
+        field = forms.ModelMultipleChoiceField(
+            queryset=qs,
+            required=False,
+        )
+        field.widget.attrs['class'] = field.widget.attrs.get('class', '') + ' form-control'
+        self.fields['imports'] = field
+
     class Meta:
         model = VRF
         fields = [
-            'name', 'rd', 'enforce_unique', 'description', 'tenant_group', 'tenant', 'tags',
+            'name', 'rd', 'enforce_unique', 'description', 'tenant_group', 'tenant', 'tags', 'imports'
         ]
         labels = {
             'rd': "RD",
@@ -987,6 +1005,50 @@ class IPAddressFilterForm(BootstrapMixin, TenancyFilterForm, CustomFieldFilterFo
 
 
 #
+# OverlayNetwork groups
+#
+
+class OverlayNetworkGroupForm(BootstrapMixin, forms.ModelForm):
+    slug = SlugField()
+
+    class Meta:
+        model = OverlayNetworkGroup
+        fields = [
+            'site', 'name', 'slug',
+        ]
+
+
+class OverlayNetworkGroupCSVForm(forms.ModelForm):
+    site = forms.ModelChoiceField(
+        queryset=Site.objects.all(),
+        required=False,
+        to_field_name='name',
+        help_text='Name of parent site',
+        error_messages={
+            'invalid_choice': 'Site not found.',
+        }
+    )
+    slug = SlugField()
+
+    class Meta:
+        model = OverlayNetworkGroup
+        fields = OverlayNetworkGroup.csv_headers
+        help_texts = {
+            'name': 'Name of OverlayNetwork group',
+        }
+
+
+class OverlayNetworkGroupFilterForm(BootstrapMixin, forms.Form):
+    site = FilterChoiceField(
+        queryset=Site.objects.annotate(
+            filter_count=Count('overlay_network_groups')
+        ),
+        to_field_name='slug',
+        null_label='-- Global --'
+    )
+
+
+#
 # VLAN groups
 #
 
@@ -1039,6 +1101,182 @@ class VLANGroupFilterForm(BootstrapMixin, forms.Form):
 
 
 #
+# OverlayNetworks
+#
+
+class OverlayNetworkForm(BootstrapMixin, TenancyForm, CustomFieldForm):
+    site = forms.ModelChoiceField(
+        queryset=Site.objects.all(),
+        required=False,
+        widget=forms.Select(
+            attrs={
+                'filter-for': 'group',
+                'nullable': 'true',
+            }
+        )
+    )
+    tenant = forms.ModelChoiceField(
+        queryset=Tenant.objects.all(),
+        required=True,
+    )
+    group = ChainedModelChoiceField(
+        queryset=OverlayNetworkGroup.objects.all(),
+        chains=(
+            ('site', 'site'),
+        ),
+        required=False,
+        label='Group',
+        widget=APISelect(
+            api_url='/api/ipam/overlay_network-groups/?site_id={{site}}',
+        )
+    )
+    tags = TagField(required=False)
+
+    class Meta:
+        model = OverlayNetwork
+        fields = [
+            'site', 'group', 'vxlan_prefix', 'name', 'role', 'description', 'tenant_group', 'tenant', 'tags',
+        ]
+        help_texts = {
+            'site': "Leave blank if this Overlay Network spans multiple sites",
+            'group': "Overlay Network group (optional)",
+            'vxlan_prefix': "Configured Overlay Network ID",
+            'name': "Configured Overlay Network name",
+            'role': "The primary function of this OverlayNetwork",
+        }
+
+
+class OverlayNetworkCSVForm(forms.ModelForm):
+    site = forms.ModelChoiceField(
+        queryset=Site.objects.all(),
+        required=False,
+        to_field_name='name',
+        help_text='Name of parent site',
+        error_messages={
+            'invalid_choice': 'Site not found.',
+        }
+    )
+    group_name = forms.CharField(
+        help_text='Name of OverlayNetwork group',
+        required=False
+    )
+    tenant = forms.ModelChoiceField(
+        queryset=Tenant.objects.all(),
+        to_field_name='name',
+        help_text='Name of assigned tenant',
+        required=True,
+        error_messages={
+            'invalid_choice': 'Tenant not found.',
+        }
+    )
+    role = forms.ModelChoiceField(
+        queryset=Role.objects.all(),
+        required=False,
+        to_field_name='name',
+        help_text='Functional role',
+        error_messages={
+            'invalid_choice': 'Invalid role.',
+        }
+    )
+
+    class Meta:
+        model = OverlayNetwork
+        fields = OverlayNetwork.csv_headers
+        help_texts = {
+            'vxlan_prefix': 'Numeric OverlayNetwork ID (1-1677)',
+            'name': 'OverlayNetwork name',
+        }
+
+    def clean(self):
+        super().clean()
+
+        site = self.cleaned_data.get('site')
+        group_name = self.cleaned_data.get('group_name')
+
+        # Validate OverlayNetwork group
+        if group_name:
+            try:
+                self.instance.group = OverlayNetworkGroup.objects.get(site=site, name=group_name)
+            except OverlayNetworkGroup.DoesNotExist:
+                if site:
+                    raise forms.ValidationError(
+                        "OverlayNetwork group {} not found for site {}".format(group_name, site)
+                    )
+                else:
+                    raise forms.ValidationError(
+                        "Global OverlayNetwork group {} not found".format(group_name)
+                    )
+
+
+class OverlayNetworkBulkEditForm(BootstrapMixin, AddRemoveTagsForm, CustomFieldBulkEditForm):
+    pk = forms.ModelMultipleChoiceField(
+        queryset=OverlayNetwork.objects.all(),
+        widget=forms.MultipleHiddenInput()
+    )
+    site = forms.ModelChoiceField(
+        queryset=Site.objects.all(),
+        required=False
+    )
+    group = forms.ModelChoiceField(
+        queryset=OverlayNetworkGroup.objects.all(),
+        required=False
+    )
+    tenant = forms.ModelChoiceField(
+        queryset=Tenant.objects.all(),
+        required=False
+    )
+    role = forms.ModelChoiceField(
+        queryset=Role.objects.all(),
+        required=False
+    )
+    description = forms.CharField(
+        max_length=100,
+        required=False
+    )
+
+    class Meta:
+        nullable_fields = [
+            'site', 'group', 'tenant', 'role', 'description',
+        ]
+
+
+class OverlayNetworkFilterForm(BootstrapMixin, CustomFieldFilterForm):
+    model = OverlayNetwork
+    q = forms.CharField(
+        required=False,
+        label='Search'
+    )
+    site = FilterChoiceField(
+        queryset=Site.objects.annotate(
+            filter_count=Count('overlay_networks')
+        ),
+        to_field_name='slug',
+        null_label='-- Global --'
+    )
+    group_id = FilterChoiceField(
+        queryset=OverlayNetworkGroup.objects.annotate(
+            filter_count=Count('overlay_networks')
+        ),
+        label='OverlayNetwork group',
+        null_label='-- None --'
+    )
+    tenant = FilterChoiceField(
+        queryset=Tenant.objects.annotate(
+            filter_count=Count('overlay_networks')
+        ),
+        to_field_name='slug',
+        null_label='-- None --'
+    )
+    role = FilterChoiceField(
+        queryset=Role.objects.annotate(
+            filter_count=Count('overlay_networks')
+        ),
+        to_field_name='slug',
+        null_label='-- None --'
+    )
+
+
+#
 # VLANs
 #
 
@@ -1056,6 +1294,14 @@ class VLANForm(BootstrapMixin, TenancyForm, CustomFieldForm):
             }
         )
     )
+    tenant = forms.ModelChoiceField(
+        queryset=Tenant.objects.all(),
+        required=True,
+    )
+    overlay_network = forms.ModelChoiceField(
+        queryset=OverlayNetwork.objects.all(),
+        required=False,
+    )
     group = ChainedModelChoiceField(
         queryset=VLANGroup.objects.all(),
         chains=(
@@ -1072,7 +1318,7 @@ class VLANForm(BootstrapMixin, TenancyForm, CustomFieldForm):
     class Meta:
         model = VLAN
         fields = [
-            'site', 'group', 'vid', 'name', 'status', 'role', 'description', 'tenant_group', 'tenant', 'tags',
+            'site', 'group', 'vid', 'name', 'status', 'role', 'description', 'tenant_group', 'tenant', 'tags', 'overlay_network'
         ]
         help_texts = {
             'site': "Leave blank if this VLAN spans multiple sites",
@@ -1107,8 +1353,8 @@ class VLANCSVForm(forms.ModelForm):
     tenant = forms.ModelChoiceField(
         queryset=Tenant.objects.all(),
         to_field_name='name',
-        required=False,
         help_text='Name of assigned tenant',
+        required=True,
         error_messages={
             'invalid_choice': 'Tenant not found.',
         }
@@ -1124,6 +1370,15 @@ class VLANCSVForm(forms.ModelForm):
         help_text='Functional role',
         error_messages={
             'invalid_choice': 'Invalid role.',
+        }
+    )
+    overlay_network = forms.ModelChoiceField(
+        queryset=OverlayNetwork.objects.all(),
+        required=False,
+        to_field_name='name',
+        help_text='Overlay Network',
+        error_messages={
+            'invalid_choice': 'Invalid overlay network.',
         }
     )
 
@@ -1194,6 +1449,10 @@ class VLANBulkEditForm(BootstrapMixin, AddRemoveTagsForm, CustomFieldBulkEditFor
             api_url="/api/ipam/roles/"
         )
     )
+    overlay_network = forms.ModelChoiceField(
+        queryset=OverlayNetwork.objects.all(),
+        required=False
+    )
     description = forms.CharField(
         max_length=100,
         required=False
@@ -1201,7 +1460,7 @@ class VLANBulkEditForm(BootstrapMixin, AddRemoveTagsForm, CustomFieldBulkEditFor
 
     class Meta:
         nullable_fields = [
-            'site', 'group', 'tenant', 'role', 'description',
+            'site', 'group', 'tenant', 'role', 'overlay_network', 'description',
         ]
 
 
@@ -1230,6 +1489,20 @@ class VLANFilterForm(BootstrapMixin, TenancyFilterForm, CustomFieldFilterForm):
             api_url="/api/ipam/vlan-groups/",
             null_option=True,
         )
+    )
+    tenant = FilterChoiceField(
+        queryset=Tenant.objects.annotate(
+            filter_count=Count('vlans')
+        ),
+        to_field_name='slug',
+        null_label='-- None --'
+    )
+    overlay_network = FilterChoiceField(
+        queryset=OverlayNetwork.objects.annotate(
+            filter_count=Count('vlans')
+        ),
+        to_field_name='vxlan_prefix',
+        null_label='-- None --'
     )
     status = forms.MultipleChoiceField(
         choices=VLAN_STATUS_CHOICES,

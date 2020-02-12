@@ -32,7 +32,9 @@ _patterns = [
     path(r'logout/', LogoutView.as_view(), name='logout'),
 
     # Apps
+    path(r'change/', include('change.urls')),
     path(r'circuits/', include('circuits.urls')),
+    path(r'configuration/', include('configuration.urls')),
     path(r'dcim/', include('dcim.urls')),
     path(r'extras/', include('extras.urls')),
     path(r'ipam/', include('ipam.urls')),
@@ -52,7 +54,7 @@ _patterns = [
     path(r'api/virtualization/', include('virtualization.api.urls')),
     path(r'api/docs/', schema_view.with_ui('swagger'), name='api_docs'),
     path(r'api/redoc/', schema_view.with_ui('redoc'), name='api_redocs'),
-    re_path(r'^api/swagger(?P<format>.json|.yaml)$', schema_view.without_ui(), name='schema_swagger'),
+    re_path(r'api/swagger(?P<format>.json|.yaml)', schema_view.without_ui(), name='schema_swagger'),
 
     # Serving static media in Django to pipe it through LoginRequiredMiddleware
     path(r'media/<path:path>', serve, {'document_root': settings.MEDIA_ROOT}),

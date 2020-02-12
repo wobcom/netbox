@@ -12,7 +12,7 @@
 <h1>{% block title %}Platforms{% endblock %}</h1>
 <div class="row">
 	<div class="col-md-12">
-        {% include 'utilities/obj_table.html' with bulk_delete_url='dcim:platform_bulk_delete' %}
+        {% include 'utilities/obj_table.html' with bulk_edit_url='' bulk_delete_url='dcim:platform_bulk_delete' %}
     </div>
 </div>
 {% endblock %}

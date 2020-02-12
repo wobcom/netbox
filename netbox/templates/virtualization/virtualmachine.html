@@ -94,6 +94,9 @@
                     <td>
                         {% if virtualmachine.platform %}
                             <a href="{% url 'virtualization:virtualmachine_list' %}?platform={{ virtualmachine.platform.slug }}">{{ virtualmachine.platform }}</a>
+                            {% if virtualmachine.platform_version %}
+                                ({{ virtualmachine.platform_version.name }})
+                            {% endif %}
                         {% else %}
                             <span class="text-muted">None</span>
                         {% endif %}

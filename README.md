@@ -18,8 +18,8 @@ or join us in the #netbox Slack channel on [NetworkToCode](https://networktocode
 
 |             | status |
 |-------------|------------|
-| **master** | [![Build Status](https://travis-ci.org/digitalocean/netbox.svg?branch=master)](https://travis-ci.org/digitalocean/netbox) |
-| **develop** | [![Build Status](https://travis-ci.org/digitalocean/netbox.svg?branch=develop)](https://travis-ci.org/digitalocean/netbox) |
+| **master** | [![Build Status](https://travis-ci.org/netbox-community/netbox.svg?branch=master)](https://travis-ci.com/netbox-community/netbox/) |
+| **develop** | [![Build Status](https://travis-ci.org/netbox-community/netbox.svg?branch=develop)](https://travis-ci.com/netbox-community/netbox/) |
 
 ## Screenshots
 
@@ -40,18 +40,8 @@ and run `upgrade.sh`.
 * [Docker container](https://github.com/netbox-community/netbox-docker) (via [@cimnine](https://github.com/cimnine))
 * [Vagrant deployment](https://github.com/ryanmerolle/netbox-vagrant) (via [@ryanmerolle](https://github.com/ryanmerolle))
 * [Ansible deployment](https://github.com/lae/ansible-role-netbox) (via [@lae](https://github.com/lae))
+* [Kubernetes deployment](https://github.com/CENGN/netbox-kubernetes) (via [@CENGN](https://github.com/CENGN))
 
 # Related projects
 
-## Supported SDK
-
-- [pynetbox](https://github.com/digitalocean/pynetbox) - A Python API client library for Netbox
-
-## Community SDK
-
-- [netbox-client-ruby](https://github.com/ninech/netbox-client-ruby) - A Ruby client library for Netbox
-- [powerbox](https://github.com/BatmanAMA/powerbox) - A PowerShell library for Netbox
-
-## Ansible Inventory
-
-- [netbox-as-ansible-inventory](https://github.com/AAbouZaid/netbox-as-ansible-inventory) - Ansible dynamic inventory script for Netbox
+Please see [our wiki](https://github.com/netbox-community/netbox/wiki/Community-Contributions) for a list of relevant community projects.

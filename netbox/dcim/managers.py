@@ -2,6 +2,7 @@ from django.db.models import Manager, QuerySet
 from django.db.models.expressions import RawSQL
 
 from .constants import NONCONNECTABLE_IFACE_TYPES
+from utilities.managers import BaseManager
 
 # Regular expressions for parsing Interface names
 TYPE_RE = r"SUBSTRING({} FROM '^([^0-9\.:]+)')"
@@ -24,7 +25,7 @@ class InterfaceQuerySet(QuerySet):
         return self.exclude(type__in=NONCONNECTABLE_IFACE_TYPES)
 
 
-class InterfaceManager(Manager):
+class InterfaceManager(BaseManager):
 
     def get_queryset(self):
         """

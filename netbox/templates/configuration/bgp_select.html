@@ -1,0 +1,30 @@
+{% extends '_base.html' %}
+{% load buttons %}
+
+{% block content %}
+<div class="row">
+  <div class="col-md-3"></div>
+  <div class="col-md-6">
+    <div class="panel panel-default">
+      <div class="panel-heading">
+          <strong>{% block title %}Select BGP Session{% endblock %}</strong>
+      </div>
+      <div>
+        {% include 'configuration/inc/bgp_table.html' %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script type="text/javascript">
+$( document ).ready(
+$('.select-interface').click(function(event) {
+  var pk = $(this).attr("data-pk");
+  $(this).closest('form').append('<input type="hidden" name="pk" value="'+this.value+'">');
+  $(this).closest('form').append('<input type="hidden" name="'+this.value+'" value="'+pk+'">');
+})
+)
+</script>
+{% endblock %}

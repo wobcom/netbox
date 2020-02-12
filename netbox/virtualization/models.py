@@ -181,6 +181,13 @@ class VirtualMachine(ChangeLoggedModel, ConfigContextModel, CustomFieldModel):
         blank=True,
         null=True
     )
+    platform_version = models.ForeignKey(
+        to='dcim.PlatformVersion',
+        on_delete=models.SET_NULL,
+        related_name='virtual_machines',
+        blank=True,
+        null=True
+    )
     name = models.CharField(
         max_length=64,
         unique=True

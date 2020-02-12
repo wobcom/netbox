@@ -12,7 +12,7 @@ from django.core.exceptions import ImproperlyConfigured
 # Environment setup
 #
 
-VERSION = '2.6.3-dev'
+VERSION = '2.6.6-dev'
 
 # Hostname
 HOSTNAME = platform.node()
@@ -85,6 +85,7 @@ NAPALM_USERNAME = getattr(configuration, 'NAPALM_USERNAME', '')
 PAGINATE_COUNT = getattr(configuration, 'PAGINATE_COUNT', 50)
 PREFER_IPV4 = getattr(configuration, 'PREFER_IPV4', False)
 REPORTS_ROOT = getattr(configuration, 'REPORTS_ROOT', os.path.join(BASE_DIR, 'reports')).rstrip('/')
+SCRIPTS_ROOT = getattr(configuration, 'SCRIPTS_ROOT', os.path.join(BASE_DIR, 'scripts')).rstrip('/')
 SESSION_FILE_PATH = getattr(configuration, 'SESSION_FILE_PATH', None)
 SHORT_DATE_FORMAT = getattr(configuration, 'SHORT_DATE_FORMAT', 'Y-m-d')
 SHORT_DATETIME_FORMAT = getattr(configuration, 'SHORT_DATETIME_FORMAT', 'Y-m-d H:i')
@@ -92,6 +93,8 @@ SHORT_TIME_FORMAT = getattr(configuration, 'SHORT_TIME_FORMAT', 'H:i:s')
 TIME_FORMAT = getattr(configuration, 'TIME_FORMAT', 'g:i a')
 TIME_ZONE = getattr(configuration, 'TIME_ZONE', 'UTC')
 WEBHOOKS_ENABLED = getattr(configuration, 'WEBHOOKS_ENABLED', False)
+NEED_CHANGE_FOR_WRITE = getattr(configuration, 'NEED_CHANGE_FOR_WRITE', False)
+
 
 
 #
@@ -173,7 +176,9 @@ INSTALLED_APPS = [
     'taggit',
     'taggit_serializer',
     'timezone_field',
+    'change',
     'circuits',
+    'configuration',
     'dcim',
     'ipam',
     'extras',
@@ -205,6 +210,7 @@ MIDDLEWARE = (
     'utilities.middleware.LoginRequiredMiddleware',
     'utilities.middleware.APIVersionMiddleware',
     'extras.middleware.ObjectChangeMiddleware',
+    'change.middleware.FieldChangeMiddleware',
     'django_prometheus.middleware.PrometheusAfterMiddleware',
 )
 
@@ -231,7 +237,7 @@ TEMPLATES = [
 
 # Authentication
 AUTHENTICATION_BACKENDS = [
-    'utilities.auth_backends.ViewExemptModelBackend',
+    'change.backends.model.ProxyBackend',
 ]
 
 # Internationalization
@@ -256,6 +262,7 @@ MEDIA_URL = '/{}media/'.format(BASE_PATH)
 
 # Disable default limit of 1000 fields per request. Needed for bulk deletion of objects. (Added in Django 1.10.)
 DATA_UPLOAD_MAX_NUMBER_FIELDS = None
+DATA_UPLOAD_MAX_MEMORY_SIZE = 20*1024*1024
 
 # Messages
 MESSAGE_TAGS = {
@@ -266,7 +273,6 @@ MESSAGE_TAGS = {
 LOGIN_URL = '/{}login/'.format(BASE_PATH)
 
 CSRF_TRUSTED_ORIGINS = ALLOWED_HOSTS
-
 
 #
 # LDAP authentication (optional)
@@ -328,7 +334,7 @@ if LDAP_CONFIG is not None:
         ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, ldap.OPT_X_TLS_NEVER)
 
     # Prepend LDAPBackend to the authentication backends list
-    AUTHENTICATION_BACKENDS.insert(0, 'django_auth_ldap.backend.LDAPBackend')
+    AUTHENTICATION_BACKENDS.insert(0, 'change.backends.ldap.ProxyBackend')
 
     # Enable logging for django_auth_ldap
     ldap_logger = logging.getLogger('django_auth_ldap')
@@ -483,8 +489,8 @@ RQ_QUEUES = {
 INTERNAL_IPS = (
     '127.0.0.1',
     '::1',
+    '172.18.0.1',
 )
-
 
 #
 # NetBox internal settings

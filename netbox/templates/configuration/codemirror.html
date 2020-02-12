@@ -1,0 +1,8 @@
+<script type="text/javascript">
+    (function() {
+        var elem = document.getElementById("id_{{ name }}");
+        CodeMirror.fromTextArea(elem, {{ options|safe }}).on('change', function(instance) {
+          instance.save();
+        });
+    })();
+</script>

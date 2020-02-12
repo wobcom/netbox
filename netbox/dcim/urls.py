@@ -136,8 +136,12 @@ urlpatterns = [
     path(r'platforms/add/', views.PlatformCreateView.as_view(), name='platform_add'),
     path(r'platforms/import/', views.PlatformBulkImportView.as_view(), name='platform_import'),
     path(r'platforms/delete/', views.PlatformBulkDeleteView.as_view(), name='platform_bulk_delete'),
+    path(r'platforms/versions/add', views.PlatformVersionCreateView.as_view(), name='platform_version_add'),
+    path(r'platforms/<slug:slug>', views.PlatformView.as_view(), name='platform'),
     path(r'platforms/<slug:slug>/edit/', views.PlatformEditView.as_view(), name='platform_edit'),
     path(r'platforms/<slug:slug>/changelog/', ObjectChangeLogView.as_view(), name='platform_changelog', kwargs={'model': Platform}),
+    path(r'platform-versions/delete', views.PlatformVersionBulkDeleteView.as_view(), name='platform_version_bulk_delete'),
+    path(r'platform-versions/<int:pk>/delete', views.PlatformVersionDeleteView.as_view(), name='platform_version_delete'),
 
     # Devices
     path(r'devices/', views.DeviceListView.as_view(), name='device_list'),
@@ -158,6 +162,12 @@ urlpatterns = [
     path(r'devices/<int:pk>/add-secret/', secret_add, name='device_addsecret'),
     path(r'devices/<int:device>/services/assign/', ServiceCreateView.as_view(), name='device_service_assign'),
     path(r'devices/<int:object_id>/images/add/', ImageAttachmentEditView.as_view(), name='device_add_image', kwargs={'model': Device}),
+
+    # Device Licenses
+    path(r'devices/licenses/', views.DeviceLicenseListView.as_view(), name='device_license_list'),
+    path(r'devices/licenses/add/', views.DeviceLicenseCreateView.as_view(), name='device_license_add'),
+    path(r'devices/licenses/<int:pk>/delete/', views.DeviceLicenseDeleteView.as_view(), name='device_license_delete'),
+    path(r'devices/licenses/delete/', views.DeviceLicenseBulkDeleteView.as_view(), name='device_license_bulk_delete'),
 
     # Console ports
     path(r'devices/console-ports/add/', views.DeviceBulkAddConsolePortView.as_view(), name='device_bulk_add_consoleport'),
@@ -209,12 +219,15 @@ urlpatterns = [
     path(r'interfaces/<int:termination_a_id>/connect/<str:termination_b_type>/', views.CableCreateView.as_view(), name='interface_connect', kwargs={'termination_a_type': Interface}),
     path(r'interfaces/<int:pk>/', views.InterfaceView.as_view(), name='interface'),
     path(r'interfaces/<int:pk>/edit/', views.InterfaceEditView.as_view(), name='interface_edit'),
-    path(r'interfaces/<int:pk>/assign-vlans/', views.InterfaceAssignVLANsView.as_view(), name='interface_assign_vlans'),
     path(r'interfaces/<int:pk>/delete/', views.InterfaceDeleteView.as_view(), name='interface_delete'),
     path(r'interfaces/<int:pk>/changelog/', ObjectChangeLogView.as_view(), name='interface_changelog', kwargs={'model': Interface}),
     path(r'interfaces/<int:pk>/trace/', views.CableTraceView.as_view(), name='interface_trace', kwargs={'model': Interface}),
     path(r'interfaces/rename/', views.InterfaceBulkRenameView.as_view(), name='interface_bulk_rename'),
     path(r'interfaces/disconnect/', views.InterfaceBulkDisconnectView.as_view(), name='interface_bulk_disconnect'),
+    path(r'interfaces/', views.InterfaceListView.as_view(), name='interface_list'),
+    path(r'interfaces/edit/', views.InterfaceBulkEditSingleView.as_view(), name='interface_bulk_edit'),
+    path(r'interfaces/delete/', views.InterfaceBulkDeleteSingleView.as_view(), name='interface_bulk_delete'),
+    path(r'interfaces/add-vlan/', views.InterfaceBulkAddVLANView.as_view(), name='interface_bulk_add_vlan'),
 
     # Front ports
     # path(r'devices/front-ports/add/', views.DeviceBulkAddFrontPortView.as_view(), name='device_bulk_add_frontport'),
