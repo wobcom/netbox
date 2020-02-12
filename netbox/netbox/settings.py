@@ -188,6 +188,7 @@ INSTALLED_APPS = [
     'utilities',
     'virtualization',
     'drf_yasg',
+    'channels',
 ]
 
 # Only load django-rq if the webhook backend is enabled
@@ -245,8 +246,8 @@ LANGUAGE_CODE = 'en-us'
 USE_I18N = True
 USE_TZ = True
 
-# WSGI
-WSGI_APPLICATION = 'netbox.wsgi.application'
+# ASGI
+ASGI_APPLICATION = 'netbox.asgi.application'
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 USE_X_FORWARDED_HOST = True
 
@@ -506,3 +507,28 @@ PER_PAGE_DEFAULTS = [
 if PAGINATE_COUNT not in PER_PAGE_DEFAULTS:
     PER_PAGE_DEFAULTS.append(PAGINATE_COUNT)
     PER_PAGE_DEFAULTS = sorted(PER_PAGE_DEFAULTS)
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [(configuration.REDIS['HOST'], configuration.REDIS['PORT'])],
+        },
+    },
+}
+
+if not configuration.PROVISIONING_STAGE_1:
+    configuration.PROVISIONING_STAGE_1 = ()
+
+if not configuration.PROVISIONING_STAGE_2:
+    configuration.PROVISIONING_STAGE_2 = ()
+
+if not configuration.PROVISIONING_TIMEOUT:
+    configuration.PROVISIONING_TIMEOUT = None
+
+if not configuration.PID_FILE:
+    configuration.PID_FILE = os.path.join(BASE_DIR, 'provisioning.pid')
+
+if not os.path.isdir(os.path.dirname(os.path.realpath(configuration.PID_FILE))):
+    print('Path of PID_FILE does not exist! {}'.format(os.path.realpath(configuration.PID_FILE)))
+    exit(1)

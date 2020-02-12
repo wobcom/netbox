@@ -12,47 +12,9 @@ services:
       - "5432:5432"
     expose:
       - "5432"
-  gitlab:
-    depends_on:
-      - app
-    image: 'gitlab/gitlab-ce:latest'
-    restart: always
+  redis:
+    image: redis:latest
     ports:
-      - '80:80'
-      - '22:22'
-    container_name: netbox_gitlab
-    hostname: gitlab.docker
-    networks:
-      gitlab-network:
-        aliases:
-          - gitlab.docker
-  gitlab-runner:
-    depends_on:
-      - gitlab
-    container_name: netbox_gitlab_runner
-    image: "gitlab/gitlab-runner:latest"
-    restart: always
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:rw
-    networks:
-      - gitlab-network
-  app:
-    environment:
-      DATABASE_URL: postgres://netbox:netbox@db/netbox
-      DJANGO_MANAGEPY_MIGRATE: 'on'
-      DJANGO_MANAGEPY_COLLECTSTATIC: 'on'
-    build:
-      context: .
-      dockerfile: ./Dockerfile
-    links:
-      - db:db
-    volumes:
-      - netbox-sync:/code:nocopy
-    ports:
-      - "8000:8000"
-volumes:
-  netbox-sync:
-    external: true
-networks:
-  gitlab-network:
-    driver: bridge
+      - "6379:6379"
+    expose:
+      - "6379"

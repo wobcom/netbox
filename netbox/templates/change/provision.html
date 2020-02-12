@@ -1,0 +1,155 @@
+{% extends '_base.html' %}
+
+{% block header %}
+    <div class="row noprint">
+        <div class="col-sm-12 col-md-12">
+            <ol class="breadcrumb">
+                <li><a href="{% url 'change:provisions' %}">Provisions</a></li>
+                <li>#{{ provision_set.id }}</li>
+            </ol>
+        </div>
+    </div>
+    <div class="pull-right noprint">
+        {% if perms.change.change_provisionset and provision_set.status != provision_set.FINISHED %}
+            {% if provision_set.user == request.user %}
+                <form action="{% url 'change:second_stage' pk=provision_set.pk %}" method="post" style="display: inline-block">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-warning"{% if provision_set.status != provision_set.REVIEWING %} disabled="" title="First stage did not complete successfully"{% endif %}>
+                        <i class="glyphicon glyphicon-play" aria-hidden="true"></i> Run 2nd stage
+                    </button>
+                </form>
+            {% endif %}
+            {% if provision_set.user == request.user or provision_set.timed_out %}
+                <button class="btn btn-danger"{% if provision_set.status != provision_set.RUNNING and provision_set.status != provision_set.REVIEWING %} disabled="" title="Not running processes cannot be terminated!"{% endif %} data-toggle="modal" data-target="#termination-modal">
+                    <i class="glyphicon glyphicon-ban-circle" aria-hidden="true"></i> Terminate
+                </button>
+            {% endif %}
+        {% endif %}
+    </div>
+    <h1>
+        {% block title %}Provisioning #{{ provision_set.pk }}{% endblock %}
+        <small>
+            {% include 'change/inc/provision_set_label.html' %}
+        </small>
+    </h1>
+    <p>
+    <small class="text-muted">Created {{ provision_set.created }} &middot; Updated <span title="{{ provision_set.updated }}">{{ provision_set.updated | timesince }}</span> ago</small>
+    </p>
+
+    {# Modal dialog for termination #}
+    <div class="modal fade" tabindex="-1" role="dialog" aria-labelledby="termination-modal-label" id="termination-modal">
+        <div class="modal-dialog modal-sm" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="termination-modal-label">Modal title</h4>
+                </div>
+                <div class="modal-body">
+                    Do you really want to terminate this provisioning?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    <form action="{% url 'change:terminate_provision_set' pk=provision_set.pk %}" method="post" style="display: inline-block">
+                        {% csrf_token %}
+                        <button class="btn btn-danger" type="submit">Terminate</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <div class="col-md-6">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <strong>Logs</strong>
+                </div>
+                <div id="terminal_output"></div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="panel panel-default">
+                <div class="panel-heading"><strong>Information</strong></div>
+                <table class="table table-hover panel-body attr-table">
+                    <tr>
+                        <td>Author</td>
+                        <td>{{ provision_set.user.username }}</td>
+                    </tr>
+                    <tr>
+                        {% if provision_set.timeout %}
+                            <td>Timeout</td>
+                            <td>
+                                {% if provision_set.status == provision_set.REVIEWING %}
+                                    {% if provision_set.timed_out %}
+                                        Timed out
+                                    {% else %}
+                                        <span id="provision-timeout"></span>
+                                        <script type="application/javascript">
+                                        function leading_zero(x) {
+                                            if (x < 10) {
+                                                return "0" + x;
+                                            }
+                                            return x;
+                                        }
+                                        document.addEventListener('DOMContentLoaded', () => {
+                                            var timeout = ({{ provision_set.timeout.timestamp }} * 1000;
+                                        )
+                                            var time_offset = Date.now() - ({{ current_time.timestamp }} * 1000;
+                                        )
+                                            var time_field = document.getElementById('provision-timeout');
+                                            var time_update = setInterval(() => {
+                                                var remaining_time = timeout - (Date.now() - time_offset);
+                                                var time_string = "";
+                                                if (remaining_time > 0) {
+                                                    var remaining_date = new Date(remaining_time);
+                                                    console.log(remaining_time);
+                                                    time_string = leading_zero(remaining_date.getUTCHours()) + ":" + leading_zero(remaining_date.getUTCMinutes()) + ":" + leading_zero(remaining_date.getUTCSeconds());
+                                                } else {
+                                                    time_string = "00:00";
+                                                    clearInterval(time_update);
+                                                }
+                                                time_field.innerText = time_string;
+                                            }, 500)
+                                        })
+                                        </script>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">&mdash;</span>
+                                {% endif %}
+                            </td>
+                        {% endif %}
+                    </tr>
+                </table>
+            </div>
+            {% include 'panel_table.html' with table=changes_table heading='Containing changes' %}
+        </div>
+    </div>
+{% endblock %}
+
+{% block javascript %}
+    <script type="application/javascript">
+    document.addEventListener('DOMContentLoaded', () => {
+        var term = new Terminal({
+            rows: 50,
+        });
+        var fit_addon = new FitAddon.FitAddon();
+        term.loadAddon(fit_addon);
+        term.open(document.getElementById('terminal_output'));
+        fit_addon.fit();
+        {% if provision_set.status != provision_set.RUNNING %}
+        term.write(`{{ provision_set.output_log }}`.replace(/\n/g, '\r\n'));
+        {% else %}
+        var websocket = new WebSocket((location.protocol.startsWith('https') ? 'wss' : 'ws') + '://' + location.host + '/change/provisions/{{ provision_set.pk }}/logs/ws/');
+        websocket.onmessage = (msg) => {
+            var data = JSON.parse(msg.data);
+            if (data.scope === 'default') {
+                term.write(data.line.replace(/\n/g, '\r\n'));
+            }
+        };
+        {% endif %}
+    })
+
+    </script>
+{% endblock %}

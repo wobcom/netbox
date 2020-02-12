@@ -1,16 +1,93 @@
-from django.contrib import messages
+import os
+import signal
+import json
+
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.http import HttpResponse
+from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
-from django.utils.safestring import mark_safe
 from django.views.generic import View
 from django.views.generic.edit import CreateView
-import gitlab
+from django.views.decorators.cache import never_cache
+from django.utils import timezone
+from django.db import IntegrityError
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+from diplomacy import Diplomat
 
 from netbox import configuration
-from dcim.models import Device
+from utilities.views import ObjectListView
 from .forms import ChangeInformationForm
-from .models import ChangeInformation, ChangeSet, ProvisionSet, ACCEPTED, IMPLEMENTED
+from .models import ChangeInformation, ChangeSet, AlreadyExistsError, ProvisionSet, PID
+from . import tables
+
+
+def send_provision_status(provision_set, status):
+    """
+    Sends provision status to channels group 'provision_status'.
+    :param provision_set:
+    :param status: True if started, False if stopped
+    """
+    async_to_sync(get_channel_layer().group_send)('provision_status', {
+        'type': 'provision_status_message',
+        'text': json.dumps({'provision_set_pk': provision_set.pk, 'provision_status': str(int(status))})
+    })
+
+
+def prepare_provisioning_stage(stage_configuration, provision_set):
+
+    return [[e.format(provision_set=provision_set) for e in job] for job in stage_configuration]
+
+
+def run_provisioning_stage(stage_configuration, finished_callback=lambda status: status):
+    """
+    runs a given provisioning stage
+
+    the finished callback must be a function with an status argument, status is set to one out of:
+        FINISHED, ABORTED, FAILED
+
+    :param stage_configuration: tuple of tuples with the command specification
+    :param finished_callback: callback function an end of the run func(status)
+    :return: temp log file path
+    """
+    def callback(job):
+        PID.set(None)
+        if job.has_succeeded():
+            finished_callback(status=ProvisionSet.FINISHED)
+        else:
+            # find out whether it was aborted
+            ret = job.process().returncode
+            if ret < 0 and signal.SIGABRT == abs(ret):
+                finished_callback(status=ProvisionSet.ABORTED)
+            else:
+                finished_callback(status=ProvisionSet.FAILED)
+
+    def job_exit_callback_creator(jobs):
+        if len(jobs) == 0:
+            return callback
+
+        def job_exit_callback(job):
+            if not job.has_succeeded():
+                callback(job)
+                return
+            new_job = Diplomat(
+                *jobs[0],
+                out=job.output_file_name(),
+                single_file=True,
+            )
+            PID.set(new_job.process().pid)
+            new_job.register_exit_fn(job_exit_callback_creator(jobs[1:]))
+
+        return job_exit_callback
+
+    if len(stage_configuration) == 0:
+        raise ValueError('Empty stage configuration')
+
+    initial_job = Diplomat(*stage_configuration[0], single_file=True)
+    PID.set(initial_job.process().pid)
+    initial_job.register_exit_fn(job_exit_callback_creator(stage_configuration[1:]))
+
+    return initial_job.output_file_name()
 
 
 class ChangeFormView(PermissionRequiredMixin, CreateView):
@@ -35,17 +112,6 @@ class ChangeFormView(PermissionRequiredMixin, CreateView):
         c.save()
 
         return result
-
-    def get_context_data(self, **kwargs):
-        ctx = super(ChangeFormView, self).get_context_data(**kwargs)
-        #ctx['affected_customers'] = AffectedCustomerInlineFormSet(prefix='affected_customers')
-        ctx['return_url'] = '/change/toggle'
-        ctx['obj_type'] = 'Change Request'
-
-        # TODO: add possible parent changes
-        #ctx['change_parents'] = TP.operator_change("")
-
-        return ctx
 
 
 class EndChangeView(PermissionRequiredMixin, View):
@@ -74,137 +140,10 @@ class EndChangeView(PermissionRequiredMixin, View):
             return HttpResponse("You're currently not in a change", status=409), None
 
         request.my_change.active = False
-        request.my_change.status = ACCEPTED
+        request.my_change.status = ChangeSet.ACCEPTED
         request.my_change.save()
 
         return redirect('home')
-
-
-MR_TXT = """## Multiple Changes
-Provisioning started in Netbox by {}.
-"""
-
-CHANGE_TXT = """
-
-### Change #{}: {}
-Created in Netbox by {}.
-
-#### Executive Summary
-
-{}
-"""
-
-
-def check_actions(project, actions, branch):
-    treated = set()
-    new_actions = []
-    # if not git exists:
-    #    git clone configurations.GITLAB_CLONE_URL
-    # git pull
-    # ls host_vars/**/*
-    for f in project.repository_tree(path='host_vars', all=True, recursive=True, per_page=100):
-        # we only care for files
-        if f['type'] != 'blob':
-            continue
-        f = f['path']
-        if f in actions:
-            treated.add(f)
-            new_actions.append({
-                'action': 'update',
-                'file_path': f,
-                'content': actions[f],
-            })
-        else:
-            new_actions.append({
-                'action': 'delete',
-                'file_path': f,
-            })
-    for action in actions:
-        if action in treated:
-            continue
-        new_actions.append({
-            'action': 'create',
-            'file_path': action,
-            'content': actions[action],
-        })
-    return new_actions
-
-
-def check_branch_exists(project, branch_name):
-    try:
-        b = project.branches.get(branch_name)
-        if b:
-            return True
-    except gitlab.exceptions.GitlabError:
-        pass
-    return False
-
-
-def open_gitlab_mr(o, delete_branch=False):
-    devices = Device.objects.prefetch_related(
-             'interfaces__untagged_vlan',
-             'interfaces__tagged_vlans',
-             'interfaces__overlay_network',
-             'device_type').filter(primary_ip4__isnull=False)
-    gl = gitlab.Gitlab(configuration.GITLAB_URL, configuration.GITLAB_TOKEN)
-    project = gl.projects.get(configuration.GITLAB_PROJECT_ID)
-    actions = o.to_actions(devices)
-    mr_txt = MR_TXT.format(o.user.username)
-    changes_txt = ""
-    for change_set in o.changesets.all():
-        mr_txt += "* {}\n".format(change_set.change_information.name)
-        changes_txt += CHANGE_TXT.format(
-            change_set.id,
-            change_set.change_information.name,
-            change_set.user.username,
-            change_set.executive_summary().replace('\n', '\\\n'),
-        )
-    mr_txt += changes_txt
-    branch_name = 'provisioning_{}'.format(o.id)
-    commit_msg = 'Autocommit from Netbox (Provisioning #{})'.format(o.id)
-
-    if delete_branch and check_branch_exists(project, branch_name):
-        project.branches.delete(branch_name)
-
-    project.branches.create({
-        'branch': branch_name,
-        'ref': 'master'
-    })
-    actions = check_actions(project, actions, branch_name)
-    actions.append(o.create_inventory(devices))
-    actions.append(o.create_topology_graph(devices))
-    project.commits.create({
-        'id': project.id,
-        'branch': branch_name,
-        'commit_message': commit_msg,
-        'author_name': 'Netbox',
-        'actions': actions,
-    })
-    mr = project.mergerequests.create({
-        'title': 'Deployment #{}: {} Changes'.format(o.id, o.changesets.count()),
-        'description': mr_txt,
-        'source_branch': branch_name,
-        'target_branch': 'master',
-        'approvals_before_merge': 1,
-        'labels': ['netbox', 'unreviewed']
-    })
-
-    # set project approvals so the surveyor can do its funk if the approver is
-    # set
-    if configuration.GITLAB_APPROVER_ID:
-        mr_mras = mr.approvals.get()
-        mr_mras.approvals_before_merge = 1
-        mr_mras.save()
-
-        mr.approvals.set_approvers(
-            approver_ids=[configuration.GITLAB_APPROVER_ID]
-        )
-
-    o.mr_location = "{}/{}/merge_requests/{}".format(
-        configuration.GITLAB_URL, project.path_with_namespace, mr.iid
-    )
-
-    return 'You can review your merge request <a href="{}">here</a>!'.format(o.mr_location)
 
 
 class DeployView(PermissionRequiredMixin, View):
@@ -216,36 +155,117 @@ class DeployView(PermissionRequiredMixin, View):
 
     def __init__(self, *args, **kwargs):
         super(DeployView, self).__init__(*args, **kwargs)
-        self.undeployed_changesets = ChangeSet.objects.exclude(status=IMPLEMENTED).order_by('id')
+        self.undeployed_changesets = ChangeSet.objects.exclude(status=ChangeSet.IMPLEMENTED)\
+                                                      .exclude(status=ChangeSet.IN_REVIEW)\
+                                                      .order_by('id')
 
     def get(self, request):
 
         return render(request, 'change/deploy.html', context={
-            'undeployed_changesets': self.undeployed_changesets,
-            'unaccepted_changes': self.undeployed_changesets.exclude(status=ACCEPTED).count(),
-            'ACCEPTED': ACCEPTED
+            'undeployed_changesets_table': tables.ProvisioningChangesTable(data=self.undeployed_changesets),
+            'undeployed_changesets': self.undeployed_changesets.count(),
+            'unaccepted_changesets': self.undeployed_changesets.exclude(status=ChangeSet.ACCEPTED).count(),
         })
 
     def post(self, request):
+        try:
+            provision_set = ProvisionSet(user=request.user)
+        except AlreadyExistsError:
+            messages.error(
+                request,
+                'Provisioning can not be started, another provisioning is already running.'
+            )
+            return redirect('change:deploy')
 
-        provision_set = ProvisionSet(user=request.user)
         provision_set.save()
 
-        for change_set in self.undeployed_changesets:
-            change_set.provision_set = provision_set
-            change_set.save()
+        send_provision_status(provision_set, status=True)
+
+        self.undeployed_changesets.update(provision_set=provision_set)
+
+        def provisioning_finished(status):
+            send_provision_status(provision_set, status=False)
+
+            if status == ProvisionSet.FINISHED:
+                provision_set.status = ProvisionSet.REVIEWING
+                self.undeployed_changesets.update(status=ChangeSet.IN_REVIEW)
+            else:
+                provision_set.status = status
+
+            provision_set.persist_output_log()
+            provision_set.save()
+
+        log_file_path = run_provisioning_stage(
+            prepare_provisioning_stage(configuration.PROVISIONING_STAGE_1, provision_set),
+            provisioning_finished)
+        provision_set.output_log_file = log_file_path
+        provision_set.status = ProvisionSet.RUNNING
+        provision_set.save()
+
+        return redirect('change:provision_set', pk=provision_set.pk)
+
+
+class SecondStageView(PermissionRequiredMixin, View):
+    permission_required = 'change.change_provisionset'
+
+    def post(self, request, pk=None):
+
+        provision_set = ProvisionSet.objects.get(pk=pk)
+
+        send_provision_status(provision_set, status=True)
+
+        def provisioning_finished(status):
+            provision_set.status = status
+            send_provision_status(provision_set, status=False)
+
+            if status == ProvisionSet.FINISHED:
+                provision_set.changesets.update(status=ChangeSet.IMPLEMENTED)
+            else:
+                provision_set.changesets.update(status=ChangeSet.ACCEPTED)
+
+            provision_set.persist_output_log(append=True)
+            provision_set.save()
+
+        log_file_path = run_provisioning_stage(
+            prepare_provisioning_stage(configuration.PROVISIONING_STAGE_2, provision_set),
+            provisioning_finished)
+
+        provision_set.status = ProvisionSet.RUNNING
+        provision_set.output_log_file = log_file_path
+        provision_set.save()
+
+        return redirect('change:provision_set', pk=provision_set.pk)
+
+
+class TerminateView(PermissionRequiredMixin, View):
+    """
+    This view is for terminating Ansible deployments preemptively.
+    """
+    permission_required = 'change.deploy_changeset'
+
+    def post(self, request, pk=None):
+        """
+        This view terminates the provision set.
+        """
+        provision_set = get_object_or_404(ProvisionSet, pk=pk)
+
+        if provision_set.status != ProvisionSet.RUNNING:
+            provision_set.changesets.update(status=ChangeSet.ACCEPTED)
+            provision_set.status = ProvisionSet.ABORTED
+            provision_set.save()
+            return redirect('change:provision_set', pk=provision_set.pk)
+
+        pid = PID.get()
+
+        if not pid:
+            return HttpResponse('Provision was not started!', status=409)
 
         try:
-            safe = mark_safe(open_gitlab_mr(provision_set))
-            messages.info(request, safe)
+            os.kill(pid, signal.SIGABRT)
+        except ProcessLookupError:
+            return HttpResponse('Provision process was not found!', status=400)
 
-        except gitlab.exceptions.GitlabError as e:
-            messages.warning(request,
-                             "Unable to connect to GitLab at the moment! Error message: {}".format(e)
-                             )
-        self.undeployed_changesets.update(status=IMPLEMENTED)
-
-        return redirect('home')
+        return redirect('change:provision_set', pk=provision_set.pk)
 
 
 class DetailView(PermissionRequiredMixin, View):
@@ -260,3 +280,27 @@ class DetailView(PermissionRequiredMixin, View):
         """
         changeset = get_object_or_404(ChangeSet, pk=pk)
         return render(request, 'change/detail.html', {'changeset': changeset})
+
+
+# Provisions
+class ProvisionsView(PermissionRequiredMixin, ObjectListView):
+    permission_required = 'change.view_provisionset'
+    queryset = ProvisionSet.objects.order_by('-created')
+    table = tables.ProvisionTable
+    template_name = 'change/provision_list.html'
+
+
+class ProvisionSetView(PermissionRequiredMixin, View):
+    permission_required = 'change.view_provisionset'
+
+    @never_cache
+    def get(self, request, pk):
+        provision_set = get_object_or_404(ProvisionSet, pk=pk)
+
+        changes_table = tables.ProvisioningChangesTable(data=provision_set.changesets.all())
+
+        return render(request, 'change/provision.html', context={
+            'provision_set': provision_set,
+            'changes_table': changes_table,
+            'current_time': timezone.now(),
+        })

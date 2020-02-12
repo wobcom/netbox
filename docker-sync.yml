@@ -1,8 +1,0 @@
-version: "2"
-
-options:
-  verbose: true
-syncs:
-  netbox-sync:
-    sync_strategy: 'native_osx'
-    src: '.'
