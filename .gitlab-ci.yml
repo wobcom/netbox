@@ -15,11 +15,11 @@ before_script:
   #- echo "$CERTIFICATE_KEY" > ./certs/cert.key
   #- echo "$CERTIFICATE_CRT" > ./certs/cert.crt
  
-#variables:
-#  REGISTRY: registry.gitlab.com
+variables:
+  REGISTRY: registry.gitlab.com
 
 stages:
-  #- build
+  - build
   - deploy
 
 #build-container:
@@ -38,6 +38,16 @@ stages:
 #    # - docker push "$REGISTRY/wobcom/mimir"
 #  tags:
 #    - dummy
+
+build-package:
+  stage: build
+  only:
+    - ci_development
+  image: wobcom/fpm-docker:netbox
+  script:
+    - "python3 -m venv venv"
+    - "venv/bin/pip install -r requirements.txt"
+    - "venv/bin/python netbox/manage.py collectstatic"
 
 deploy-staging-ssh:
   stage: deploy
