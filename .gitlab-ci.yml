@@ -49,7 +49,7 @@ build-package:
     - "git config --global credential.gitlab.service.wobcom.de.useHttpPath true"
     - "git config --global credential.gitlab.com.useHttpPath true"
     - "echo https://${DIPLOMACY_CREDENTIALS}@gitlab.service.wobcom.de/hellerve/diplomacy.git >> ~/.git-credentials"
-    - "echo https://${TOPDESK_CREDENTIALS}@gitlab.com/wobcompublic/topdesk/"
+    - "echo https://${TOPDESK_CREDENTIALS}@gitlab.com/wobcompublic/topdesk/ >> ~/.git-credentials"
   script:
     - "python3 -m venv venv"
     - "venv/bin/pip install -r requirements.txt"
