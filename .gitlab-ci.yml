@@ -54,6 +54,7 @@ build-package:
     - "python3 -m venv venv"
     - "venv/bin/pip install -r requirements.txt"
     - "cp netbox/netbox/configuration.example.py netbox/netbox/configuration.py"
+    - "sed -i 's/SECRET_KEY = \'\'/SECRET_KEY = \'sample_key_do_not_use_in_production'/g'"
     - "venv/bin/python netbox/manage.py collectstatic"
 
 
