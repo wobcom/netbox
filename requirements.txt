@@ -26,5 +26,5 @@ django-codemirror2
 -e git+https://gitlab.service.wobcom.de/hellerve/diplomacy.git#egg=diplomacy
 ansible
 channels
--e git+https://gitlab.com/wobcompublic/topdesk/#egg=topdesk
+-e git+https://gitlab.com/wobcompublic/topdesk.git#egg=topdesk
 channels_redis
