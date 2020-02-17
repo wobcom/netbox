@@ -44,6 +44,10 @@ build-package:
   only:
     - ci_development
   image: wobcom/fpm-docker:netbox
+  before_script:
+    - "git config --global credential.helper store"
+    - "git config --global credential.gitlab.service.wobcom.de.useHttpPath true"
+    - "echo 'https://${DIPLOMACY_USER}:${DIPLOMACY_PASSWORD}@gitlab.service.wobcom.de/hellerve/diplomacy.git' > ~/.git-credentials "
   script:
     - "python3 -m venv venv"
     - "venv/bin/pip install -r requirements.txt"
