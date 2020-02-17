@@ -60,7 +60,7 @@ build-package:
     - "fpm -s dir -t rpm -p netbox.rpm -prefix /opt/netbox/ -n netbox -iteration $(git rev-list --all --count) -d postgresql-server -config-files netbox/netbox/configuration.py -directories /opt/netbox ./"
   artifacts:
     paths:
-      - netbox_package.rpm
+      - netbox.rpm
 
 deploy-staging-ssh:
   stage: deploy
