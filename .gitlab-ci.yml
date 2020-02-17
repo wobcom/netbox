@@ -54,7 +54,7 @@ build-package:
     - "python3 -m venv venv"
     - "venv/bin/pip install -r requirements.txt"
     - "venv/bin/python netbox/manage.py collectstatic"
-
+    - "cp netbox/netbox/configuration.example.py netbox/netbox/configuration.py"
 deploy-staging-ssh:
   stage: deploy
   only: 
