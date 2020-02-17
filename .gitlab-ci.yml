@@ -43,7 +43,7 @@ build-package:
   stage: build
   only:
     - ci_development
-  image: wobcom/fpm-docker:netbox
+  image: registry.gitlab.com/wobcom/fpm-docker:netbox
   before_script:
     - "git config --global credential.helper store"
     - "git config --global credential.gitlab.service.wobcom.de.useHttpPath true"
