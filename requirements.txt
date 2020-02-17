@@ -23,7 +23,7 @@ pycryptodome==3.8.2
 xmltodict==0.11.0
 python-gitlab
 django-codemirror2
--e git+https://gitlab.service.wobcom.de/hellerve/diplomacy.git#egg=diplomacy
+-e git+https://gitlab.service.wobcom.de/infrastructure/diplomacy.git#egg=diplomacy
 ansible
 channels
 -e git+https://gitlab.com/wobcompublic/topdesk.git#egg=topdesk
