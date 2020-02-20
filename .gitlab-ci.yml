@@ -68,6 +68,9 @@ deploy-package:
   stage: deploy
   dependencies:
     - build-package
+  before_script:
+    - "apt-get -y update"
+    - "apt-get install -y sshpass"
   script:
     - "sshpass -p \"${REPO_PASSWORD}\" | scp netbox.rpm ${REPO_USER}@${REPO_HOST}:${REPO_PATH}"
 
