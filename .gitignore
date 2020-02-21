@@ -9,6 +9,7 @@
 .idea
 /*.sh
 !upgrade.sh
+!build_package.sh
 fabfile.py
 *.swp
 gunicorn_config.py
