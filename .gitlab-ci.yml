@@ -17,6 +17,7 @@ before_script:
  
 variables:
   REGISTRY: registry.gitlab.com
+  GIT_DEPTH: 0
 
 stages:
   - build
@@ -52,9 +53,7 @@ build-package:
     - "git config --global credential.gitlab.com.useHttpPath true"
     - "echo https://${DIPLOMACY_CREDENTIALS}@gitlab.service.wobcom.de/infrastructure/diplomacy.git >> ~/.git-credentials"
     - "echo https://${TOPDESK_CREDENTIALS}@gitlab.com/wobcompublic/topdesk/ >> ~/.git-credentials"
-    - "git fetch --tags"
   script:
-    - "git tag -l"
     - "./build_package.sh"
   artifacts:
     paths:
