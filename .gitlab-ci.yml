@@ -59,10 +59,10 @@ build-package:
     - "sed -i \"s/SECRET_KEY = ''/SECRET_KEY = 'sample_key_do_not_use_in_production'/g\" netbox/netbox/configuration.py"
     - "venv/bin/python netbox/manage.py collectstatic"
     - "cp netbox/netbox/configuration.example.py netbox/netbox/configuration.py"
-    - "fpm -s dir -t rpm -p netbox.rpm --prefix /opt/netbox/ -n netbox --iteration $(git rev-list --all --count) -d postgresql96 -d postgresql96-server -d redis --config-files netbox/netbox/configuration.py --directories /opt/netbox ./"
+    - "fpm -s dir -t rpm --prefix /opt/netbox/ -n netbox --version $(git describe --abbrev=0 --tags) --iteration $(git rev-list $(git describe --abbrev=0 --tags)..HEAD --count)-$(git rev-parse --short HEAD) -d postgresql96 -d postgresql96-server -d redis --config-files netbox/netbox/configuration.py --directories /opt/netbox ./"
   artifacts:
     paths:
-      - netbox.rpm
+      - netbox*.rpm
 
 deploy-package:
   stage: deploy
@@ -77,7 +77,7 @@ deploy-package:
     - "mkdir ~/.ssh"
     - "echo ${REPO_HOST_KEY} >> ~/.ssh/known_hosts"
   script:
-    - "sshpass -p \"${REPO_PASSWORD}\" scp netbox.rpm ${REPO_USER}@${REPO_HOST}:${REPO_PATH}"
+    - "sshpass -p \"${REPO_PASSWORD}\" scp netbox*.rpm ${REPO_USER}@${REPO_HOST}:${REPO_PATH}"
     - "sshpass -p \"${REPO_PASSWORD}\" ssh ${REPO_USER}@${REPO_HOST} \"/var/share/repos/scripts/rebuild.sh\""
 
 deploy-staging-ssh:
