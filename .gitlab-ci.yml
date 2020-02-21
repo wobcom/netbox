@@ -74,7 +74,7 @@ deploy-package:
     - "mkdir ~/.ssh"
     - "echo ${REPO_HOST_KEY} >> ~/.ssh/known_hosts"
   script:
-    - "sshpass -p \"${REPO_PASSWORD}\" | scp netbox.rpm ${REPO_USER}@${REPO_HOST}:${REPO_PATH}"
+    - "sshpass -p \"${REPO_PASSWORD}\" scp netbox.rpm ${REPO_USER}@${REPO_HOST}:${REPO_PATH}"
 
 deploy-staging-ssh:
   stage: deploy
