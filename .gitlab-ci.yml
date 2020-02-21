@@ -59,7 +59,7 @@ build-package:
     - "sed -i \"s/SECRET_KEY = ''/SECRET_KEY = 'sample_key_do_not_use_in_production'/g\" netbox/netbox/configuration.py"
     - "venv/bin/python netbox/manage.py collectstatic"
     - "cp netbox/netbox/configuration.example.py netbox/netbox/configuration.py"
-    - "fpm -s dir -t rpm --prefix /opt/netbox/ -n netbox --version $(git describe --abbrev=0 --tags | tr - _ | sed -En \"s/v\\(.*\\)/\\1/p\") --iteration $(git rev-list $(git describe --abbrev=0 --tags)..HEAD --count) -d postgresql96 -d postgresql96-server -d redis --config-files netbox/netbox/configuration.py --directories /opt/netbox ./"
+    - "fpm -s dir -t rpm --prefix /opt/netbox/ -n netbox --version $(git describe --abbrev=0 --tags | tr - _ | sed -En \"s/v(.*)/\\1/p\") --iteration $(git rev-list $(git describe --abbrev=0 --tags)..HEAD --count) -d postgresql96 -d postgresql96-server -d redis --config-files netbox/netbox/configuration.py --directories /opt/netbox ./"
   artifacts:
     paths:
       - netbox*.rpm
