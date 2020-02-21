@@ -66,6 +66,9 @@ build-package:
 
 deploy-package:
   stage: deploy
+  image: debian:10
+  tags:
+    - docker
   dependencies:
     - build-package
   before_script:
