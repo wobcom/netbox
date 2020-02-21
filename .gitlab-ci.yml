@@ -53,13 +53,7 @@ build-package:
     - "echo https://${DIPLOMACY_CREDENTIALS}@gitlab.service.wobcom.de/infrastructure/diplomacy.git >> ~/.git-credentials"
     - "echo https://${TOPDESK_CREDENTIALS}@gitlab.com/wobcompublic/topdesk/ >> ~/.git-credentials"
   script:
-    - "python3 -m venv venv"
-    - "venv/bin/pip install -r requirements.txt"
-    - "cp netbox/netbox/configuration.example.py netbox/netbox/configuration.py"
-    - "sed -i \"s/SECRET_KEY = ''/SECRET_KEY = 'sample_key_do_not_use_in_production'/g\" netbox/netbox/configuration.py"
-    - "venv/bin/python netbox/manage.py collectstatic"
-    - "cp netbox/netbox/configuration.example.py netbox/netbox/configuration.py"
-    - "fpm -s dir -t rpm --prefix /opt/netbox/ -n netbox --version \"$(git describe --abbrev=0 --tags | tr - _ | sed -En \"s/v(.*)/\\1/p\")\" --iteration \"$(git rev-list \\\"$(git describe --abbrev=0 --tags)..HEAD\\\" --count)\" -d postgresql96 -d postgresql96-server -d redis --config-files netbox/netbox/configuration.py --directories /opt/netbox ./"
+    - "./build_package.sh"
   artifacts:
     paths:
       - netbox*.rpm
