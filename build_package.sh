@@ -23,8 +23,7 @@ fpm --input-type dir \
     --output-type rpm \
     --prefix /opt/netbox/ \
     --name netbox \
-    --version "${VERSION}" \
-    --iteration "${ITERATION}" \
+    --version "${VERSION}_${ITERATION}" \
     --depends postgresql96 \
     --depends postgresql96-server \
     --depends redis \
