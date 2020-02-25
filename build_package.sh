@@ -25,9 +25,9 @@ fpm --input-type dir \
     --name netbox \
     --version "${VERSION}" \
     --iteration "${ITERATION}" \
-    -depends postgresql96 \
-    -depends postgresql96-server \
-    -depends redis \
+    --depends postgresql96 \
+    --depends postgresql96-server \
+    --depends redis \
     --config-files netbox/netbox/configuration.py \
     --directories /opt/netbox \
     ./
