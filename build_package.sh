@@ -17,7 +17,7 @@ LATEST_GIT_TAG=$(git describe --abbrev=0 --tags)
 VERSION=$(echo "${LATEST_GIT_TAG}" | tr - _ | sed -En "s/v(.*)/\\1/p" )
 ITERATION=$(git rev-list "${LATEST_GIT_TAG}..HEAD" --count)
 
-echo ">> Build package with based on ${LATEST_GIT_TAG}, with version ${VERSION} and iteration ${ITERATION}"
+echo ">> Build package based on ${LATEST_GIT_TAG}, with version ${VERSION} and iteration ${ITERATION}"
 
 fpm --input-type dir \
     --output-type rpm \
