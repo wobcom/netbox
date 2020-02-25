@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo ">> Creating virtual environment"
-python3 -m venv venv
+python3 -m venv --copies venv
 echo ">> Installing requirements to virtual environment"
 venv/bin/pip install -r requirements.txt
 echo ">> Copy temporary configuration"
