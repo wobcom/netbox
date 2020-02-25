@@ -53,6 +53,7 @@ build-package:
     - "git config --global credential.gitlab.com.useHttpPath true"
     - "echo https://${DIPLOMACY_CREDENTIALS}@gitlab.service.wobcom.de/infrastructure/diplomacy.git >> ~/.git-credentials"
     - "echo https://${TOPDESK_CREDENTIALS}@gitlab.com/wobcompublic/topdesk/ >> ~/.git-credentials"
+    - "git fetch --all"
   script:
     - "./build_package.sh"
   artifacts:
