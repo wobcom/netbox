@@ -30,4 +30,5 @@ fpm --input-type dir \
     --depends redis \
     --config-files netbox/netbox/configuration.py \
     --directories /opt/netbox \
+    --after-install scripts/package_scripts/after_install.sh\
     ./
