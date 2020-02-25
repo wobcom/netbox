@@ -30,5 +30,8 @@ fpm --input-type dir \
     --depends python3 \
     --config-files netbox/netbox/configuration.py \
     --directories /opt/netbox \
-    --after-install scripts/package_scripts/after_install.sh\
+    --after-install scripts/package_scripts/after_install.sh \
+    --before-install scripts/package_scripts/before_install.sh \
+    --rpm-user netbox \
+    --rpm-group netbox \
     ./
