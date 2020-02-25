@@ -28,6 +28,7 @@ fpm --input-type dir \
     --depends postgresql96 \
     --depends postgresql96-server \
     --depends redis \
+    --depends python3 \
     --config-files netbox/netbox/configuration.py \
     --directories /opt/netbox \
     --after-install scripts/package_scripts/after_install.sh\
