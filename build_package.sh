@@ -13,6 +13,9 @@ venv/bin/python netbox/manage.py collectstatic
 echo ">> Copy final default configuration"
 cp netbox/netbox/configuration.example.py netbox/netbox/configuration.py
 
+curl --header "Authorization: Bearer ${CI_JOB_TOKEN}" "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/repository/tags"
+
+
 LATEST_GIT_TAG=$(git describe --abbrev=0 --tags)
 VERSION=$(echo "${LATEST_GIT_TAG}" | tr - _ | sed -En "s/v(.*)/\\1/p" )
 ITERATION=$(git rev-list "${LATEST_GIT_TAG}..HEAD" --count)
