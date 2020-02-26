@@ -11,7 +11,7 @@ cp /opt/netbox/netbox.service /etc/systemd/system/netbox.service
 systemctl daemon-reload
 
 echo "Ensure PostgreSQL database is initialized"
-PGSETUP_INITDB_OPTIONS="--auth-host md5";
+PGSETUP_INITDB_OPTIONS="--auth-host='md5'";
 /usr/pgsql-9.6/bin/postgresql96-setup initdb
 
 echo "Ensure PostgreSQL and Redis services are started and enabled"
