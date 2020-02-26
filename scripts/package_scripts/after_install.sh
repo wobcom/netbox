@@ -20,7 +20,7 @@ systemctl start postgresql-9.6.service
 systemctl enable redis.service
 systemctl start redis.service
 
-sed -i "s/ALLOWED_HOSTS =.*/ALLOWED_HOSTS = \[\*\]/g" /opt/netbox/netbox/netbox/configuration.py
+sed -i "s/ALLOWED_HOSTS =.*/ALLOWED_HOSTS = \['\*'\]/g" /opt/netbox/netbox/netbox/configuration.py
 
 # generate secret key
 if [[ ( "$(netbox-manage check 2>&1 | grep "SECRET_KEY" -c)" > 0 ) ]] ; then
