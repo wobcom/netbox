@@ -22,7 +22,7 @@ systemctl start redis.service
 # generate secret key
 if [[ ( "$(netbox-manage check 2>&1 | grep "SECRET_KEY" -c)" > 0 ) ]] ; then
     echo "Generate secret key setting"
-    SECRET_KEY="$(/opt/netbox/venv/bin/python /opt/netbox/netbox/generate_secret_key.py)"
+    SECRET_KEY="$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)"
     sed -i "s/SECRET_KEY = ''/SECRET_KEY = '${SECRET_KEY}'/g" /opt/netbox/netbox/netbox/configuration.py
 fi
 
@@ -34,7 +34,7 @@ else
     echo "Creating database for netbox"
     DB_NAME="netbox"
     DB_USER="netbox"
-    DB_PASSWORD="$(/opt/netbox/venv/bin/python /opt/netbox/netbox/generate_secret_key.py)"
+    DB_PASSWORD="$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)"
     su - postgres -c "psql -c \"CREATE USER ${DB_USER} WITH PASSWORD '${DB_PASSWORD}';\""
     su - postgres -c "createdb --owner ${DB_USER} ${DB_NAME}"
     sed -E -i "s/( +'USER':)[^#]*# PostgreSQL username.*/\1 '${DB_USER}',/g" /opt/netbox/netbox/netbox/configuration.py
