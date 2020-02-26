@@ -6,6 +6,7 @@ After=network.target
 User=netbox
 Group=netbox
 WorkingDirectory=/opt/netbox/netbox/
+Environment=DJANGO_SETTINGS_MODULE=netbox.settings
 ExecStart=/opt/netbox/venv/bin/python /opt/netbox/venv/bin/daphne -b 127.0.0.1 -p 8000 netbox.asgi:application
 Restart=always
 
