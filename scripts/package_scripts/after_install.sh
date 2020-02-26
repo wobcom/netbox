@@ -32,7 +32,7 @@ else
     DB_USER="netbox"
     DB_PASSWORD="$(/opt/netbox/venv/bin/python /opt/netbox/netbox/generate_secret_key.py)"
     su - postgres -c "psql -c \"CREATE USER ${DB_USER} WITH PASSWORD '${DB_PASSWORD}';\""
-    sed -iEn "s/( +'USER':)[^#]*# PostgreSQL username.*/\1 '${DB_USER}'/g" /opt/netbox/netbox/netbox/configuration.py
-    sed -iEn "s/( +'NAME':)[^#]*# Database name.*/\1 '${DB_NAME}'/g" /opt/netbox/netbox/netbox/configuration.py
-    sed -iEn "s/( +'PASSWORD':)[^#]*# PostgreSQL password.*/\1 '${DB_PASSWORD}'/g" /opt/netbox/netbox/netbox/configuration.py
+    sed -iE "s/( +'USER':)[^#]*# PostgreSQL username.*/\1 '${DB_USER}'/g" /opt/netbox/netbox/netbox/configuration.py
+    sed -iE "s/( +'NAME':)[^#]*# Database name.*/\1 '${DB_NAME}'/g" /opt/netbox/netbox/netbox/configuration.py
+    sed -iE "s/( +'PASSWORD':)[^#]*# PostgreSQL password.*/\1 '${DB_PASSWORD}'/g" /opt/netbox/netbox/netbox/configuration.py
 fi
