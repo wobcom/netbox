@@ -12,6 +12,9 @@ echo ">> Collect statics"
 venv/bin/python netbox/manage.py collectstatic
 echo ">> Copy final default configuration"
 cp netbox/netbox/configuration.example.py netbox/netbox/configuration.py
+echo ">> Rewrite venv egg-links"
+for LINK_FILE in venv/lib/python3.6/site-packages/*.egg-link ; do
+    sed -iE "s/^.*\/venv(.*)/\/opt\/netbox\/venv\1/g" LINK_FILE
 
 LATEST_GIT_TAG=$(git describe --abbrev=0 --tags)
 VERSION=$(echo "${LATEST_GIT_TAG}" | tr - _ | sed -En "s/v(.*)/\\1/p" )
