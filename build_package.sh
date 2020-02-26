@@ -14,7 +14,7 @@ echo ">> Copy final default configuration"
 cp netbox/netbox/configuration.example.py netbox/netbox/configuration.py
 echo ">> Rewrite venv egg-links"
 for LINK_FILE in venv/lib/python3.6/site-packages/*.egg-link ; do
-    sed -iE "s/^.*\/venv(.*)/\/opt\/netbox\/venv\1/g" ${LINK_FILE}
+    sed -iEr "s/^.*\/venv(.*)/\/opt\/netbox\/venv\1/g" ${LINK_FILE}
 done
 
 LATEST_GIT_TAG=$(git describe --abbrev=0 --tags)
