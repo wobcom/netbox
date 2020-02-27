@@ -1,11 +1,17 @@
 # Installation
 
+## From source
+
 The following sections detail how to set up a new instance of NetBox:
 
 1. [PostgreSQL database](1-postgresql.md)
 2. [NetBox components](2-netbox.md)
 3. [HTTP dameon](3-http-daemon.md)
 4. [LDAP authentication](4-ldap.md) (optional)
+
+## CentOS package (Wobcom)
+
+* [Installing CentOS package](centos-package.md)
 
 # Upgrading
 
