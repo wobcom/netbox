@@ -1,3 +1,8 @@
 #!/usr/bin/env bash
 
-adduser -d /opt/netbox -m -U netbox
+
+id -u name
+
+if [[ "$?" > 0 ]] ; then
+    adduser -d /opt/netbox -U netbox
+fi
