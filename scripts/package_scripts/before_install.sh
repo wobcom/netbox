@@ -2,7 +2,8 @@
 
 
 id -u name
+USER_EXISTS=$?
 
-if [[ ( "$?" > 0 ) ]] ; then
+if [[ ( "$USER_EXISTS" > 0 ) ]] ; then
     adduser -d /opt/netbox -U netbox
 fi
