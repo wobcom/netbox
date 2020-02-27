@@ -32,7 +32,7 @@ fi
 #generate database
 
 if [[ ( "$(su - postgres -c "psql -l -P format=unaligned" | grep -c "^netbox")" > 0 ) ]] ; then
-    echo "Netbox database already exist, please configure manually"
+    echo "Netbox database already exist, please configure manually and them execute 'netbox-manage migrate'"
 else
     echo "Creating database for netbox"
     DB_NAME="netbox"
@@ -43,11 +43,12 @@ else
     sed -E -i "s/( +'USER':)[^#]*# PostgreSQL username.*/\1 '${DB_USER}',/g" /opt/netbox/netbox/netbox/configuration.py
     sed -E -i "s/( +'NAME':)[^#]*# Database name.*/\1 '${DB_NAME}',/g" /opt/netbox/netbox/netbox/configuration.py
     sed -E -i "s/( +'PASSWORD':)[^#]*# PostgreSQL password.*/\1 '${DB_PASSWORD}',/g" /opt/netbox/netbox/netbox/configuration.py
+
+    echo "Migrating database"
+
+    netbox-manage migrate
+
 fi
-
-echo "Migrating database"
-
-netbox-manage migrate
 
 echo "Ensure Netbox service is enabled and started"
 
