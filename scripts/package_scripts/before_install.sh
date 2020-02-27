@@ -3,6 +3,6 @@
 
 id -u name
 
-if [[ "$?" > 0 ]] ; then
+if [[ ( "$?" > 0 ) ]] ; then
     adduser -d /opt/netbox -U netbox
 fi
