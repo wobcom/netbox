@@ -135,7 +135,9 @@
             rows: 50,
         });
         var fit_addon = new FitAddon.FitAddon();
+        var web_links_addon = new WebLinksAddon.WebLinksAddon();
         term.loadAddon(fit_addon);
+        term.loadAddon(web_links_addon);
         term.open(document.getElementById('terminal_output'));
         fit_addon.fit();
         {% if provision_set.status != provision_set.RUNNING %}
