@@ -36,7 +36,14 @@ def send_provision_status(provision_set, status):
 
 def prepare_provisioning_stage(stage_configuration, provision_set):
 
-    return [[e.format(provision_set=provision_set) for e in job] for job in stage_configuration]
+    parsed_stage_config = []
+
+    for job in stage_configuration:
+        parsed_job = job
+        parsed_job['command'] = [e.format(provision_set=provision_set) for e in job['command']]
+        parsed_stage_config.append(parsed_job)
+
+    return parsed_stage_config
 
 
 def run_provisioning_stage(stage_configuration, finished_callback=lambda status: status):
@@ -71,9 +78,10 @@ def run_provisioning_stage(stage_configuration, finished_callback=lambda status:
                 callback(job)
                 return
             new_job = Diplomat(
-                *jobs[0],
+                *jobs[0]['command'],
                 out=job.output_file_name(),
                 single_file=True,
+                env=jobs[0].get('environment', {})
             )
             PID.set(new_job.process().pid)
             new_job.register_exit_fn(job_exit_callback_creator(jobs[1:]))
@@ -83,7 +91,9 @@ def run_provisioning_stage(stage_configuration, finished_callback=lambda status:
     if len(stage_configuration) == 0:
         raise ValueError('Empty stage configuration')
 
-    initial_job = Diplomat(*stage_configuration[0], single_file=True)
+    initial_job = Diplomat(*stage_configuration[0]['command'],
+                           single_file=True,
+                           env=stage_configuration[0].get('environment', {}))
     PID.set(initial_job.process().pid)
     initial_job.register_exit_fn(job_exit_callback_creator(stage_configuration[1:]))
 

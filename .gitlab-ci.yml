@@ -15,11 +15,12 @@ before_script:
   #- echo "$CERTIFICATE_KEY" > ./certs/cert.key
   #- echo "$CERTIFICATE_CRT" > ./certs/cert.crt
  
-#variables:
-#  REGISTRY: registry.gitlab.com
+variables:
+  REGISTRY: registry.gitlab.com
+  GIT_DEPTH: 0
 
 stages:
-  #- build
+  - build
   - deploy
 
 #build-container:
@@ -38,6 +39,43 @@ stages:
 #    # - docker push "$REGISTRY/wobcom/mimir"
 #  tags:
 #    - dummy
+
+build-package:
+  stage: build
+  only:
+    - develop
+  image: registry.gitlab.com/wobcom/fpm-docker:netbox
+  tags:
+    - docker
+  before_script:
+    - "git config --global credential.helper store"
+    - "git config --global credential.gitlab.service.wobcom.de.useHttpPath true"
+    - "git config --global credential.gitlab.com.useHttpPath true"
+    - "echo https://${DIPLOMACY_CREDENTIALS}@gitlab.service.wobcom.de/infrastructure/diplomacy.git >> ~/.git-credentials"
+    - "echo https://${TOPDESK_CREDENTIALS}@gitlab.com/wobcompublic/topdesk/ >> ~/.git-credentials"
+  script:
+    - "./build_package.sh"
+  artifacts:
+    paths:
+      - netbox*.rpm
+
+deploy-package:
+  stage: deploy
+  only:
+    - develop
+  image: debian:10
+  tags:
+    - docker
+  dependencies:
+    - build-package
+  before_script:
+    - "apt-get -y update"
+    - "apt-get install -y sshpass"
+    - "mkdir ~/.ssh"
+    - "echo ${REPO_HOST_KEY} >> ~/.ssh/known_hosts"
+  script:
+    - "sshpass -p \"${REPO_PASSWORD}\" scp netbox*.rpm ${REPO_USER}@${REPO_HOST}:${REPO_PATH}"
+    - "sshpass -p \"${REPO_PASSWORD}\" ssh ${REPO_USER}@${REPO_HOST} \"/var/share/repos/scripts/rebuild.sh\""
 
 deploy-staging-ssh:
   stage: deploy
