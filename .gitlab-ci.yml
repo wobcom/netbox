@@ -43,7 +43,7 @@ stages:
 build-package:
   stage: build
   only:
-    - ci_development
+    - develop
   image: registry.gitlab.com/wobcom/fpm-docker:netbox
   tags:
     - docker
@@ -61,6 +61,8 @@ build-package:
 
 deploy-package:
   stage: deploy
+  only:
+    - develop
   image: debian:10
   tags:
     - docker
