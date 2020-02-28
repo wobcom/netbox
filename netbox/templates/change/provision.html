@@ -133,6 +133,7 @@
     document.addEventListener('DOMContentLoaded', () => {
         var term = new Terminal({
             rows: 50,
+            scrollback: 1000000,
         });
         var fit_addon = new FitAddon.FitAddon();
         var web_links_addon = new WebLinksAddon.WebLinksAddon();
