@@ -141,7 +141,9 @@
         term.open(document.getElementById('terminal_output'));
         fit_addon.fit();
         {% if provision_set.status != provision_set.RUNNING %}
+        {% autoescape off %}
         term.write(`{{ provision_set.output_log }}`.replace(/\n/g, '\r\n'));
+        {% endautoescape %}
         {% else %}
         var websocket = new WebSocket((location.protocol.startsWith('https') ? 'wss' : 'ws') + '://' + location.host + '/change/provisions/{{ provision_set.pk }}/logs/ws/');
         websocket.onmessage = (msg) => {
