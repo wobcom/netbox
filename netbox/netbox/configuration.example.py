@@ -180,9 +180,16 @@ NEED_CHANGE_FOR_WRITE = True
 # Deployment integration
 TOPDESK_URL = ""
 PROVISIONING_STAGE_1 = (
+    {
+        "command": ("python", "-c", "print('Hello world!')"),
+        "environment": {},
+    },
 )
 PROVISIONING_STAGE_2 = (
-    ("ansible-playbook", "-K", "-i", "_build/inventory.ini", "_build/deploy.yml", "--check", "--diff"),
+    {
+        "command": ("ansible-playbook", "-K", "-i", "_build/inventory.ini", "_build/deploy.yml", "--check", "--diff"),
+        "environment": {},
+    },
 )
 PROVISIONING_TIMEOUT = 10
 

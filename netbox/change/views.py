@@ -57,6 +57,14 @@ def run_provisioning_stage(stage_configuration, finished_callback=lambda status:
     :param finished_callback: callback function an end of the run func(status)
     :return: temp log file path
     """
+    def write_cmd(job):
+        # we stylize the input to be bold and underlined in ansi
+        job.output_file().write(
+            bytes("\n\n\033[1m$ {}\033[0m\n".format(" ".join(job.cmd)), encoding="utf-8")
+        )
+        # we flush to make sure this is written first
+        job.output_file().flush()
+
     def callback(job):
         PID.set(None)
         if job.has_succeeded():
@@ -81,10 +89,11 @@ def run_provisioning_stage(stage_configuration, finished_callback=lambda status:
                 *jobs[0]['command'],
                 out=job.output_file_name(),
                 single_file=True,
-                env=jobs[0].get('environment', {})
+                env=jobs[0].get('environment', {}),
+                pre_start=write_cmd,
+                on_exit=job_exit_callback_creator(jobs[1:]),
             )
             PID.set(new_job.process().pid)
-            new_job.register_exit_fn(job_exit_callback_creator(jobs[1:]))
 
         return job_exit_callback
 
@@ -93,9 +102,10 @@ def run_provisioning_stage(stage_configuration, finished_callback=lambda status:
 
     initial_job = Diplomat(*stage_configuration[0]['command'],
                            single_file=True,
-                           env=stage_configuration[0].get('environment', {}))
+                           env=stage_configuration[0].get('environment', {}),
+                           pre_start=write_cmd,
+                           on_exit=job_exit_callback_creator(stage_configuration[1:]))
     PID.set(initial_job.process().pid)
-    initial_job.register_exit_fn(job_exit_callback_creator(stage_configuration[1:]))
 
     return initial_job.output_file_name()
 
