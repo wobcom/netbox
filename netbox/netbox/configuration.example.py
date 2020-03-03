@@ -175,6 +175,8 @@ SHORT_TIME_FORMAT = 'H:i:s'
 DATETIME_FORMAT = 'N j, Y g:i a'
 SHORT_DATETIME_FORMAT = 'Y-m-d H:i'
 
+NEED_CHANGE_FOR_WRITE = True
+
 # Deployment integration
 TOPDESK_URL = ""
 PROVISIONING_STAGE_1 = (
