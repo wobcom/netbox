@@ -91,7 +91,7 @@ def run_provisioning_stage(stage_configuration, finished_callback=lambda status:
                 single_file=True,
                 env=jobs[0].get('environment', {}),
                 pre_start=write_cmd,
-                on_exit=register_exit_fn(job_exit_callback_creator(jobs[1:])),
+                on_exit=job_exit_callback_creator(jobs[1:]),
             )
             PID.set(new_job.process().pid)
 
