@@ -94,10 +94,8 @@
                                             return x;
                                         }
                                         document.addEventListener('DOMContentLoaded', () => {
-                                            var timeout = ({{ provision_set.timeout.timestamp }} * 1000;
-                                        )
-                                            var time_offset = Date.now() - ({{ current_time.timestamp }} * 1000;
-                                        )
+                                            var timeout = ({{ provision_set.timeout.timestamp }} * 1000);
+                                            var time_offset = Date.now() - ({{ current_time.timestamp }} * 1000);
                                             var time_field = document.getElementById('provision-timeout');
                                             var time_update = setInterval(() => {
                                                 var remaining_time = timeout - (Date.now() - time_offset);
