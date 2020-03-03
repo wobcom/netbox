@@ -595,7 +595,7 @@
             if (data.provision_status === "1") {
                 $('#alert-dropdown').show();
                 $('#provision-alert').show();
-                $('#provision-alert a').attr('href', '{% url 'change:provisions' %}' + data.provision_set_pk + '/');
+                $('#provision-alert a').attr('href', '{% url 'change:provisions' %}' + data.provisioning_set_pk + '/');
             } else if (data.provision_status === "0") {
                 $('#provision-alert').hide();
                 if ({% if request.foreign_changes %}false{% else %}true{% endif %}) {
