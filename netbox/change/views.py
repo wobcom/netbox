@@ -60,10 +60,8 @@ def run_provisioning_stage(stage_configuration, finished_callback=lambda status:
     def write_cmd(job):
         # we stylize the input to be bold and underlined in ansi
         job.output_file().write(
-            bytes("\n\n\033[1m$ {}\033[0m\n".format(" ".join(job.cmd)), encoding="utf-8")
+            "\n\n\033[1m$ {}\033[0m\n".format(" ".join(job.cmd))
         )
-        # we flush to make sure this is written first
-        job.output_file().flush()
 
     def callback(job):
         PID.set(None)
@@ -90,6 +88,7 @@ def run_provisioning_stage(stage_configuration, finished_callback=lambda status:
                 out=job.output_file_name(),
                 single_file=True,
                 env=jobs[0].get('environment', {}),
+                pre_start=write_cmd,
                 on_exit=job_exit_callback_creator(jobs[1:]),
             )
             PID.set(new_job.process().pid)
@@ -102,6 +101,7 @@ def run_provisioning_stage(stage_configuration, finished_callback=lambda status:
     initial_job = Diplomat(*stage_configuration[0]['command'],
                            single_file=True,
                            env=stage_configuration[0].get('environment', {}),
+                           pre_start=write_cmd,
                            on_exit=job_exit_callback_creator(stage_configuration[1:]))
     PID.set(initial_job.process().pid)
 
