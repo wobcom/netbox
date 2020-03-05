@@ -32,7 +32,7 @@ fi
 #generate database
 
 if [[ ( "$(su - postgres -c "psql -l -P format=unaligned" | grep -c "^netbox")" > 0 ) ]] ; then
-    echo "Netbox database already exist, please configure manually and them execute 'netbox-manage migrate'"
+    echo "Netbox database already exists, please configure manually and them execute 'netbox-manage migrate'"
 else
     echo "Creating database for netbox"
     DB_NAME="netbox"
