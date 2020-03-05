@@ -17,6 +17,7 @@ stages:
   - deploy
 
 lint:
+  stage: verify
   artifacts:
     paths:
       - venv
