@@ -12,24 +12,27 @@ before_script:
   - chmod 644 ~/.ssh/known_hosts
 
 stages:
-  - prepare
   - verify
   - build
   - deploy
 
-install_venv:
-  stage: prepare
+lint:
   artifacts:
     paths:
       - venv
+  image: python:3.6-slim
+  tags:
+    - docker
   script:
     - "virtualenv --python=python3.6 venv"
     - "venv/bin/pip install -Ur requirements.txt"
     - "venv/bin/pip install pycodestyle"
-
-lint:
-  stage: verify
-  script: "venv/bin/pycodestyle --ignore=W504,E501 netbox/"
+    - "git config --global credential.helper store"
+    - "git config --global credential.gitlab.service.wobcom.de.useHttpPath true"
+    - "git config --global credential.gitlab.com.useHttpPath true"
+    - "echo https://${DIPLOMACY_CREDENTIALS}@gitlab.service.wobcom.de/infrastructure/diplomacy.git >> ~/.git-credentials"
+    - "echo https://${TOPDESK_CREDENTIALS}@gitlab.com/wobcompublic/topdesk/ >> ~/.git-credentials"
+    - "venv/bin/pycodestyle --ignore=W504,E501 netbox/"
 
 build-package:
   stage: build
