@@ -532,21 +532,17 @@
                     </li>
                     <li style="background: #f0ad4e;" class="dropdown" id="alert-dropdown">
                         <a href="#" style="color: white;" class="dropdown-toggle" data-toggle="dropdown"><i class="glyphicon glyphicon-warning-sign"></i></a>
-                        <ul class="dropdown-menu">
-                            <li id="provision-alert">
-                                <a><i class="glyphicon glyphicon-cog" style="animation: spin 2s linear infinite"></i> Deployment in progress.</a>
-                            </li>
+                        <div class="dropdown-menu">
+                            <p id="provision-alert"><i class="glyphicon glyphicon-cog" style="animation: spin 2s linear infinite"></i> Deployment in progress.</p>
                             {% if request.foreign_changes %}
-                                <li>
-                                    <a><b>These people are currently<br>making a change:</b></a>
-                                </li>
+                                <b>These people are currently making a change:</b>
+                                <ul>
                                 {% for changeset in request.foreign_changes %}
-                                    <li>
-                                        <a>{{ changeset.user.username }}</a>
-                                    </li>
+                                    <li>{{ changeset.user.username }}</li>
                                 {% endfor %}
+                                </ul>
                             {% endif %}
-                        </ul>
+                        </div>
                     </li>
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown" title="{{ request.user }}" role="button" aria-haspopup="true" aria-expanded="false">
@@ -611,8 +607,17 @@
     #alert-dropdown {
         {% if not request.foreign_changes %} display: none;{% endif %}
     }
+    #alert-dropdown ul {
+      list-style: none;
+    }
+    #alert-dropdown .dropdown-menu {
+      min-width: 320px;
+      padding: 0.5em;
+      cursor: default;
+    }
     #provision-alert {
         display: none;
+        margin-bottom: 0;
     }
     @keyframes spin {
         0% { transform: rotate(0deg); }
