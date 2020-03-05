@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
 from change.models import ProvisionSet
 
+
 class Command(BaseCommand):
     help = 'Marks all running provisions as aborted.'
 

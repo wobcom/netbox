@@ -2,8 +2,10 @@ from django.urls import path
 
 from extras.views import ObjectChangeLogView
 from . import views
-from .models import Aggregate, IPAddress, Prefix, RIR, Role, Service, OverlayNetwork,\
-            VLAN, OverlayNetworkGroup, VLANGroup, VRF
+from .models import (
+    Aggregate, IPAddress, Prefix, RIR, Role, Service, OverlayNetwork, VLAN,
+    OverlayNetworkGroup, VLANGroup, VRF
+)
 
 app_name = 'ipam'
 urlpatterns = [

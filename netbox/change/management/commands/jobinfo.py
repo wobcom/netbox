@@ -13,4 +13,4 @@ class Command(JobBaseCommand):
                 longest_key = len(key) if len(key) > longest_key else longest_key
             print("    Environment:")
             for key, value in environment.items():
-                print(("        {:<"+str(longest_key)+"} : {}").format(key, value))
+                print(("        {:<" + str(longest_key) + "} : {}").format(key, value))

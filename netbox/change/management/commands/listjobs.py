@@ -13,4 +13,3 @@ class Command(BaseCommand):
         print("Second stage:")
         for index, job in enumerate(configuration.PROVISIONING_STAGE_2):
             print("    {:>2}: {}".format(index + len(configuration.PROVISIONING_STAGE_1), " ".join(job['command'])))
-

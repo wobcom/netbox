@@ -30,7 +30,9 @@ class CommunityFilter(django_filters.FilterSet):
     def search(self, queryset, name, value):
         if not value.strip():
             return queryset
-        return queryset.filter(Q(name__icontains=value)|Q(description__icontains=value))
+        return queryset.filter(
+            Q(name__icontains=value) | Q(description__icontains=value)
+        )
 
     def filter_name(self, queryset, name, value):
         if not value:
@@ -78,7 +80,9 @@ class RouteMapFilter(django_filters.FilterSet):
     def search(self, queryset, name, value):
         if not value.strip():
             return queryset
-        return queryset.filter(Q(name__icontains=value)|Q(configuration__icontains=value))
+        return queryset.filter(
+            Q(name__icontains=value) | Q(configuration__icontains=value)
+        )
 
     def filter_name(self, queryset, name, value):
         if not value:

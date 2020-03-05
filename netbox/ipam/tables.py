@@ -4,8 +4,10 @@ from django_tables2.utils import Accessor
 from dcim.models import Interface
 from tenancy.tables import COL_TENANT
 from utilities.tables import BaseTable, BooleanColumn, ToggleColumn
-from .models import Aggregate, IPAddress, Prefix, RIR, Role, Service, OverlayNetwork,\
-            VLAN, OverlayNetworkGroup, VLANGroup, VRF
+from .models import (
+    Aggregate, IPAddress, Prefix, RIR, Role, Service, OverlayNetwork, VLAN,
+    OverlayNetworkGroup, VLANGroup, VRF
+)
 
 RIR_UTILIZATION = """
 <div class="progress">
