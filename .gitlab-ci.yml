@@ -18,9 +18,6 @@ stages:
 
 lint:
   stage: verify
-  artifacts:
-    paths:
-      - venv
   image: python:3.6
   tags:
     - docker
