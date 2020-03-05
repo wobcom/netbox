@@ -25,6 +25,7 @@ lint:
   tags:
     - docker
   script:
+    - "pip install virtualenv"
     - "virtualenv --python=python3.6 venv"
     - "venv/bin/pip install -Ur requirements.txt"
     - "venv/bin/pip install pycodestyle"
