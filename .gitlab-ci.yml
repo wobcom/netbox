@@ -21,11 +21,11 @@ lint:
   artifacts:
     paths:
       - venv
-  image: python:3.6-alpine
+  image: python:3.6
   tags:
     - docker
   script:
-    - "apk add git"
+    - "apt-get install git"
     - "pip install virtualenv"
     - "virtualenv --python=python3.6 venv"
     - "venv/bin/pip install -Ur requirements.txt"
