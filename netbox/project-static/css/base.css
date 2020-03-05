@@ -36,14 +36,14 @@ footer p {
 }
 
 /* Hide the username in the navigation menu on displays less than 1400px wide */
-@media (max-width: 1399px) {
+@media (max-width: 1599px) {
     #navbar_user {
         display: none;
     }
 }
 
 /* Hide the search bar in the navigation menu on displays less than 1250px wide */
-@media (max-width: 1249px) {
+@media (max-width: 1379px) {
     #navbar_search {
         display: none;
     }
@@ -63,7 +63,7 @@ footer p {
 }
 
 /* Collapse the nav menu on displays less than 980px wide */
-@media (max-width: 979px) {
+@media (max-width: 1219px) {
     .navbar-header {
         float: none;
     }
