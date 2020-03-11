@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 echo ">> Creating virtual environment"
 python3 -m venv --copies venv
 echo ">> Installing requirements to virtual environment"
