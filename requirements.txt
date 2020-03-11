@@ -28,3 +28,4 @@ ansible
 channels
 git+https://gitlab.com/wobcompublic/topdesk.git
 channels_redis
+django-auth-ldap
