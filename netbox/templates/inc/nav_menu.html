@@ -496,38 +496,51 @@
                 {% if request.user.is_authenticated %}
                     <li>
                         <form class="navbar-form">
-                        <div class="btn-group navbar-formv">
-                        {% if not request.my_change %}
-                              <a href="{% url 'change:form' %}" class="btn btn-primary" title="Start change">
-                                  <i class="fa fa-play"></i>
-                              </a>
-                                <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                    <span class="caret"></span>
-                                    <span class="sr-only">Toggle Dropdown</span>
-                                </button>
-                        {% else %}
-                              <a href="{% url 'change:end_change' %}" class="btn btn-warning" title="End change">
-                                  <i class="fa fa-stop"></i>
-                              </a>
-                                <button type="button" class="btn btn-warning dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                    <span class="caret"></span>
-                                    <span class="sr-only">Toggle Dropdown</span>
-                                </button>
-                        {% endif %}
-                            <ul class="dropdown-menu">
-                                <li>
-                                    <a href="{% url "change:deploy" %}">
-                                        Start provisioning
+                            <div{% if perms.change.view_provisionset %} class="btn-group"{% endif %}>
+                                {% if not request.my_change %}
+                                    <a href="{% url 'change:form' %}" class="btn btn-primary" title="Start change">
+                                        <i class="fa fa-play"></i>
                                     </a>
-                                </li>
-                                <li role="separator" class="divider"></li>
-                                <li>
-                                    <a href="{% url 'change:provisions' %}">
-                                        Provisions
+                                    {% if perms.change.view_provisionset %}
+                                        <button type="button" class="btn btn-primary dropdown-toggle"
+                                                data-toggle="dropdown"
+                                                aria-haspopup="true" aria-expanded="false">
+                                            <span class="caret"></span>
+                                            <span class="sr-only">Toggle Dropdown</span>
+                                        </button>
+                                    {% endif %}
+                                {% else %}
+                                    <a href="{% url 'change:end_change' %}" class="btn btn-warning" title="End change">
+                                        <i class="fa fa-stop"></i>
                                     </a>
-                                </li>
-                            </ul>
-                        </div>
+                                    {% if perms.change.view_provisionset %}
+                                        <button type="button" class="btn btn-warning dropdown-toggle"
+                                                data-toggle="dropdown"
+                                                aria-haspopup="true" aria-expanded="false">
+                                            <span class="caret"></span>
+                                            <span class="sr-only">Toggle Dropdown</span>
+                                        </button>
+                                    {% endif %}
+                                {% endif %}
+                                <ul class="dropdown-menu">
+                                    {% if perms.change.add_provisionset %}
+                                        <li>
+                                            <a href="{% url "change:deploy" %}">
+                                                Start provisioning
+                                                {% if request.undeployed_changeset_count %}
+                                                    <span class="badge">{{ request.undeployed_changeset_count }}</span>
+                                                {% endif %}
+                                            </a>
+                                        </li>
+                                        <li role="separator" class="divider"></li>
+                                    {% endif %}
+                                    <li>
+                                        <a href="{% url 'change:provisions' %}">
+                                            Provisions
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
                         </form>
                     </li>
                     <li style="background: #f0ad4e;" class="dropdown" id="alert-dropdown">

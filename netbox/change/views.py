@@ -2,6 +2,8 @@ import os
 import signal
 import json
 
+from copy import deepcopy
+
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.http import HttpResponse
 from django.contrib import messages
@@ -39,7 +41,7 @@ def prepare_provisioning_stage(stage_configuration, provision_set):
     parsed_stage_config = []
 
     for job in stage_configuration:
-        parsed_job = job
+        parsed_job = deepcopy(job)
         parsed_job['command'] = [e.format(provision_set=provision_set) for e in job['command']]
         parsed_stage_config.append(parsed_job)
 
@@ -169,7 +171,7 @@ class DeployView(PermissionRequiredMixin, View):
     This view is for displaying provisioning details
     and start provisioning.
     """
-    permission_required = 'change.deploy_changeset'
+    permission_required = 'change.add_provisionset'
 
     def __init__(self, *args, **kwargs):
         super(DeployView, self).__init__(*args, **kwargs)

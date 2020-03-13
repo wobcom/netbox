@@ -32,6 +32,12 @@ class FieldChangeMiddleware(object):
             request.my_change = None
             return self.get_response(request)
 
+        if request.user.has_perm('change.add_provisionset'):
+            request.undeployed_changeset_count = ChangeSet.objects.exclude(status=ChangeSet.IMPLEMENTED) \
+                .exclude(status=ChangeSet.IN_REVIEW) \
+                .count()
+
+
         # Set request attributes
         request.foreign_changes = ChangeSet.objects.filter(active=True).exclude(user=request.user)
         request.my_change = request.user.changesets.filter(active=True).first()
