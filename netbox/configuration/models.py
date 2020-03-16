@@ -151,9 +151,10 @@ class BGPNeighbor(models.Model):
         """
         if self.neighbor_type == 'internal':
             return self.internal_neighbor_device.bgpdeviceasn_set.filter(
-                    asn__asn=self.remote_asn,
-                    neighbors__internal_neighbor_device=self.deviceasn.device,
-                    neighbors__remote_asn=self.deviceasn.asn.asn).exists()
+                asn__asn=self.remote_asn,
+                neighbors__internal_neighbor_device=self.deviceasn.device,
+                neighbors__remote_asn=self.deviceasn.asn.asn
+            ).exists()
         return True
 
     class Meta:

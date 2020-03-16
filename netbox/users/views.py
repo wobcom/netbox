@@ -322,5 +322,3 @@ class ChangesView(LoginRequiredMixin, View):
             'table': ChangeTable(changes),
             'active_tab': 'changes',
         })
-
-

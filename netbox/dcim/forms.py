@@ -2356,7 +2356,7 @@ class InterfaceBulkAddVLANForm(BootstrapMixin, BulkEditForm):
         self.fields['vlans'].choices = vlan_choices
 
     def save(self, *args, **kwargs):
-        models=kwargs.get('models', [])
+        models = kwargs.get('models', [])
 
         for model in models:
             if self.cleaned_data['tagged'] and model.mode != IFACE_MODE_TAGGED_ALL:

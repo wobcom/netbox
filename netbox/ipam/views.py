@@ -839,7 +839,6 @@ class OverlayNetworkGroupOverlayNetworksView(View):
         overlay_network_group = get_object_or_404(OverlayNetworkGroup.objects.all(), pk=pk)
 
         overlay_networks = OverlayNetwork.objects.filter(group_id=pk)
-        #overlay_networks = add_available_overlay_networks(overlay_network_group, overlay_networks)
 
         overlay_network_table = tables.OverlayNetworkDetailTable(overlay_networks)
         if request.user.has_perm('ipam.change_overlay_network') or request.user.has_perm('ipam.delete_overlay_network'):

@@ -14,6 +14,7 @@ from utilities.forms import (
     SlugField
 )
 
+
 # nb: we could make this generic, but because of multiple indirection this
 # wouldn’t add a ton of value. should tis pattern ever arise again, making this
 # generic shouldn't be too much work.
@@ -74,6 +75,7 @@ class CommunityFilterForm(BootstrapMixin, forms.Form):
 
 class CommunityListForm(BootstrapMixin, forms.ModelForm):
     name = SlugField
+
     class Meta:
         model = BGPCommunityList
         fields = ['name']
@@ -192,7 +194,7 @@ class BGPNeighborForm(BootstrapMixin, forms.ModelForm):
 
     def clean(self):
         if self.cleaned_data['neighbor_type'] == 'internal':
-            if self.cleaned_data['internal_neighbor_device'] is None :
+            if self.cleaned_data['internal_neighbor_device'] is None:
                 self._errors['internal_neighbor_device'] = self.error_class(['Must be set on Neighbor Type: Internal'])
             if 'internal_neighbor_ip' not in self.cleaned_data or self.cleaned_data['internal_neighbor_ip'] is None:
                 self._errors['internal_neighbor_ip'] = self.error_class(['Must be set on Neighbor Type: Internal'])

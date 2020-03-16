@@ -1377,7 +1377,6 @@ class InterfaceListView(ObjectListView):
     template_name = 'dcim/interface_list.html'
 
 
-
 class InterfaceView(PermissionRequiredMixin, View):
     permission_required = 'dcim.view_interface'
 

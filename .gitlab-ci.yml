@@ -10,34 +10,30 @@ before_script:
   - touch ~/.ssh/known_hosts
   - echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
   - chmod 644 ~/.ssh/known_hosts
-  #- chmod 600 ~/.ssh
-  # webserver certificates
-  #- echo "$CERTIFICATE_KEY" > ./certs/cert.key
-  #- echo "$CERTIFICATE_CRT" > ./certs/cert.crt
- 
-#variables:
-#  REGISTRY: registry.gitlab.com
 
 stages:
+  - verify
   - build
   - deploy
 
-#build-container:
-#  stage: build
-#  before_script: 
-#    - "echo Build Container..."
-#  script:
-#    - "echo Code goes here"
-#    # login to registry
-#    # - docker login -u mimir_mvp -p "$REGISTRY_TOKEN" "$REGISTRY"
-#    # pull from registry, build if not existant
-#    # - docker-compose build --no-cache --pull
-#    # optional: save image to tarball, tag it and push it
-#    # - docker save --output images/mimir.img mimir_mimir
-#    # - docker tag mimir_mimir "$REGISTRY/wobcom/mimir"
-#    # - docker push "$REGISTRY/wobcom/mimir"
-#  tags:
-#    - dummy
+lint:
+  stage: verify
+  image: python:3.6
+  tags:
+    - docker
+  script:
+    - "git config --global credential.helper store"
+    - "git config --global credential.gitlab.service.wobcom.de.useHttpPath true"
+    - "git config --global credential.gitlab.com.useHttpPath true"
+    - "echo https://${DIPLOMACY_CREDENTIALS}@gitlab.service.wobcom.de/infrastructure/diplomacy.git >> ~/.git-credentials"
+    - "echo https://${TOPDESK_CREDENTIALS}@gitlab.com/wobcompublic/topdesk/ >> ~/.git-credentials"
+
+    - "apt-get install git"
+    - "pip install virtualenv"
+    - "virtualenv --python=python3.6 venv"
+    - "venv/bin/pip install -Ur requirements.txt"
+    - "venv/bin/pip install pycodestyle"
+    - "venv/bin/pycodestyle --ignore=W504,E501 netbox/"
 
 build-package:
   stage: build
@@ -101,8 +97,6 @@ deploy-production-ssh:
     - "echo \"BIND_HOST=$DEPLOY_SERVER_PRODUCTION\" > .env"
     - "scp .env $SSH_USER@$DEPLOY_SERVER_PRODUCTION:/var/tmp/autodeploy/"
     - "scp deploy.sh $SSH_USER@$DEPLOY_SERVER_PRODUCTION:/var/tmp/autodeploy/deploy.sh"
-    # - ssh -t "$SSH_USER@$DEPLOY_SERVER_STAGING" "cd /var/tmp/autodeploy && bash -x ./deploy.sh $DEPLOY_BRANCH_PRODUCTION"
-    #- "ssh -t $SSH_USER@$DEPLOY_SERVER_PRODUCTION 'cd /var/tmp/autodeploy && bash -x ./deploy.sh changes-master'"
   tags:
     - ssh
 

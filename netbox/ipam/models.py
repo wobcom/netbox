@@ -707,7 +707,6 @@ class IPAddress(ChangeLoggedModel, CustomFieldModel):
             return True
         return False
 
-
     @property
     def virtual_machine(self):
         if self.interface:
