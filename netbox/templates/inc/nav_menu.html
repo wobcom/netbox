@@ -498,7 +498,7 @@
                         <form class="navbar-form">
                             <div{% if perms.change.view_provisionset %} class="btn-group"{% endif %}>
                                 {% if not request.my_change %}
-                                    <a href="{% url 'change:form' %}" class="btn btn-primary" title="Start change">
+                                    <a href="{% url 'change:form' %}?return_url={{ request.path }}" class="btn btn-primary" title="Start change">
                                         <i class="fa fa-play"></i>
                                     </a>
                                     {% if perms.change.view_provisionset %}
