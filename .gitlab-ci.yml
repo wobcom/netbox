@@ -31,7 +31,6 @@ lint:
     - "apt-get install git"
     - "pip install virtualenv"
     - "virtualenv --python=python3.6 venv"
-    - "venv/bin/pip install -Ur requirements.txt"
     - "venv/bin/pip install pycodestyle"
     - "venv/bin/pycodestyle --ignore=W504,E501 netbox/"
 
