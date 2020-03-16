@@ -18,7 +18,7 @@ from asgiref.sync import async_to_sync
 from diplomacy import Diplomat
 
 from netbox import configuration
-from utilities.views import ObjectListView
+from utilities.views import ObjectListView, GetReturnURLMixin
 from .forms import ChangeInformationForm
 from .models import ChangeInformation, ChangeSet, AlreadyExistsError, ProvisionSet, PID
 from . import tables
@@ -110,7 +110,7 @@ def run_provisioning_stage(stage_configuration, finished_callback=lambda status:
     return initial_job.output_file_name()
 
 
-class ChangeFormView(PermissionRequiredMixin, CreateView):
+class ChangeFormView(GetReturnURLMixin, PermissionRequiredMixin, CreateView):
     """
     This view is for displaying the change form and
     open a new change.
@@ -119,6 +119,11 @@ class ChangeFormView(PermissionRequiredMixin, CreateView):
     form_class = ChangeInformationForm
     success_url = '/'
     permission_required = 'change.add_changeset'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['return_url'] = self.get_return_url(self.request)
+        return context
 
     def post(self, request, *args, **kwargs):
         self.request = request
