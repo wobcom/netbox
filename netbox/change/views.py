@@ -120,6 +120,12 @@ class ChangeFormView(PermissionRequiredMixin, CreateView):
     success_url = '/'
     permission_required = 'change.add_changeset'
 
+    # we want to return to home on cancel
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['return_url'] = '/'
+        return context
+
     def post(self, request, *args, **kwargs):
         self.request = request
         return super(ChangeFormView, self).post(request, *args, **kwargs)
