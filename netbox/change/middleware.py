@@ -37,7 +37,6 @@ class FieldChangeMiddleware(object):
                 .exclude(status=ChangeSet.IN_REVIEW) \
                 .count()
 
-
         # Set request attributes
         request.foreign_changes = ChangeSet.objects.filter(active=True).exclude(user=request.user)
         request.my_change = request.user.changesets.filter(active=True).first()
