@@ -13,7 +13,6 @@ from django.views.generic.edit import CreateView
 from django.views.decorators.cache import never_cache
 from django.utils import timezone
 from django.db import IntegrityError
-from django.dispatch import Signal
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from diplomacy import Diplomat
@@ -23,9 +22,7 @@ from utilities.views import ObjectListView, GetReturnURLMixin
 from .forms import ChangeInformationForm
 from .models import ChangeInformation, ChangeSet, AlreadyExistsError, ProvisionSet, PID
 from . import tables
-
-provision_ready_to_review = Signal(providing_args=['provision_set'])
-provision_finished = Signal(providing_args=['provision_set'])
+from . signals import provision_finished
 
 
 def send_provision_status(provision_set, status):
@@ -218,11 +215,10 @@ class DeployView(PermissionRequiredMixin, View):
             if status == ProvisionSet.FINISHED:
                 provision_set.status = ProvisionSet.REVIEWING
                 self.undeployed_changesets.update(status=ChangeSet.IN_REVIEW)
-                provision_ready_to_review.send(provision_set.__class__, provision_set=provision_set)
             else:
                 provision_set.status = status
-                provision_finished.send(provision_set.__class__, provision_set=provision_set)
 
+            provision_finished.send(provision_set.__class__, provision_set=provision_set)
             provision_set.persist_output_log()
             provision_set.save()
 
