@@ -1,4 +1,4 @@
-from topdesk import Topdesk, HttpException
+from topdesk import Topdesk, NotFound
 from urllib.parse import quote
 
 from django import forms
@@ -17,7 +17,7 @@ def topdesk_number_validator(value):
                       app_creds=(configuration.TOPDESK_USER, configuration.TOPDESK_TOKEN))
     try:
         topdesk.operator_change(id_=quote(value))
-    except HttpException:
+    except NotFound:
         raise ValidationError({
             'topdesk_change_number': "{} is not an existing Topdesk ticket number.".format(value)
         })
