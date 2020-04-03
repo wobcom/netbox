@@ -147,6 +147,3 @@ def update_message_receivers(messages=None, deleted_object_types=[]):
                     sender=object_type.model_class(),
                     dispatch_uid=delete_uid,
                 )
-
-
-
