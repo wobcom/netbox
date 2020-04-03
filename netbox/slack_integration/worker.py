@@ -16,6 +16,7 @@ def handle_slack_message(message, obj):
     :param obj:
     """
     if settings.SLACK_ENABLED:
+        message.refresh_from_db()
         context = Context({'object': obj})
         template = Template(message.template)
         rendered_message = template.render(context)

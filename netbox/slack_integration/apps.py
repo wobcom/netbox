@@ -34,7 +34,6 @@ class SlackConfig(AppConfig):
                     "configuration.py."
                 )
 
-            from .signals import install_receivers
-
-            install_receivers()
-
+            from .signals import update_message_receivers, install_message_model_receivers
+            install_message_model_receivers()
+            update_message_receivers()
