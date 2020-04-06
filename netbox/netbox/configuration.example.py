@@ -175,6 +175,10 @@ SHORT_TIME_FORMAT = 'H:i:s'
 DATETIME_FORMAT = 'N j, Y g:i a'
 SHORT_DATETIME_FORMAT = 'Y-m-d H:i'
 
+# Slack configuration
+SLACK_ENABLED = False
+SLACK_TOKEN = ""
+
 NEED_CHANGE_FOR_WRITE = True
 
 # Deployment integration

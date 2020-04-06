@@ -22,6 +22,7 @@ from utilities.views import ObjectListView, GetReturnURLMixin
 from .forms import ChangeInformationForm
 from .models import ChangeInformation, ChangeSet, AlreadyExistsError, ProvisionSet, PID
 from . import tables
+from . signals import provision_finished
 
 
 def send_provision_status(provision_set, status):
@@ -217,6 +218,7 @@ class DeployView(PermissionRequiredMixin, View):
             else:
                 provision_set.status = status
 
+            provision_finished.send(provision_set.__class__, provision_set=provision_set)
             provision_set.persist_output_log()
             provision_set.save()
 
@@ -241,12 +243,14 @@ class SecondStageView(PermissionRequiredMixin, View):
 
         def provisioning_finished(status):
             provision_set.status = status
+
             send_provision_status(provision_set, status=False)
 
             if status == ProvisionSet.FINISHED:
                 provision_set.changesets.update(status=ChangeSet.IMPLEMENTED)
             else:
                 provision_set.changesets.update(status=ChangeSet.ACCEPTED)
+            provision_finished.send(provision_set.__class__, provision_set=provision_set)
 
             provision_set.persist_output_log(append=True)
             provision_set.save()

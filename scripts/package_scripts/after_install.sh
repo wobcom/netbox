@@ -7,6 +7,7 @@ chmod 700 /usr/bin/netbox-manage
 chown netbox:netbox /usr/bin/netbox-manage
 
 cp /opt/netbox/netbox.service /etc/systemd/system/netbox.service
+cp /opt/netbox/netbox-worker.service /etc/systemd/system/netbox-worker.service
 
 systemctl daemon-reload
 
@@ -50,7 +51,10 @@ else
 
 fi
 
-echo "Ensure Netbox service is enabled and started"
+echo "Ensure Netbox services are enabled and started"
 
 systemctl enable netbox.service
 systemctl start netbox.service
+
+systemctl enable netbox-worker.service
+systemctl start netbox-worker.service

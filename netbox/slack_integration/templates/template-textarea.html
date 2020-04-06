@@ -1,0 +1,17 @@
+{% load static %}
+<script src="{% static 'codemirror-5.52.2/lib/codemirror.js' %}"></script>
+<link rel="stylesheet" href="{% static 'codemirror-5.52.2/lib/codemirror.css' %}">
+<link rel="stylesheet" href="{% static 'codemirror-5.52.2/theme/elegant.css' %}">
+<script src="{% static 'codemirror-5.52.2/addon/edit/matchbrackets.js' %}"></script>
+<script src="{% static 'codemirror-5.52.2/addon/edit/closebrackets.js' %}"></script>
+<script src="{% static 'codemirror-5.52.2/mode/django/django.js' %}"></script>
+{% include 'django/forms/widgets/textarea.html' %}
+<script type="application/javascript">
+    document.addEventListener('DOMContentLoaded', () => {
+        CodeMirror.fromTextArea(document.getElementById('{{ widget.attrs.id }}'), {
+            lineNumbers: true,
+            matchBrackets: true,
+            autoCloseBrackets: true,
+        });
+    });
+</script>

@@ -93,6 +93,8 @@ SHORT_TIME_FORMAT = getattr(configuration, 'SHORT_TIME_FORMAT', 'H:i:s')
 TIME_FORMAT = getattr(configuration, 'TIME_FORMAT', 'g:i a')
 TIME_ZONE = getattr(configuration, 'TIME_ZONE', 'UTC')
 WEBHOOKS_ENABLED = getattr(configuration, 'WEBHOOKS_ENABLED', False)
+SLACK_ENABLED = getattr(configuration, 'SLACK_ENABLED', False)
+SLACK_TOKEN = getattr(configuration, 'SLACK_TOKEN', '')
 NEED_CHANGE_FOR_WRITE = getattr(configuration, 'NEED_CHANGE_FOR_WRITE', False)
 
 
@@ -188,10 +190,11 @@ INSTALLED_APPS = [
     'virtualization',
     'drf_yasg',
     'channels',
+    'slack_integration'
 ]
 
 # Only load django-rq if the webhook backend is enabled
-if WEBHOOKS_ENABLED:
+if WEBHOOKS_ENABLED or SLACK_ENABLED:
     INSTALLED_APPS.append('django_rq')
 
 # Middleware
@@ -467,7 +470,7 @@ SWAGGER_SETTINGS = {
 
 
 #
-# Django RQ (Webhooks backend)
+# Django RQ (Webhooks backend and Slack integration)
 #
 
 RQ_QUEUES = {
