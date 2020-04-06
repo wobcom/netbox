@@ -1,10 +1,13 @@
 from slack import WebClient
+from logging import getLogger
 
 from django_rq import job
 from django.template import Template, Context
 from django.conf import settings
 
 from slack_integration.models import SlackMessage
+
+logging = getLogger()
 
 
 @job('default')
@@ -26,6 +29,10 @@ def handle_slack_message(message, obj):
         slack_client = WebClient(token=settings.SLACK_TOKEN)
 
         for channel in message.slack_channels.all():
+            logging.debug('Trying to send Slack message. \n Channel: {}, Message: {}'.format(
+                channel.name,
+                rendered_message
+            ))
             slack_client.chat_postMessage(
                 channel=channel.name,
                 text=rendered_message,
