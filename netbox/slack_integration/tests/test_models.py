@@ -1,6 +1,7 @@
 from django.test import TestCase
 from django.contrib.contenttypes.models import ContentType
 from django.db.models.signals import post_save, pre_delete
+from django.conf import settings
 
 from slack_integration.models import SlackMessage
 
@@ -49,6 +50,8 @@ class SlackMessageTestCase(TestCase):
         self.interface_content_type = ContentType.objects.get(app_label='dcim', model='interface')
 
     def test__message(self):
+
+        self.assertTrue(settings.SLACK_ENABLED, "Slack is not enabled")
 
         # on_create
 
