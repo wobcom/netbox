@@ -23,7 +23,7 @@ def handle_slack_message(message, obj):
         context = Context({'object': obj})
         template = Template(message.template)
         rendered_message = template.render(context)
-        if rendered_message.isspace():
+        if rendered_message.isspace() or rendered_message == "":
             return
 
         slack_client = WebClient(token=settings.SLACK_TOKEN)
