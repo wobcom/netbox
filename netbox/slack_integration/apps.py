@@ -45,4 +45,3 @@ class SlackConfig(AppConfig):
                 update_message_receivers()
             except ProgrammingError:
                 logger.critical('Migration missing')
-
