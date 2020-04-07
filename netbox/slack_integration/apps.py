@@ -1,6 +1,11 @@
+import logging
+
 from django.apps import AppConfig
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
+from django.db.utils import ProgrammingError
+
+logger = logging.getLogger()
 
 
 class SlackConfig(AppConfig):
@@ -34,6 +39,10 @@ class SlackConfig(AppConfig):
                     "configuration.py."
                 )
 
-            from .signals import update_message_receivers, install_message_model_receivers
-            install_message_model_receivers()
-            update_message_receivers()
+            try:
+                from .signals import update_message_receivers, install_message_model_receivers
+                install_message_model_receivers()
+                update_message_receivers()
+            except ProgrammingError:
+                logger.critical('Migration missing')
+
