@@ -94,10 +94,8 @@
                                             return x;
                                         }
                                         document.addEventListener('DOMContentLoaded', () => {
-                                            var timeout = ({{ provision_set.timeout.timestamp }} * 1000;
-                                        )
-                                            var time_offset = Date.now() - ({{ current_time.timestamp }} * 1000;
-                                        )
+                                            var timeout = ({{ provision_set.timeout.timestamp }} * 1000);
+                                            var time_offset = Date.now() - ({{ current_time.timestamp }} * 1000);
                                             var time_field = document.getElementById('provision-timeout');
                                             var time_update = setInterval(() => {
                                                 var remaining_time = timeout - (Date.now() - time_offset);
@@ -143,7 +141,7 @@
         fit_addon.fit();
         {% if provision_set.status != provision_set.RUNNING %}
         {% autoescape off %}
-            term.write({{ provision_set.output_log | stringformat:'r' }}.replace(/\n/g, '\r\n');)
+        term.write({{ provision_set.output_log | stringformat:'r' }}.replace(/\n/g, '\r\n'));
         {% endautoescape %}
         {% else %}
         var websocket = new WebSocket((location.protocol.startsWith('https') ? 'wss' : 'ws') + '://' + location.host + '/change/provisions/{{ provision_set.pk }}/logs/ws/');
