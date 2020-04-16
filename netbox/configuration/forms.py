@@ -6,11 +6,11 @@ from .models import (
     BGPCommunity, BGPCommunityList, RouteMap, BGPASN, BGPNeighbor, BGPDeviceASN
 )
 
-from extras.forms import CustomFieldForm
+from extras.forms import CustomFieldModelForm
 from dcim.models import Interface, Device
 from ipam.models import IPAddress
 from utilities.forms import (
-    ChainedModelChoiceField, APISelect, BootstrapMixin, FilterChoiceField,
+    DynamicModelChoiceField, APISelect, BootstrapMixin,
     SlugField
 )
 
@@ -158,13 +158,9 @@ class BGPASNCSVForm(forms.ModelForm):
 
 
 class BGPNeighborForm(BootstrapMixin, forms.ModelForm):
-    internal_neighbor_ip = ChainedModelChoiceField(
+    internal_neighbor_ip = DynamicModelChoiceField(
         queryset=IPAddress.objects.filter(),
-        chains={
-            'interface_device': 'internal_neighbor_device',
-        },
         widget=APISelect(
-            api_url='/api/ipam/ip-addresses/?device_id={{internal_neighbor_device}}',
             display_field='address',
         ),
         label='Internal Neighbor IP',
@@ -173,7 +169,7 @@ class BGPNeighborForm(BootstrapMixin, forms.ModelForm):
 
     # this field is the one displayed, but it doesn't get sent (see also
     # deviceasn)
-    deviceasn_dummy = FilterChoiceField(
+    deviceasn_dummy = DynamicModelChoiceField(
         queryset=BGPDeviceASN.objects.all(),
         widget=forms.Select(attrs={'disabled': True}),
         label='Device ASN link',

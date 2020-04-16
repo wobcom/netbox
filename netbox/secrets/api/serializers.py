@@ -1,5 +1,4 @@
 from rest_framework import serializers
-from rest_framework.validators import UniqueTogetherValidator
 from taggit_serializer.serializers import TaggitSerializer, TagListSerializerField
 
 from dcim.api.nested_serializers import NestedDeviceSerializer
@@ -18,7 +17,7 @@ class SecretRoleSerializer(ValidatedModelSerializer):
 
     class Meta:
         model = SecretRole
-        fields = ['id', 'name', 'slug', 'secret_count']
+        fields = ['id', 'name', 'slug', 'description', 'secret_count']
 
 
 class SecretSerializer(TaggitSerializer, CustomFieldModelSerializer):
@@ -43,13 +42,6 @@ class SecretSerializer(TaggitSerializer, CustomFieldModelSerializer):
             data['ciphertext'] = s.ciphertext
             data['hash'] = s.hash
 
-        # Validate uniqueness of name if one has been provided.
-        if data.get('name'):
-            validator = UniqueTogetherValidator(queryset=Secret.objects.all(), fields=('device', 'role', 'name'))
-            validator.set_context(self)
-            validator(data)
-
-        # Enforce model validation
         super().validate(data)
 
         return data

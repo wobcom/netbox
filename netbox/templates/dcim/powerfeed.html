@@ -1,7 +1,9 @@
-{% extends '_base.html' %}
+{% extends 'base.html' %}
+{% load buttons %}
 {% load static %}
 {% load custom_links %}
 {% load helpers %}
+{% load plugins %}
 
 {% block header %}
     <div class="row noprint">
@@ -30,17 +32,15 @@
         </div>
     </div>
     <div class="pull-right noprint">
+        {% plugin_buttons powerfeed %}
+        {% if perms.dcim.add_powerfeed %}
+            {% clone_button powerfeed %}
+        {% endif %}
         {% if perms.dcim.change_powerfeed %}
-            <a href="{% url 'dcim:powerfeed_edit' pk=powerfeed.pk %}" class="btn btn-warning">
-                <span class="fa fa-pencil" aria-hidden="true"></span>
-                Edit this power feed
-            </a>
+            {% edit_button powerfeed %}
         {% endif %}
         {% if perms.dcim.delete_powerfeed %}
-            <a href="{% url 'dcim:powerfeed_delete' pk=powerfeed.pk %}" class="btn btn-danger">
-                <span class="fa fa-trash" aria-hidden="true"></span>
-                Delete this power feed
-            </a>
+            {% delete_button powerfeed %}
         {% endif %}
     </div>
     <h1>{% block title %}{{ powerfeed }}{% endblock %}</h1>
@@ -54,7 +54,7 @@
         </li>
         {% if perms.extras.view_objectchange %}
             <li role="presentation"{% if active_tab == 'changelog' %} class="active"{% endif %}>
-                <a href="{% url 'dcim:powerfeed_changelog' pk=powerfeed.pk %}">Changelog</a>
+                <a href="{% url 'dcim:powerfeed_changelog' pk=powerfeed.pk %}">Change Log</a>
             </li>
         {% endif %}
     </ul>
@@ -112,7 +112,9 @@
                         {% if utilization %}
                             <td>
                                 {{ utilization.allocated }}VA / {{ powerfeed.available_power }}VA
-                                {% utilization_graph utilization.allocated|percentage:powerfeed.available_power %}
+                                {% if powerfeed.available_power > 0 %}
+                                    {% utilization_graph utilization.allocated|percentage:powerfeed.available_power %}
+                                {% endif %}
                             </td>
                         {% else %}
                             <td class="text-muted">N/A</td>
@@ -121,6 +123,9 @@
                 </tr>
             </table>
         </div>
+        {% include 'inc/custom_fields_panel.html' with obj=powerfeed %}
+        {% include 'extras/inc/tags_panel.html' with tags=powerfeed.tags.all url='dcim:powerfeed_list' %}
+        {% plugin_left_page powerfeed %}
     </div>
     <div class="col-md-6">
         <div class="panel panel-default">
@@ -150,6 +155,24 @@
                 </tr>
             </table>
         </div>
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <strong>Comments</strong>
+            </div>
+            <div class="panel-body rendered-markdown">
+                {% if powerfeed.comments %}
+                    {{ powerfeed.comments|render_markdown }}
+                {% else %}
+                    <span class="text-muted">None</span>
+                {% endif %}
+            </div>
+        </div>
+        {% plugin_right_page powerfeed %}
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-12">
+        {% plugin_full_width_page powerfeed %}
     </div>
 </div>
 {% endblock %}

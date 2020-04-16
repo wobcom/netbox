@@ -90,6 +90,22 @@ This setting enables debugging. This should be done only during development or t
 
 ---
 
+## DEVELOPER
+
+Default: False
+
+This parameter serves as a safeguard to prevent some potentially dangerous behavior, such as generating new database schema migrations. Set this to `True` **only** if you are actively developing the NetBox code base.
+
+---
+
+## DOCS_ROOT
+
+Default: `$INSTALL_DIR/docs/`
+
+The file path to NetBox's documentation. This is used when presenting context-sensitive documentation in the web UI. by default, this will be the `docs/` directory within the root NetBox installation path. (Set this to `None` to disable the embedded documentation.)
+
+---
+
 ## EMAIL
 
 In order to send email, NetBox needs an email server configured. The following items can be defined within the `EMAIL` setting:
@@ -100,6 +116,20 @@ In order to send email, NetBox needs an email server configured. The following i
 * PASSSWORD - Password with which to authenticate
 * TIMEOUT - Amount of time to wait for a connection (seconds)
 * FROM_EMAIL - Sender address for emails sent by NetBox
+
+Email is sent from NetBox only for critical events. If you would like to test the email server configuration please use the django function [send_mail()](https://docs.djangoproject.com/en/stable/topics/email/#send-mail):
+
+```
+# python ./manage.py nbshell
+>>> from django.core.mail import send_mail
+>>> send_mail(
+  'Test Email Subject',
+  'Test Email Body',
+  'noreply-netbox@example.com',
+  ['users@example.com'],
+  fail_silently=False
+)
+```
 
 ---
 
@@ -127,7 +157,7 @@ EXEMPT_VIEW_PERMISSIONS = ['*']
 
 ---
 
-# ENFORCE_GLOBAL_UNIQUE
+## ENFORCE_GLOBAL_UNIQUE
 
 Default: False
 
@@ -139,7 +169,7 @@ Enforcement of unique IP space can be toggled on a per-VRF basis. To enforce uni
 
 By default, all messages of INFO severity or higher will be logged to the console. Additionally, if `DEBUG` is False and email access has been configured, ERROR and CRITICAL messages will be emailed to the users defined in `ADMINS`.
 
-The Django framework on which NetBox runs allows for the customization of logging, e.g. to write logs to file. Please consult the [Django logging documentation](https://docs.djangoproject.com/en/1.11/topics/logging/) for more information on configuring this setting. Below is an example which will write all INFO and higher messages to a file:
+The Django framework on which NetBox runs allows for the customization of logging, e.g. to write logs to file. Please consult the [Django logging documentation](https://docs.djangoproject.com/en/stable/topics/logging/) for more information on configuring this setting. Below is an example which will write all INFO and higher messages to a file:
 
 ```
 LOGGING = {
@@ -160,6 +190,14 @@ LOGGING = {
     },
 }
 ```
+
+### Available Loggers
+
+* `netbox.auth.*` - Authentication events
+* `netbox.api.views.*` - Views which handle business logic for the REST API
+* `netbox.reports.*` - Report execution (`module.name`)
+* `netbox.scripts.*` - Custom script execution (`module.name`)
+* `netbox.views.*` - Views which handle business logic for the web UI
 
 ---
 
@@ -207,7 +245,7 @@ The file path to the location where media files (such as image attachments) are 
 
 Default: False
 
-Toggle exposing Prometheus metrics at `/metrics`. See the [Prometheus Metrics](../additional-features/prometheus-metrics/) documentation for more details.
+Toggle exposing Prometheus metrics at `/metrics`. See the [Prometheus Metrics](../../additional-features/prometheus-metrics/) documentation for more details.
 
 ---
 
@@ -261,11 +299,110 @@ Determine how many objects to display per page within each list of objects.
 
 ---
 
+## PLUGINS
+
+Default: Empty
+
+A list of installed [NetBox plugins](../../plugins/) to enable. Plugins will not take effect unless they are listed here.
+
+!!! warning
+    Plugins extend NetBox by allowing external code to run with the same access and privileges as NetBox itself. Only install plugins from trusted sources. The NetBox maintainers make absolutely no guarantees about the integrity or security of your installation with plugins enabled.
+
+---
+
+## PLUGINS_CONFIG
+
+Default: Empty
+
+This parameter holds configuration settings for individual NetBox plugins. It is defined as a dictionary, with each key using the name of an installed plugin. The specific parameters supported are unique to each plugin: Reference the plugin's documentation to determine the supported parameters. An example configuration is shown below:
+
+```python
+PLUGINS_CONFIG = {
+    'plugin1': {
+        'foo': 123,
+        'bar': True
+    },
+    'plugin2': {
+        'foo': 456,
+    },
+}
+```
+
+Note that a plugin must be listed in `PLUGINS` for its configuration to take effect.
+
+---
+
 ## PREFER_IPV4
 
 Default: False
 
 When determining the primary IP address for a device, IPv6 is preferred over IPv4 by default. Set this to True to prefer IPv4 instead.
+
+---
+
+## REMOTE_AUTH_ENABLED
+
+Default: `False`
+
+NetBox can be configured to support remote user authentication by inferring user authentication from an HTTP header set by the HTTP reverse proxy (e.g. nginx or Apache). Set this to `True` to enable this functionality. (Local authenitcation will still take effect as a fallback.)
+
+---
+
+## REMOTE_AUTH_BACKEND
+
+Default: `'utilities.auth_backends.RemoteUserBackend'`
+
+Python path to the custom [Django authentication backend](https://docs.djangoproject.com/en/stable/topics/auth/customizing/) to use for external user authentication, if not using NetBox's built-in backend. (Requires `REMOTE_AUTH_ENABLED`.)
+
+---
+
+## REMOTE_AUTH_HEADER
+
+Default: `'HTTP_REMOTE_USER'`
+
+When remote user authentication is in use, this is the name of the HTTP header which informs NetBox of the currently authenticated user. (Requires `REMOTE_AUTH_ENABLED`.)
+
+---
+
+## REMOTE_AUTH_AUTO_CREATE_USER
+
+Default: `True`
+
+If true, NetBox will automatically create local accounts for users authenticated via a remote service. (Requires `REMOTE_AUTH_ENABLED`.)
+
+---
+
+## REMOTE_AUTH_DEFAULT_GROUPS
+
+Default: `[]` (Empty list)
+
+The list of groups to assign a new user account when created using remote authentication. (Requires `REMOTE_AUTH_ENABLED`.)
+
+---
+
+## REMOTE_AUTH_DEFAULT_PERMISSIONS
+
+Default: `[]` (Empty list)
+
+The list of permissions to assign a new user account when created using remote authentication. (Requires `REMOTE_AUTH_ENABLED`.)
+
+---
+
+## RELEASE_CHECK_TIMEOUT
+
+Default: 86,400 (24 hours)
+
+The number of seconds to retain the latest version that is fetched from the GitHub API before automatically invalidating it and fetching it from the API again. This must be set to at least one hour (3600 seconds).
+
+---
+
+## RELEASE_CHECK_URL
+
+Default: None
+
+The releases of this repository are checked to detect new releases, which are shown on the home page of the web interface. You can change this to your own fork of the NetBox repository, or set it to `None` to disable the check. The URL provided **must** be compatible with the GitHub API.
+
+Use `'https://api.github.com/repos/netbox-community/netbox/releases'` to check for release in the official NetBox repository.
 
 ---
 
@@ -293,6 +430,26 @@ Session data is used to track authenticated users when they access NetBox. By de
 
 ---
 
+## STORAGE_BACKEND
+
+Default: None (local storage)
+
+The backend storage engine for handling uploaded files (e.g. image attachments). NetBox supports integration with the [`django-storages`](https://django-storages.readthedocs.io/en/stable/) package, which provides backends for several popular file storage services. If not configured, local filesystem storage will be used.
+
+The configuration parameters for the specified storage backend are defined under the `STORAGE_CONFIG` setting.
+
+---
+
+## STORAGE_CONFIG
+
+Default: Empty
+
+A dictionary of configuration parameters for the storage backend configured as `STORAGE_BACKEND`. The specific parameters to be used here are specific to each backend; see the [`django-storages` documentation](https://django-storages.readthedocs.io/en/stable/) for more detail.
+
+If `STORAGE_BACKEND` is not defined, this setting will be ignored.
+
+---
+
 ## TIME_ZONE
 
 Default: UTC
@@ -301,17 +458,9 @@ The time zone NetBox will use when dealing with dates and times. It is recommend
 
 ---
 
-## WEBHOOKS_ENABLED
-
-Default: False
-
-Enable this option to run the webhook backend. See the docs section on the webhook backend [here](../additional-features/webhooks/) for more information on setup and use.
-
----
-
 ## Date and Time Formatting
 
-You may define custom formatting for date and times. For detailed instructions on writing format strings, please see [the Django documentation](https://docs.djangoproject.com/en/dev/ref/templates/builtins/#date).
+You may define custom formatting for date and times. For detailed instructions on writing format strings, please see [the Django documentation](https://docs.djangoproject.com/en/stable/ref/templates/builtins/#date).
 
 Defaults:
 

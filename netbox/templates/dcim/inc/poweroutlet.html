@@ -1,6 +1,6 @@
 {% load helpers %}
 
-<tr class="poweroutlet{% if po.cable.status %} success{% elif po.cable %} info{% endif %}">
+<tr class="poweroutlet{% if po.cable %} {{ po.cable.get_status_class }}{% endif %}">
 
     {# Checkbox #}
     {% if perms.dcim.change_poweroutlet or perms.dcim.delete_poweroutlet %}
@@ -12,6 +12,11 @@
     {# Name #}
     <td>
         <i class="fa fa-fw fa-bolt"></i> {{ po }}
+    </td>
+
+    {# Type #}
+    <td>
+        {{ po.get_type_display }}
     </td>
 
     {# Input/leg #}

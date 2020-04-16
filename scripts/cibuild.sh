@@ -34,17 +34,22 @@ if [[ $RC != 0 ]]; then
 	EXIT=$RC
 fi
 
-# Prepare configuration file for use in CI
-CONFIG="netbox/netbox/configuration.py"
-cp netbox/netbox/configuration.example.py $CONFIG
-sed -i -e "s/ALLOWED_HOSTS = \[\]/ALLOWED_HOSTS = \['*'\]/g" $CONFIG
-sed -i -e "s/SECRET_KEY = ''/SECRET_KEY = 'netboxci'/g" $CONFIG
+# Point to the testing configuration file for use in CI
+ln -s configuration.testing.py netbox/netbox/configuration.py
 
 # Run NetBox tests
-./netbox/manage.py test netbox/
+coverage run --source="netbox/" netbox/manage.py test netbox/
 RC=$?
 if [[ $RC != 0 ]]; then
 	echo -e "\n$(info) one or more tests failed, failing build."
+	EXIT=$RC
+fi
+
+# Show code coverage report
+coverage report --skip-covered --omit *migrations*
+RC=$?
+if [[ $RC != 0 ]]; then
+	echo -e "\n$(info) failed to generate code coverage report."
 	EXIT=$RC
 fi
 

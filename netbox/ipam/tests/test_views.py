@@ -1,22 +1,19 @@
-from netaddr import IPNetwork
-import urllib.parse
+import datetime
 
-from django.test import Client, TestCase
-from django.urls import reverse
+from netaddr import IPNetwork
 
 from dcim.models import Device, DeviceRole, DeviceType, Manufacturer, Site
-from ipam.constants import IP_PROTOCOL_TCP
+from ipam.choices import *
 from ipam.models import Aggregate, IPAddress, Prefix, RIR, Role, Service, VLAN, VLANGroup, VRF
 from tenancy.models import Tenant
-from utilities.testing import create_test_user
+from utilities.testing import ViewTestCases
 
 
-class VRFTestCase(TestCase):
+class VRFTestCase(ViewTestCases.PrimaryObjectViewTestCase):
+    model = VRF
 
-    def setUp(self):
-        user = create_test_user(permissions=['ipam.view_vrf'])
-        self.client = Client()
-        self.client.force_login(user)
+    @classmethod
+    def setUpTestData(cls):
 
         VRF.objects.bulk_create([
             VRF(name='VRF 1', rd='65000:1'),
@@ -24,29 +21,34 @@ class VRFTestCase(TestCase):
             VRF(name='VRF 3', rd='65000:3'),
         ])
 
-    def test_vrf_list(self):
-
-        url = reverse('ipam:vrf_list')
-        params = {
-            "q": "65000",
+        cls.form_data = {
+            'name': 'VRF X',
+            'rd': '65000:999',
+            'tenant': None,
+            'enforce_unique': True,
+            'description': 'A new VRF',
+            'tags': 'Alpha,Bravo,Charlie',
         }
 
-        response = self.client.get('{}?{}'.format(url, urllib.parse.urlencode(params)))
-        self.assertEqual(response.status_code, 200)
+        cls.csv_data = (
+            "name",
+            "VRF 4",
+            "VRF 5",
+            "VRF 6",
+        )
 
-    def test_configcontext(self):
+        cls.bulk_edit_data = {
+            'tenant': None,
+            'enforce_unique': False,
+            'description': 'New description',
+        }
 
-        vrf = VRF.objects.first()
-        response = self.client.get(vrf.get_absolute_url())
-        self.assertEqual(response.status_code, 200)
 
+class RIRTestCase(ViewTestCases.OrganizationalObjectViewTestCase):
+    model = RIR
 
-class RIRTestCase(TestCase):
-
-    def setUp(self):
-        user = create_test_user(permissions=['ipam.view_rir'])
-        self.client = Client()
-        self.client.force_login(user)
+    @classmethod
+    def setUpTestData(cls):
 
         RIR.objects.bulk_create([
             RIR(name='RIR 1', slug='rir-1'),
@@ -54,53 +56,66 @@ class RIRTestCase(TestCase):
             RIR(name='RIR 3', slug='rir-3'),
         ])
 
-    def test_rir_list(self):
-
-        url = reverse('ipam:rir_list')
-
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-
-
-class AggregateTestCase(TestCase):
-
-    def setUp(self):
-        user = create_test_user(permissions=['ipam.view_aggregate'])
-        self.client = Client()
-        self.client.force_login(user)
-
-        rir = RIR(name='RIR 1', slug='rir-1')
-        rir.save()
-
-        Aggregate.objects.bulk_create([
-            Aggregate(family=4, prefix=IPNetwork('10.1.0.0/16'), rir=rir),
-            Aggregate(family=4, prefix=IPNetwork('10.2.0.0/16'), rir=rir),
-            Aggregate(family=4, prefix=IPNetwork('10.3.0.0/16'), rir=rir),
-        ])
-
-    def test_aggregate_list(self):
-
-        url = reverse('ipam:aggregate_list')
-        params = {
-            "rir": RIR.objects.first().slug,
+        cls.form_data = {
+            'name': 'RIR X',
+            'slug': 'rir-x',
+            'is_private': True,
+            'description': 'A new RIR',
         }
 
-        response = self.client.get('{}?{}'.format(url, urllib.parse.urlencode(params)))
-        self.assertEqual(response.status_code, 200)
-
-    def test_aggregate(self):
-
-        aggregate = Aggregate.objects.first()
-        response = self.client.get(aggregate.get_absolute_url())
-        self.assertEqual(response.status_code, 200)
+        cls.csv_data = (
+            "name,slug,description",
+            "RIR 4,rir-4,Fourth RIR",
+            "RIR 5,rir-5,Fifth RIR",
+            "RIR 6,rir-6,Sixth RIR",
+        )
 
 
-class RoleTestCase(TestCase):
+class AggregateTestCase(ViewTestCases.PrimaryObjectViewTestCase):
+    model = Aggregate
 
-    def setUp(self):
-        user = create_test_user(permissions=['ipam.view_role'])
-        self.client = Client()
-        self.client.force_login(user)
+    @classmethod
+    def setUpTestData(cls):
+
+        rirs = (
+            RIR(name='RIR 1', slug='rir-1'),
+            RIR(name='RIR 2', slug='rir-2'),
+        )
+        RIR.objects.bulk_create(rirs)
+
+        Aggregate.objects.bulk_create([
+            Aggregate(prefix=IPNetwork('10.1.0.0/16'), rir=rirs[0]),
+            Aggregate(prefix=IPNetwork('10.2.0.0/16'), rir=rirs[0]),
+            Aggregate(prefix=IPNetwork('10.3.0.0/16'), rir=rirs[0]),
+        ])
+
+        cls.form_data = {
+            'prefix': IPNetwork('10.99.0.0/16'),
+            'rir': rirs[1].pk,
+            'date_added': datetime.date(2020, 1, 1),
+            'description': 'A new aggregate',
+            'tags': 'Alpha,Bravo,Charlie',
+        }
+
+        cls.csv_data = (
+            "prefix,rir",
+            "10.4.0.0/16,RIR 1",
+            "10.5.0.0/16,RIR 1",
+            "10.6.0.0/16,RIR 1",
+        )
+
+        cls.bulk_edit_data = {
+            'rir': rirs[1].pk,
+            'date_added': datetime.date(2020, 1, 1),
+            'description': 'New description',
+        }
+
+
+class RoleTestCase(ViewTestCases.OrganizationalObjectViewTestCase):
+    model = Role
+
+    @classmethod
+    def setUpTestData(cls):
 
         Role.objects.bulk_create([
             Role(name='Role 1', slug='role-1'),
@@ -108,89 +123,136 @@ class RoleTestCase(TestCase):
             Role(name='Role 3', slug='role-3'),
         ])
 
-    def test_role_list(self):
+        cls.form_data = {
+            'name': 'Role X',
+            'slug': 'role-x',
+            'weight': 200,
+            'description': 'A new role',
+        }
 
-        url = reverse('ipam:role_list')
+        cls.csv_data = (
+            "name,slug,weight",
+            "Role 4,role-4,1000",
+            "Role 5,role-5,1000",
+            "Role 6,role-6,1000",
+        )
 
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
 
+class PrefixTestCase(ViewTestCases.PrimaryObjectViewTestCase):
+    model = Prefix
 
-class PrefixTestCase(TestCase):
+    @classmethod
+    def setUpTestData(cls):
 
-    def setUp(self):
-        user = create_test_user(permissions=['ipam.view_prefix'])
-        self.client = Client()
-        self.client.force_login(user)
+        sites = (
+            Site(name='Site 1', slug='site-1'),
+            Site(name='Site 2', slug='site-2'),
+        )
+        Site.objects.bulk_create(sites)
 
-        site = Site(name='Site 1', slug='site-1')
-        site.save()
+        vrfs = (
+            VRF(name='VRF 1', rd='65000:1'),
+            VRF(name='VRF 2', rd='65000:2'),
+        )
+        VRF.objects.bulk_create(vrfs)
+
+        roles = (
+            Role(name='Role 1', slug='role-1'),
+            Role(name='Role 2', slug='role-2'),
+        )
 
         Prefix.objects.bulk_create([
-            Prefix(family=4, prefix=IPNetwork('10.1.0.0/16'), site=site),
-            Prefix(family=4, prefix=IPNetwork('10.2.0.0/16'), site=site),
-            Prefix(family=4, prefix=IPNetwork('10.3.0.0/16'), site=site),
+            Prefix(prefix=IPNetwork('10.1.0.0/16'), vrf=vrfs[0], site=sites[0], role=roles[0]),
+            Prefix(prefix=IPNetwork('10.2.0.0/16'), vrf=vrfs[0], site=sites[0], role=roles[0]),
+            Prefix(prefix=IPNetwork('10.3.0.0/16'), vrf=vrfs[0], site=sites[0], role=roles[0]),
         ])
 
-    def test_prefix_list(self):
-
-        url = reverse('ipam:prefix_list')
-        params = {
-            "site": Site.objects.first().slug,
+        cls.form_data = {
+            'prefix': IPNetwork('192.0.2.0/24'),
+            'site': sites[1].pk,
+            'vrf': vrfs[1].pk,
+            'tenant': None,
+            'vlan': None,
+            'status': PrefixStatusChoices.STATUS_RESERVED,
+            'role': roles[1].pk,
+            'is_pool': True,
+            'description': 'A new prefix',
+            'tags': 'Alpha,Bravo,Charlie',
         }
 
-        response = self.client.get('{}?{}'.format(url, urllib.parse.urlencode(params)))
-        self.assertEqual(response.status_code, 200)
+        cls.csv_data = (
+            "vrf,prefix,status",
+            "VRF 1,10.4.0.0/16,Active",
+            "VRF 1,10.5.0.0/16,Active",
+            "VRF 1,10.6.0.0/16,Active",
+        )
 
-    def test_prefix(self):
+        cls.bulk_edit_data = {
+            'site': sites[1].pk,
+            'vrf': vrfs[1].pk,
+            'tenant': None,
+            'status': PrefixStatusChoices.STATUS_RESERVED,
+            'role': roles[1].pk,
+            'is_pool': False,
+            'description': 'New description',
+        }
 
-        prefix = Prefix.objects.first()
-        response = self.client.get(prefix.get_absolute_url())
-        self.assertEqual(response.status_code, 200)
 
+class IPAddressTestCase(ViewTestCases.PrimaryObjectViewTestCase):
+    model = IPAddress
 
-class IPAddressTestCase(TestCase):
+    @classmethod
+    def setUpTestData(cls):
 
-    def setUp(self):
-        user = create_test_user(permissions=['ipam.view_ipaddress'])
-        self.client = Client()
-        self.client.force_login(user)
-
-        vrf = VRF(name='VRF 1', rd='65000:1')
-        vrf.save()
+        vrfs = (
+            VRF(name='VRF 1', rd='65000:1'),
+            VRF(name='VRF 2', rd='65000:2'),
+        )
+        VRF.objects.bulk_create(vrfs)
 
         IPAddress.objects.bulk_create([
-            IPAddress(family=4, address=IPNetwork('10.1.0.0/16'), vrf=vrf),
-            IPAddress(family=4, address=IPNetwork('10.2.0.0/16'), vrf=vrf),
-            IPAddress(family=4, address=IPNetwork('10.3.0.0/16'), vrf=vrf),
+            IPAddress(address=IPNetwork('192.0.2.1/24'), vrf=vrfs[0]),
+            IPAddress(address=IPNetwork('192.0.2.2/24'), vrf=vrfs[0]),
+            IPAddress(address=IPNetwork('192.0.2.3/24'), vrf=vrfs[0]),
         ])
 
-    def test_ipaddress_list(self):
-
-        url = reverse('ipam:ipaddress_list')
-        params = {
-            "vrf": VRF.objects.first().rd,
+        cls.form_data = {
+            'vrf': vrfs[1].pk,
+            'address': IPNetwork('192.0.2.99/24'),
+            'tenant': None,
+            'status': IPAddressStatusChoices.STATUS_RESERVED,
+            'role': IPAddressRoleChoices.ROLE_ANYCAST,
+            'interface': None,
+            'nat_inside': None,
+            'dns_name': 'example',
+            'description': 'A new IP address',
+            'tags': 'Alpha,Bravo,Charlie',
         }
 
-        response = self.client.get('{}?{}'.format(url, urllib.parse.urlencode(params)))
-        self.assertEqual(response.status_code, 200)
+        cls.csv_data = (
+            "vrf,address,status",
+            "VRF 1,192.0.2.4/24,Active",
+            "VRF 1,192.0.2.5/24,Active",
+            "VRF 1,192.0.2.6/24,Active",
+        )
 
-    def test_ipaddress(self):
+        cls.bulk_edit_data = {
+            'vrf': vrfs[1].pk,
+            'tenant': None,
+            'status': IPAddressStatusChoices.STATUS_RESERVED,
+            'role': IPAddressRoleChoices.ROLE_ANYCAST,
+            'dns_name': 'example',
+            'description': 'New description',
+        }
 
-        ipaddress = IPAddress.objects.first()
-        response = self.client.get(ipaddress.get_absolute_url())
-        self.assertEqual(response.status_code, 200)
 
+class VLANGroupTestCase(ViewTestCases.OrganizationalObjectViewTestCase):
+    model = VLANGroup
 
-class VLANGroupTestCase(TestCase):
+    @classmethod
+    def setUpTestData(cls):
 
-    def setUp(self):
-        user = create_test_user(permissions=['ipam.view_vlangroup'])
-        self.client = Client()
-        self.client.force_login(user)
-
-        site = Site(name='Site 1', slug='site-1')
-        site.save()
+        site = Site.objects.create(name='Site 1', slug='site-1')
 
         VLANGroup.objects.bulk_create([
             VLANGroup(name='VLAN Group 1', slug='vlan-group-1', site=site),
@@ -198,92 +260,127 @@ class VLANGroupTestCase(TestCase):
             VLANGroup(name='VLAN Group 3', slug='vlan-group-3', site=site),
         ])
 
-    def test_vlangroup_list(self):
-
-        url = reverse('ipam:vlangroup_list')
-        params = {
-            "site": Site.objects.first().slug,
+        cls.form_data = {
+            'name': 'VLAN Group X',
+            'slug': 'vlan-group-x',
+            'site': site.pk,
+            'description': 'A new VLAN group',
         }
 
-        response = self.client.get('{}?{}'.format(url, urllib.parse.urlencode(params)))
-        self.assertEqual(response.status_code, 200)
+        cls.csv_data = (
+            "name,slug,description",
+            "VLAN Group 4,vlan-group-4,Fourth VLAN group",
+            "VLAN Group 5,vlan-group-5,Fifth VLAN group",
+            "VLAN Group 6,vlan-group-6,Sixth VLAN group",
+        )
 
 
-class VLANTestCase(TestCase):
+class VLANTestCase(ViewTestCases.PrimaryObjectViewTestCase):
+    model = VLAN
 
-    def setUp(self):
-        user = create_test_user(permissions=['ipam.view_vlan'])
-        self.client = Client()
-        self.client.force_login(user)
+    @classmethod
+    def setUpTestData(cls):
 
-        vlangroup = VLANGroup(name='VLAN Group 1', slug='vlan-group-1')
-        vlangroup.save()
+        sites = (
+            Site(name='Site 1', slug='site-1'),
+            Site(name='Site 2', slug='site-2'),
+        )
+        Site.objects.bulk_create(sites)
 
-        tenant = Tenant.objects.create(name='My Tenant', slug='mytenant')
+        vlangroups = (
+            VLANGroup(name='VLAN Group 1', slug='vlan-group-1', site=sites[0]),
+            VLANGroup(name='VLAN Group 2', slug='vlan-group-2', site=sites[1]),
+        )
+        VLANGroup.objects.bulk_create(vlangroups)
+
+        roles = (
+            Role(name='Role 1', slug='role-1'),
+            Role(name='Role 2', slug='role-2'),
+        )
+        Role.objects.bulk_create(roles)
+
+        tenants = (
+            Tenant(name='My Tenant 1', slug='mytenant-1'),
+            Tenant(name='My Tenant 2', slug='mytenant-2'),
+        )
+        Tenant.objects.bulk_create(tenants)
 
         VLAN.objects.bulk_create([
-            VLAN(group=vlangroup, vid=101, name='VLAN101', tenant=tenant),
-            VLAN(group=vlangroup, vid=102, name='VLAN102', tenant=tenant),
-            VLAN(group=vlangroup, vid=103, name='VLAN103', tenant=tenant),
+            VLAN(group=vlangroups[0], vid=101, name='VLAN101', site=sites[0], role=roles[0], tenant=tenants[0]),
+            VLAN(group=vlangroups[0], vid=102, name='VLAN102', site=sites[0], role=roles[0], tenant=tenants[0]),
+            VLAN(group=vlangroups[0], vid=103, name='VLAN103', site=sites[0], role=roles[0], tenant=tenants[0]),
         ])
 
-    def test_vlan_list(self):
-
-        url = reverse('ipam:vlan_list')
-        params = {
-            "group": VLANGroup.objects.first().slug,
+        cls.form_data = {
+            'site': sites[1].pk,
+            'group': vlangroups[1].pk,
+            'vid': 999,
+            'name': 'VLAN999',
+            'tenant': tenants[0].pk,
+            'status': VLANStatusChoices.STATUS_RESERVED,
+            'role': roles[1].pk,
+            'description': 'A new VLAN',
+            'tags': 'Alpha,Bravo,Charlie',
         }
 
-        response = self.client.get('{}?{}'.format(url, urllib.parse.urlencode(params)))
-        self.assertEqual(response.status_code, 200)
+        cls.csv_data = (
+            "vid,name,status,tenant",
+            "104,VLAN104,Active,My Tenant 1",
+            "105,VLAN105,Active,My Tenant 1",
+            "106,VLAN106,Active,My Tenant 1",
+        )
 
-    def test_vlan(self):
+        cls.bulk_edit_data = {
+            'site': sites[1].pk,
+            'group': vlangroups[1].pk,
+            'tenant': tenants[1].pk,
+            'status': VLANStatusChoices.STATUS_RESERVED,
+            'role': roles[1].pk,
+            'description': 'New description',
+        }
 
-        vlan = VLAN.objects.first()
-        response = self.client.get(vlan.get_absolute_url())
-        self.assertEqual(response.status_code, 200)
 
+class ServiceTestCase(ViewTestCases.PrimaryObjectViewTestCase):
+    model = Service
 
-class ServiceTestCase(TestCase):
+    # TODO: Resolve URL for Service creation
+    test_create_object = None
 
-    def setUp(self):
-        user = create_test_user(permissions=['ipam.view_service'])
-        self.client = Client()
-        self.client.force_login(user)
+    @classmethod
+    def setUpTestData(cls):
 
-        site = Site(name='Site 1', slug='site-1')
-        site.save()
-
-        manufacturer = Manufacturer(name='Manufacturer 1', slug='manufacturer-1')
-        manufacturer.save()
-
-        devicetype = DeviceType(manufacturer=manufacturer, model='Device Type 1')
-        devicetype.save()
-
-        devicerole = DeviceRole(name='Device Role 1', slug='device-role-1')
-        devicerole.save()
-
-        device = Device(name='Device 1', site=site, device_type=devicetype, device_role=devicerole)
-        device.save()
+        site = Site.objects.create(name='Site 1', slug='site-1')
+        manufacturer = Manufacturer.objects.create(name='Manufacturer 1', slug='manufacturer-1')
+        devicetype = DeviceType.objects.create(manufacturer=manufacturer, model='Device Type 1')
+        devicerole = DeviceRole.objects.create(name='Device Role 1', slug='device-role-1')
+        device = Device.objects.create(name='Device 1', site=site, device_type=devicetype, device_role=devicerole)
 
         Service.objects.bulk_create([
-            Service(device=device, name='Service 1', protocol=IP_PROTOCOL_TCP, port=101),
-            Service(device=device, name='Service 2', protocol=IP_PROTOCOL_TCP, port=102),
-            Service(device=device, name='Service 3', protocol=IP_PROTOCOL_TCP, port=103),
+            Service(device=device, name='Service 1', protocol=ServiceProtocolChoices.PROTOCOL_TCP, port=101),
+            Service(device=device, name='Service 2', protocol=ServiceProtocolChoices.PROTOCOL_TCP, port=102),
+            Service(device=device, name='Service 3', protocol=ServiceProtocolChoices.PROTOCOL_TCP, port=103),
         ])
 
-    def test_service_list(self):
-
-        url = reverse('ipam:service_list')
-        params = {
-            "device_id": Device.objects.first(),
+        cls.form_data = {
+            'device': device.pk,
+            'virtual_machine': None,
+            'name': 'Service X',
+            'protocol': ServiceProtocolChoices.PROTOCOL_TCP,
+            'port': 999,
+            'ipaddresses': [],
+            'description': 'A new service',
+            'tags': 'Alpha,Bravo,Charlie',
         }
 
-        response = self.client.get('{}?{}'.format(url, urllib.parse.urlencode(params)))
-        self.assertEqual(response.status_code, 200)
+        cls.csv_data = (
+            "device,name,protocol,port,description",
+            "Device 1,Service 1,TCP,1,First service",
+            "Device 1,Service 2,TCP,2,Second service",
+            "Device 1,Service 3,UDP,3,Third service",
+        )
 
-    def test_service(self):
-
-        service = Service.objects.first()
-        response = self.client.get(service.get_absolute_url())
-        self.assertEqual(response.status_code, 200)
+        cls.bulk_edit_data = {
+            'protocol': ServiceProtocolChoices.PROTOCOL_UDP,
+            'port': 888,
+            'description': 'New description',
+        }

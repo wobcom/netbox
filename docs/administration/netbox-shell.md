@@ -1,15 +1,17 @@
+# The NetBox Python Shell
+
 NetBox includes a Python shell within which objects can be directly queried, created, modified, and deleted. To enter the shell, run the following command:
 
 ```
 ./manage.py nbshell
 ```
 
-This will launch a customized version of [the built-in Django shell](https://docs.djangoproject.com/en/dev/ref/django-admin/#shell) with all relevant NetBox models pre-loaded. (If desired, the stock Django shell is also available by executing `./manage.py shell`.)
+This will launch a customized version of [the built-in Django shell](https://docs.djangoproject.com/en/stable/ref/django-admin/#shell) with all relevant NetBox models pre-loaded. (If desired, the stock Django shell is also available by executing `./manage.py shell`.)
 
 ```
 $ ./manage.py nbshell
-### NetBox interactive shell (jstretch-laptop)
-### Python 3.5.2 | Django 2.0.8 | NetBox 2.4.3
+### NetBox interactive shell (localhost)
+### Python 3.6.9 | Django 2.2.11 | NetBox 2.7.10
 ### lsmodels() will show available models. Use help(<model>) for more info.
 ```
 
@@ -28,7 +30,7 @@ DCIM:
 
 ## Querying Objects
 
-Objects are retrieved by forming a [Django queryset](https://docs.djangoproject.com/en/dev/topics/db/queries/#retrieving-objects). The base queryset for an object takes the form `<model>.objects.all()`, which will return a (truncated) list of all objects of that type.
+Objects are retrieved by forming a [Django queryset](https://docs.djangoproject.com/en/stable/topics/db/queries/#retrieving-objects). The base queryset for an object takes the form `<model>.objects.all()`, which will return a (truncated) list of all objects of that type.
 
 ```
 >>> Device.objects.all()
@@ -99,7 +101,7 @@ This approach can span multiple levels of relations. For example, the following 
 ```
 
 !!! note
-    While the above query is functional, it is very inefficient. There are ways to optimize such requests, however they are out of the scope of this document. For more information, see the [Django queryset method reference](https://docs.djangoproject.com/en/dev/ref/models/querysets/) documentation.
+    While the above query is functional, it is very inefficient. There are ways to optimize such requests, however they are out of the scope of this document. For more information, see the [Django queryset method reference](https://docs.djangoproject.com/en/stable/ref/models/querysets/) documentation.
 
 Reverse relationships can be traversed as well. For example, the following will find all devices with an interface named "em0":
 
@@ -137,7 +139,7 @@ To return the inverse of a filtered queryset, use `exclude()` instead of `filter
 ```
 
 !!! info
-    The examples above are intended only to provide a cursory introduction to queryset filtering. For an exhaustive list of the available filters, please consult the [Django queryset API docs](https://docs.djangoproject.com/en/dev/ref/models/querysets/).
+    The examples above are intended only to provide a cursory introduction to queryset filtering. For an exhaustive list of the available filters, please consult the [Django queryset API docs](https://docs.djangoproject.com/en/stable/ref/models/querysets/).
 
 ## Creating and Updating Objects
 

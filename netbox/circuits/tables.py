@@ -1,5 +1,4 @@
 import django_tables2 as tables
-from django.utils.safestring import mark_safe
 from django_tables2.utils import Accessor
 
 from tenancy.tables import COL_TENANT
@@ -7,11 +6,12 @@ from utilities.tables import BaseTable, ToggleColumn
 from .models import Circuit, CircuitType, Provider
 
 CIRCUITTYPE_ACTIONS = """
-<a href="{% url 'circuits:circuittype_changelog' slug=record.slug %}" class="btn btn-default btn-xs" title="Changelog">
+<a href="{% url 'circuits:circuittype_changelog' slug=record.slug %}" class="btn btn-default btn-xs" title="Change log">
     <i class="fa fa-history"></i>
 </a>
 {% if perms.circuit.change_circuittype %}
-    <a href="{% url 'circuits:circuittype_edit' slug=record.slug %}?return_url={{ request.path }}" class="btn btn-xs btn-warning"><i class="glyphicon glyphicon-pencil" aria-hidden="true"></i></a>
+    <a href="{% url 'circuits:circuittype_edit' slug=record.slug %}?return_url={{ request.path }}"
+      class="btn btn-xs btn-warning"><i class="glyphicon glyphicon-pencil" aria-hidden="true"></i></a>
 {% endif %}
 """
 
@@ -50,12 +50,14 @@ class CircuitTypeTable(BaseTable):
     name = tables.LinkColumn()
     circuit_count = tables.Column(verbose_name='Circuits')
     actions = tables.TemplateColumn(
-        template_code=CIRCUITTYPE_ACTIONS, attrs={'td': {'class': 'text-right noprint'}}, verbose_name=''
+        template_code=CIRCUITTYPE_ACTIONS,
+        attrs={'td': {'class': 'text-right noprint'}},
+        verbose_name=''
     )
 
     class Meta(BaseTable.Meta):
         model = CircuitType
-        fields = ('pk', 'name', 'circuit_count', 'slug', 'actions')
+        fields = ('pk', 'name', 'circuit_count', 'description', 'slug', 'actions')
 
 
 #

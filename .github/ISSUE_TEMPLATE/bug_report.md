@@ -5,7 +5,9 @@ about: Report a reproducible bug in the current release of NetBox
 ---
 
 <!--
-    NOTE: This form is only for reproducible bugs. If you need assistance with
+    NOTE: IF YOUR ISSUE DOES NOT FOLLOW THIS TEMPLATE, IT WILL BE CLOSED.
+
+    This form is only for reproducible bugs. If you need assistance with
     NetBox installation, or if you have a general question, DO NOT open an
     issue. Instead, post to our mailing list:
 
@@ -13,22 +15,23 @@ about: Report a reproducible bug in the current release of NetBox
 
     Please describe the environment in which you are running NetBox. Be sure
     that you are running an unmodified instance of the latest stable release
-    before submitting a bug report.
+    before submitting a bug report, and that any plugins have been disabled.
 -->
 ### Environment
-* Python version:  <!-- Example: 3.5.4 -->
-* NetBox version:  <!-- Example: 2.5.2 -->
+* Python version: 
+* NetBox version: 
 
 <!--
     Describe in detail the exact steps that someone else can take to reproduce
-    this bug using the current stable release of NetBox (or the current beta
-    release where applicable). Begin with the creation of any necessary
-    database objects and call out every operation being performed explicitly.
-    If reporting a bug in the REST API, be sure to reconstruct the raw HTTP
-    request(s) being made: Don't rely on a wrapper like pynetbox.
+    this bug using the current stable release of NetBox. Begin with the
+    creation of any necessary database objects and call out every operation
+    being performed explicitly. If reporting a bug in the REST API, be sure to
+    reconstruct the raw HTTP request(s) being made: Don't rely on a client
+    library such as pynetbox.
 -->
 ### Steps to Reproduce
-1.
+1. Disable any installed plugins by commenting out the `PLUGINS` setting in
+   `configuration.py`.
 2.
 3.
 

@@ -12,11 +12,12 @@ from .nested_serializers import *
 #
 
 class TenantGroupSerializer(ValidatedModelSerializer):
+    parent = NestedTenantGroupSerializer(required=False, allow_null=True)
     tenant_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = TenantGroup
-        fields = ['id', 'name', 'slug', 'tenant_count']
+        fields = ['id', 'name', 'slug', 'parent', 'description', 'tenant_count']
 
 
 class TenantSerializer(TaggitSerializer, CustomFieldModelSerializer):
@@ -31,11 +32,12 @@ class TenantSerializer(TaggitSerializer, CustomFieldModelSerializer):
     virtualmachine_count = serializers.IntegerField(read_only=True)
     vlan_count = serializers.IntegerField(read_only=True)
     vrf_count = serializers.IntegerField(read_only=True)
+    cluster_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Tenant
         fields = [
             'id', 'name', 'slug', 'group', 'description', 'comments', 'tags', 'custom_fields', 'created',
             'last_updated', 'circuit_count', 'device_count', 'ipaddress_count', 'prefix_count', 'rack_count',
-            'site_count', 'virtualmachine_count', 'vlan_count', 'vrf_count',
+            'site_count', 'virtualmachine_count', 'vlan_count', 'vrf_count', 'cluster_count',
         ]

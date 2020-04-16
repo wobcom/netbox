@@ -1,12 +1,26 @@
-import datetime
+import hashlib
+import hmac
 
-from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
+from django.utils import timezone
 
-from extras.constants import OBJECTCHANGE_ACTION_CREATE, OBJECTCHANGE_ACTION_DELETE, OBJECTCHANGE_ACTION_UPDATE
 from extras.models import Webhook
 from utilities.api import get_serializer_for_model
-from .constants import WEBHOOK_MODELS
+from .choices import *
+from .constants import *
+from .utils import FeatureQuery
+
+
+def generate_signature(request_body, secret):
+    """
+    Return a cryptographic signature that can be used to verify the authenticity of webhook data.
+    """
+    hmac_prep = hmac.new(
+        key=secret.encode('utf8'),
+        msg=request_body.encode('utf8'),
+        digestmod=hashlib.sha512
+    )
+    return hmac_prep.hexdigest()
 
 
 def enqueue_webhooks(instance, user, request_id, action):
@@ -14,16 +28,18 @@ def enqueue_webhooks(instance, user, request_id, action):
     Find Webhook(s) assigned to this instance + action and enqueue them
     to be processed
     """
-    if not settings.WEBHOOKS_ENABLED or instance._meta.label.lower() not in WEBHOOK_MODELS:
+    obj_type = ContentType.objects.get_for_model(instance.__class__)
+
+    webhook_models = ContentType.objects.filter(FeatureQuery('webhooks').get_query())
+    if obj_type not in webhook_models:
         return
 
     # Retrieve any applicable Webhooks
     action_flag = {
-        OBJECTCHANGE_ACTION_CREATE: 'type_create',
-        OBJECTCHANGE_ACTION_UPDATE: 'type_update',
-        OBJECTCHANGE_ACTION_DELETE: 'type_delete',
+        ObjectChangeActionChoices.ACTION_CREATE: 'type_create',
+        ObjectChangeActionChoices.ACTION_UPDATE: 'type_update',
+        ObjectChangeActionChoices.ACTION_DELETE: 'type_delete',
     }[action]
-    obj_type = ContentType.objects.get_for_model(instance.__class__)
     webhooks = Webhook.objects.filter(obj_type=obj_type, enabled=True, **{action_flag: True})
 
     if webhooks.exists():
@@ -47,7 +63,7 @@ def enqueue_webhooks(instance, user, request_id, action):
                 serializer.data,
                 instance._meta.model_name,
                 action,
-                str(datetime.datetime.now()),
+                str(timezone.now()),
                 user.username,
                 request_id
             )

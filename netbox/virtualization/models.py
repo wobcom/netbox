@@ -7,8 +7,17 @@ from taggit.managers import TaggableManager
 
 from dcim.models import Device
 from extras.models import ConfigContextModel, CustomFieldModel, TaggedItem
+from extras.utils import extras_features
 from utilities.models import ChangeLoggedModel
-from .constants import DEVICE_STATUS_ACTIVE, VM_STATUS_CHOICES, VM_STATUS_CLASSES
+from .choices import *
+
+
+__all__ = (
+    'Cluster',
+    'ClusterGroup',
+    'ClusterType',
+    'VirtualMachine',
+)
 
 
 #
@@ -26,8 +35,12 @@ class ClusterType(ChangeLoggedModel):
     slug = models.SlugField(
         unique=True
     )
+    description = models.CharField(
+        max_length=200,
+        blank=True
+    )
 
-    csv_headers = ['name', 'slug']
+    csv_headers = ['name', 'slug', 'description']
 
     class Meta:
         ordering = ['name']
@@ -42,6 +55,7 @@ class ClusterType(ChangeLoggedModel):
         return (
             self.name,
             self.slug,
+            self.description,
         )
 
 
@@ -60,8 +74,12 @@ class ClusterGroup(ChangeLoggedModel):
     slug = models.SlugField(
         unique=True
     )
+    description = models.CharField(
+        max_length=200,
+        blank=True
+    )
 
-    csv_headers = ['name', 'slug']
+    csv_headers = ['name', 'slug', 'description']
 
     class Meta:
         ordering = ['name']
@@ -76,6 +94,7 @@ class ClusterGroup(ChangeLoggedModel):
         return (
             self.name,
             self.slug,
+            self.description,
         )
 
 
@@ -83,6 +102,7 @@ class ClusterGroup(ChangeLoggedModel):
 # Clusters
 #
 
+@extras_features('custom_fields', 'custom_links', 'export_templates', 'webhooks')
 class Cluster(ChangeLoggedModel, CustomFieldModel):
     """
     A cluster of VirtualMachines. Each Cluster may optionally be associated with one or more Devices.
@@ -98,6 +118,13 @@ class Cluster(ChangeLoggedModel, CustomFieldModel):
     )
     group = models.ForeignKey(
         to=ClusterGroup,
+        on_delete=models.PROTECT,
+        related_name='clusters',
+        blank=True,
+        null=True
+    )
+    tenant = models.ForeignKey(
+        to='tenancy.Tenant',
         on_delete=models.PROTECT,
         related_name='clusters',
         blank=True,
@@ -122,6 +149,9 @@ class Cluster(ChangeLoggedModel, CustomFieldModel):
     tags = TaggableManager(through=TaggedItem)
 
     csv_headers = ['name', 'type', 'group', 'site', 'comments']
+    clone_fields = [
+        'type', 'group', 'tenant', 'site',
+    ]
 
     class Meta:
         ordering = ['name']
@@ -150,6 +180,7 @@ class Cluster(ChangeLoggedModel, CustomFieldModel):
             self.type.name,
             self.group.name if self.group else None,
             self.site.name if self.site else None,
+            self.tenant.name if self.tenant else None,
             self.comments,
         )
 
@@ -158,6 +189,7 @@ class Cluster(ChangeLoggedModel, CustomFieldModel):
 # Virtual machines
 #
 
+@extras_features('custom_fields', 'custom_links', 'export_templates', 'webhooks')
 class VirtualMachine(ChangeLoggedModel, ConfigContextModel, CustomFieldModel):
     """
     A virtual machine which runs inside a Cluster.
@@ -189,12 +221,12 @@ class VirtualMachine(ChangeLoggedModel, ConfigContextModel, CustomFieldModel):
         null=True
     )
     name = models.CharField(
-        max_length=64,
-        unique=True
+        max_length=64
     )
-    status = models.PositiveSmallIntegerField(
-        choices=VM_STATUS_CHOICES,
-        default=DEVICE_STATUS_ACTIVE,
+    status = models.CharField(
+        max_length=50,
+        choices=VirtualMachineStatusChoices,
+        default=VirtualMachineStatusChoices.STATUS_ACTIVE,
         verbose_name='Status'
     )
     role = models.ForeignKey(
@@ -250,9 +282,24 @@ class VirtualMachine(ChangeLoggedModel, ConfigContextModel, CustomFieldModel):
     csv_headers = [
         'name', 'status', 'role', 'cluster', 'tenant', 'platform', 'vcpus', 'memory', 'disk', 'comments',
     ]
+    clone_fields = [
+        'cluster', 'tenant', 'platform', 'status', 'role', 'vcpus', 'memory', 'disk',
+    ]
+
+    STATUS_CLASS_MAP = {
+        VirtualMachineStatusChoices.STATUS_OFFLINE: 'warning',
+        VirtualMachineStatusChoices.STATUS_ACTIVE: 'success',
+        VirtualMachineStatusChoices.STATUS_PLANNED: 'info',
+        VirtualMachineStatusChoices.STATUS_STAGED: 'primary',
+        VirtualMachineStatusChoices.STATUS_FAILED: 'danger',
+        VirtualMachineStatusChoices.STATUS_DECOMMISSIONING: 'warning',
+    }
 
     class Meta:
-        ordering = ['name']
+        ordering = ('name', 'pk')  # Name may be non-unique
+        unique_together = [
+            ['cluster', 'tenant', 'name']
+        ]
 
     def __str__(self):
         return self.name
@@ -260,7 +307,23 @@ class VirtualMachine(ChangeLoggedModel, ConfigContextModel, CustomFieldModel):
     def get_absolute_url(self):
         return reverse('virtualization:virtualmachine', args=[self.pk])
 
+    def validate_unique(self, exclude=None):
+
+        # Check for a duplicate name on a VM assigned to the same Cluster and no Tenant. This is necessary
+        # because Django does not consider two NULL fields to be equal, and thus will not trigger a violation
+        # of the uniqueness constraint without manual intervention.
+        if self.tenant is None and VirtualMachine.objects.exclude(pk=self.pk).filter(
+                name=self.name, tenant__isnull=True
+        ):
+            raise ValidationError({
+                'name': 'A virtual machine with this name already exists.'
+            })
+
+        super().validate_unique(exclude)
+
     def clean(self):
+
+        super().clean()
 
         # Validate primary IP addresses
         interfaces = self.interfaces.all()
@@ -291,7 +354,7 @@ class VirtualMachine(ChangeLoggedModel, ConfigContextModel, CustomFieldModel):
         )
 
     def get_status_class(self):
-        return VM_STATUS_CLASSES[self.status]
+        return self.STATUS_CLASS_MAP.get(self.status)
 
     @property
     def primary_ip(self):

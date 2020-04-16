@@ -1,6 +1,6 @@
 {% load helpers %}
 
-<tr class="consoleserverport{% if csp.cable.status %} success{% elif csp.cable %} info{% endif %}">
+<tr class="consoleserverport{% if csp.cable %} {{ csp.cable.get_status_class }}{% endif %}">
 
     {# Checkbox #}
     {% if perms.dcim.change_consoleserverport or perms.dcim.delete_consoleserverport %}
@@ -12,6 +12,11 @@
     {# Name #}
     <td>
         <i class="fa fa-fw fa-keyboard-o"></i> {{ csp }}
+    </td>
+
+    {# Type #}
+    <td>
+        {% if csp.type %}{{ csp.get_type_display }}{% else %}&mdash;{% endif %}
     </td>
 
     {# Description #}

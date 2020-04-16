@@ -1,6 +1,6 @@
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
-from netaddr import IPNetwork
+from netaddr import IPAddress, IPNetwork
 
 from dcim.models import DeviceRole
 from extras.scripts import *
@@ -99,6 +99,31 @@ class ScriptVariablesTest(TestCase):
         self.assertTrue(form.is_valid())
         self.assertEqual(form.cleaned_data['var1'], False)
 
+    def test_choicevar(self):
+
+        CHOICES = (
+            ('ff0000', 'Red'),
+            ('00ff00', 'Green'),
+            ('0000ff', 'Blue')
+        )
+
+        class TestScript(Script):
+
+            var1 = ChoiceVar(
+                choices=CHOICES
+            )
+
+        # Validate valid choice
+        data = {'var1': CHOICES[0][0]}
+        form = TestScript().as_form(data)
+        self.assertTrue(form.is_valid())
+        self.assertEqual(form.cleaned_data['var1'], CHOICES[0][0])
+
+        # Validate invalid choices
+        data = {'var1': 'taupe'}
+        form = TestScript().as_form(data)
+        self.assertFalse(form.is_valid())
+
     def test_objectvar(self):
 
         class TestScript(Script):
@@ -120,6 +145,29 @@ class ScriptVariablesTest(TestCase):
         self.assertTrue(form.is_valid())
         self.assertEqual(form.cleaned_data['var1'].pk, data['var1'])
 
+    def test_multiobjectvar(self):
+
+        class TestScript(Script):
+
+            var1 = MultiObjectVar(
+                queryset=DeviceRole.objects.all()
+            )
+
+        # Populate some objects
+        for i in range(1, 6):
+            DeviceRole(
+                name='Device Role {}'.format(i),
+                slug='device-role-{}'.format(i)
+            ).save()
+
+        # Validate valid data
+        data = {'var1': [role.pk for role in DeviceRole.objects.all()[:3]]}
+        form = TestScript().as_form(data, None)
+        self.assertTrue(form.is_valid())
+        self.assertEqual(form.cleaned_data['var1'][0].pk, data['var1'][0])
+        self.assertEqual(form.cleaned_data['var1'][1].pk, data['var1'][1])
+        self.assertEqual(form.cleaned_data['var1'][2].pk, data['var1'][2])
+
     def test_filevar(self):
 
         class TestScript(Script):
@@ -138,6 +186,54 @@ class ScriptVariablesTest(TestCase):
         self.assertTrue(form.is_valid())
         self.assertEqual(form.cleaned_data['var1'], testfile)
 
+    def test_ipaddressvar(self):
+
+        class TestScript(Script):
+
+            var1 = IPAddressVar()
+
+        # Validate IP network enforcement
+        data = {'var1': '1.2.3'}
+        form = TestScript().as_form(data, None)
+        self.assertFalse(form.is_valid())
+        self.assertIn('var1', form.errors)
+
+        # Validate IP mask exclusion
+        data = {'var1': '192.0.2.0/24'}
+        form = TestScript().as_form(data, None)
+        self.assertFalse(form.is_valid())
+        self.assertIn('var1', form.errors)
+
+        # Validate valid data
+        data = {'var1': '192.0.2.1'}
+        form = TestScript().as_form(data, None)
+        self.assertTrue(form.is_valid())
+        self.assertEqual(form.cleaned_data['var1'], IPAddress(data['var1']))
+
+    def test_ipaddresswithmaskvar(self):
+
+        class TestScript(Script):
+
+            var1 = IPAddressWithMaskVar()
+
+        # Validate IP network enforcement
+        data = {'var1': '1.2.3'}
+        form = TestScript().as_form(data, None)
+        self.assertFalse(form.is_valid())
+        self.assertIn('var1', form.errors)
+
+        # Validate IP mask requirement
+        data = {'var1': '192.0.2.0'}
+        form = TestScript().as_form(data, None)
+        self.assertFalse(form.is_valid())
+        self.assertIn('var1', form.errors)
+
+        # Validate valid data
+        data = {'var1': '192.0.2.0/24'}
+        form = TestScript().as_form(data, None)
+        self.assertTrue(form.is_valid())
+        self.assertEqual(form.cleaned_data['var1'], IPNetwork(data['var1']))
+
     def test_ipnetworkvar(self):
 
         class TestScript(Script):
@@ -146,6 +242,12 @@ class ScriptVariablesTest(TestCase):
 
         # Validate IP network enforcement
         data = {'var1': '1.2.3'}
+        form = TestScript().as_form(data, None)
+        self.assertFalse(form.is_valid())
+        self.assertIn('var1', form.errors)
+
+        # Validate host IP check
+        data = {'var1': '192.0.2.1/24'}
         form = TestScript().as_form(data, None)
         self.assertFalse(form.is_valid())
         self.assertIn('var1', form.errors)

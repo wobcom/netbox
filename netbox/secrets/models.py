@@ -1,7 +1,7 @@
 import os
 import sys
 
-from Crypto.Cipher import AES, PKCS1_OAEP
+from Crypto.Cipher import AES
 from Crypto.PublicKey import RSA
 from Crypto.Util import strxor
 from django.conf import settings
@@ -14,38 +14,22 @@ from django.urls import reverse
 from django.utils.encoding import force_bytes
 from taggit.managers import TaggableManager
 
+from dcim.models import Device
 from extras.models import CustomFieldModel, TaggedItem
+from extras.utils import extras_features
 from utilities.models import ChangeLoggedModel
 from .exceptions import InvalidKey
 from .hashers import SecretValidationHasher
 from .querysets import UserKeyQuerySet
+from .utils import encrypt_master_key, decrypt_master_key, generate_random_key
 
 
-def generate_random_key(bits=256):
-    """
-    Generate a random encryption key. Sizes is given in bits and must be in increments of 32.
-    """
-    if bits % 32:
-        raise Exception("Invalid key size ({}). Key sizes must be in increments of 32 bits.".format(bits))
-    return os.urandom(int(bits / 8))
-
-
-def encrypt_master_key(master_key, public_key):
-    """
-    Encrypt a secret key with the provided public RSA key.
-    """
-    key = RSA.importKey(public_key)
-    cipher = PKCS1_OAEP.new(key)
-    return cipher.encrypt(master_key)
-
-
-def decrypt_master_key(master_key_cipher, private_key):
-    """
-    Decrypt a secret key with the provided private RSA key.
-    """
-    key = RSA.importKey(private_key)
-    cipher = PKCS1_OAEP.new(key)
-    return cipher.decrypt(master_key_cipher)
+__all__ = (
+    'Secret',
+    'SecretRole',
+    'SessionKey',
+    'UserKey',
+)
 
 
 class UserKey(models.Model):
@@ -270,6 +254,10 @@ class SecretRole(ChangeLoggedModel):
     slug = models.SlugField(
         unique=True
     )
+    description = models.CharField(
+        max_length=200,
+        blank=True,
+    )
     users = models.ManyToManyField(
         to=User,
         related_name='secretroles',
@@ -281,7 +269,7 @@ class SecretRole(ChangeLoggedModel):
         blank=True
     )
 
-    csv_headers = ['name', 'slug']
+    csv_headers = ['name', 'slug', 'description']
 
     class Meta:
         ordering = ['name']
@@ -296,6 +284,7 @@ class SecretRole(ChangeLoggedModel):
         return (
             self.name,
             self.slug,
+            self.description,
         )
 
     def has_member(self, user):
@@ -307,6 +296,7 @@ class SecretRole(ChangeLoggedModel):
         return user in self.users.all() or user.groups.filter(pk__in=self.groups.all()).exists()
 
 
+@extras_features('custom_fields', 'custom_links', 'export_templates', 'webhooks')
 class Secret(ChangeLoggedModel, CustomFieldModel):
     """
     A Secret stores an AES256-encrypted copy of sensitive data, such as passwords or secret keys. An irreversible
@@ -314,8 +304,8 @@ class Secret(ChangeLoggedModel, CustomFieldModel):
     Device; Devices may have multiple Secrets associated with them. A name can optionally be defined along with the
     ciphertext; this string is stored as plain text in the database.
 
-    A Secret can be up to 65,536 bytes (64KB) in length. Each secret string will be padded with random data to a minimum
-    of 64 bytes during encryption in order to protect short strings from ciphertext analysis.
+    A Secret can be up to 65,535 bytes (64KB - 1B) in length. Each secret string will be padded with random data to
+    a minimum of 64 bytes during encryption in order to protect short strings from ciphertext analysis.
     """
     device = models.ForeignKey(
         to='dcim.Device',
@@ -332,7 +322,7 @@ class Secret(ChangeLoggedModel, CustomFieldModel):
         blank=True
     )
     ciphertext = models.BinaryField(
-        max_length=65568,  # 16B IV + 2B pad length + {62-65550}B padded
+        max_length=65568,  # 128-bit IV + 16-bit pad length + 65535B secret + 15B padding
         editable=False
     )
     hash = models.CharField(
@@ -359,10 +349,14 @@ class Secret(ChangeLoggedModel, CustomFieldModel):
         super().__init__(*args, **kwargs)
 
     def __str__(self):
-        if self.role and self.device and self.name:
+        try:
+            device = self.device
+        except Device.DoesNotExist:
+            device = None
+        if self.role and device and self.name:
             return '{} for {} ({})'.format(self.role, self.device, self.name)
         # Return role and device if no name is set
-        if self.role and self.device:
+        if self.role and device:
             return '{} for {}'.format(self.role, self.device)
         return 'Secret'
 
@@ -396,11 +390,7 @@ class Secret(ChangeLoggedModel, CustomFieldModel):
         else:
             pad_length = 0
 
-        # Python 2 compatibility
-        if sys.version_info[0] < 3:
-            header = chr(len(s) >> 8) + chr(len(s) % 256)
-        else:
-            header = bytes([len(s) >> 8]) + bytes([len(s) % 256])
+        header = bytes([len(s) >> 8]) + bytes([len(s) % 256])
 
         return header + s + os.urandom(pad_length)
 

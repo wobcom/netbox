@@ -7,7 +7,7 @@ from utilities.tables import BaseTable, ToggleColumn
 from .models import Cluster, ClusterGroup, ClusterType, VirtualMachine
 
 CLUSTERTYPE_ACTIONS = """
-<a href="{% url 'virtualization:clustertype_changelog' slug=record.slug %}" class="btn btn-default btn-xs" title="Changelog">
+<a href="{% url 'virtualization:clustertype_changelog' slug=record.slug %}" class="btn btn-default btn-xs" title="Change log">
     <i class="fa fa-history"></i>
 </a>
 {% if perms.virtualization.change_clustertype %}
@@ -16,7 +16,7 @@ CLUSTERTYPE_ACTIONS = """
 """
 
 CLUSTERGROUP_ACTIONS = """
-<a href="{% url 'virtualization:clustergroup_changelog' slug=record.slug %}" class="btn btn-default btn-xs" title="Changelog">
+<a href="{% url 'virtualization:clustergroup_changelog' slug=record.slug %}" class="btn btn-default btn-xs" title="Change log">
     <i class="fa fa-history"></i>
 </a>
 {% if perms.virtualization.change_clustergroup %}
@@ -55,7 +55,7 @@ class ClusterTypeTable(BaseTable):
 
     class Meta(BaseTable.Meta):
         model = ClusterType
-        fields = ('pk', 'name', 'cluster_count', 'actions')
+        fields = ('pk', 'name', 'cluster_count', 'description', 'actions')
 
 
 #
@@ -74,7 +74,7 @@ class ClusterGroupTable(BaseTable):
 
     class Meta(BaseTable.Meta):
         model = ClusterGroup
-        fields = ('pk', 'name', 'cluster_count', 'actions')
+        fields = ('pk', 'name', 'cluster_count', 'description', 'actions')
 
 
 #
@@ -84,13 +84,14 @@ class ClusterGroupTable(BaseTable):
 class ClusterTable(BaseTable):
     pk = ToggleColumn()
     name = tables.LinkColumn()
+    tenant = tables.LinkColumn('tenancy:tenant', args=[Accessor('tenant.slug')], verbose_name='Tenant')
     site = tables.LinkColumn('dcim:site', args=[Accessor('site.slug')])
     device_count = tables.Column(accessor=Accessor('devices.count'), orderable=False, verbose_name='Devices')
     vm_count = tables.Column(accessor=Accessor('virtual_machines.count'), orderable=False, verbose_name='VMs')
 
     class Meta(BaseTable.Meta):
         model = Cluster
-        fields = ('pk', 'name', 'type', 'group', 'site', 'device_count', 'vm_count')
+        fields = ('pk', 'name', 'type', 'group', 'tenant', 'site', 'device_count', 'vm_count')
 
 
 #

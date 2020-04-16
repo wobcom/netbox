@@ -4,11 +4,14 @@ from django import forms
 from taggit.forms import TagField
 
 from dcim.models import Device
-from extras.forms import AddRemoveTagsForm, CustomFieldBulkEditForm, CustomFieldFilterForm, CustomFieldForm
-from utilities.forms import (
-    APISelect, APISelectMultiple, BootstrapMixin, FilterChoiceField, FlexibleModelChoiceField, SlugField,
-    StaticSelect2Multiple
+from extras.forms import (
+    AddRemoveTagsForm, CustomFieldBulkEditForm, CustomFieldFilterForm, CustomFieldModelForm, CustomFieldModelCSVForm,
 )
+from utilities.forms import (
+    APISelect, APISelectMultiple, BootstrapMixin, DynamicModelChoiceField, DynamicModelMultipleChoiceField,
+    FlexibleModelChoiceField, SlugField, StaticSelect2Multiple, TagFilterField,
+)
+from .constants import *
 from .models import Secret, SecretRole, UserKey
 
 
@@ -16,6 +19,8 @@ def validate_rsa_key(key, is_secret=True):
     """
     Validate the format and type of an RSA key.
     """
+    if key.startswith('ssh-rsa '):
+        raise forms.ValidationError("OpenSSH line format is not supported. Please ensure that your public is in PEM (base64) format.")
     try:
         key = RSA.importKey(key)
     except ValueError:
@@ -42,7 +47,7 @@ class SecretRoleForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = SecretRole
         fields = [
-            'name', 'slug', 'users', 'groups',
+            'name', 'slug', 'description', 'users', 'groups',
         ]
         widgets = {
             'users': StaticSelect2Multiple(),
@@ -65,9 +70,12 @@ class SecretRoleCSVForm(forms.ModelForm):
 # Secrets
 #
 
-class SecretForm(BootstrapMixin, CustomFieldForm):
+class SecretForm(BootstrapMixin, CustomFieldModelForm):
+    device = DynamicModelChoiceField(
+        queryset=Device.objects.all()
+    )
     plaintext = forms.CharField(
-        max_length=65535,
+        max_length=SECRET_PLAINTEXT_MAX_LENGTH,
         required=False,
         label='Plaintext',
         widget=forms.PasswordInput(
@@ -77,10 +85,13 @@ class SecretForm(BootstrapMixin, CustomFieldForm):
         )
     )
     plaintext2 = forms.CharField(
-        max_length=65535,
+        max_length=SECRET_PLAINTEXT_MAX_LENGTH,
         required=False,
         label='Plaintext (verify)',
         widget=forms.PasswordInput()
+    )
+    role = DynamicModelChoiceField(
+        queryset=SecretRole.objects.all()
     )
     tags = TagField(
         required=False
@@ -89,13 +100,8 @@ class SecretForm(BootstrapMixin, CustomFieldForm):
     class Meta:
         model = Secret
         fields = [
-            'role', 'name', 'plaintext', 'plaintext2', 'tags',
+            'device', 'role', 'name', 'plaintext', 'plaintext2', 'tags',
         ]
-        widgets = {
-            'role': APISelect(
-                api_url="/api/secrets/secret-roles/"
-            )
-        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -113,7 +119,7 @@ class SecretForm(BootstrapMixin, CustomFieldForm):
             })
 
 
-class SecretCSVForm(forms.ModelForm):
+class SecretCSVForm(CustomFieldModelCSVForm):
     device = FlexibleModelChoiceField(
         queryset=Device.objects.all(),
         to_field_name='name',
@@ -152,12 +158,9 @@ class SecretBulkEditForm(BootstrapMixin, AddRemoveTagsForm, CustomFieldBulkEditF
         queryset=Secret.objects.all(),
         widget=forms.MultipleHiddenInput()
     )
-    role = forms.ModelChoiceField(
+    role = DynamicModelChoiceField(
         queryset=SecretRole.objects.all(),
-        required=False,
-        widget=APISelect(
-            api_url="/api/secrets/secret-roles/"
-        )
+        required=False
     )
     name = forms.CharField(
         max_length=100,
@@ -176,14 +179,15 @@ class SecretFilterForm(BootstrapMixin, CustomFieldFilterForm):
         required=False,
         label='Search'
     )
-    role = FilterChoiceField(
+    role = DynamicModelMultipleChoiceField(
         queryset=SecretRole.objects.all(),
         to_field_name='slug',
+        required=False,
         widget=APISelectMultiple(
-            api_url="/api/secrets/secret-roles/",
             value_field="slug",
         )
     )
+    tag = TagFilterField(model)
 
 
 #

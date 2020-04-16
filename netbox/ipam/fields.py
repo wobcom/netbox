@@ -2,13 +2,8 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from netaddr import AddrFormatError, IPNetwork
 
-from . import lookups
-from .formfields import IPFormField
-
-
-def prefix_validator(prefix):
-    if prefix.ip != prefix.cidr.ip:
-        raise ValidationError("{} is not a valid prefix. Did you mean {}?".format(prefix, prefix.cidr))
+from . import lookups, validators
+from .formfields import IPNetworkFormField
 
 
 class BaseIPField(models.Field):
@@ -23,8 +18,9 @@ class BaseIPField(models.Field):
         if not value:
             return value
         try:
+            # Always return a netaddr.IPNetwork object. (netaddr.IPAddress does not provide a mask.)
             return IPNetwork(value)
-        except AddrFormatError as e:
+        except AddrFormatError:
             raise ValidationError("Invalid IP address format: {}".format(value))
         except (TypeError, ValueError) as e:
             raise ValidationError(e)
@@ -32,10 +28,12 @@ class BaseIPField(models.Field):
     def get_prep_value(self, value):
         if not value:
             return None
+        if isinstance(value, list):
+            return [str(self.to_python(v)) for v in value]
         return str(self.to_python(value))
 
     def form_class(self):
-        return IPFormField
+        return IPNetworkFormField
 
     def formfield(self, **kwargs):
         defaults = {'form_class': self.form_class()}
@@ -48,7 +46,7 @@ class IPNetworkField(BaseIPField):
     IP prefix (network and mask)
     """
     description = "PostgreSQL CIDR field"
-    default_validators = [prefix_validator]
+    default_validators = [validators.prefix_validator]
 
     def db_type(self, connection):
         return 'cidr'
@@ -65,6 +63,7 @@ IPNetworkField.register_lookup(lookups.NetContained)
 IPNetworkField.register_lookup(lookups.NetContainedOrEqual)
 IPNetworkField.register_lookup(lookups.NetContains)
 IPNetworkField.register_lookup(lookups.NetContainsOrEquals)
+IPNetworkField.register_lookup(lookups.NetFamily)
 IPNetworkField.register_lookup(lookups.NetMaskLength)
 
 
@@ -90,5 +89,7 @@ IPAddressField.register_lookup(lookups.NetContainedOrEqual)
 IPAddressField.register_lookup(lookups.NetContains)
 IPAddressField.register_lookup(lookups.NetContainsOrEquals)
 IPAddressField.register_lookup(lookups.NetHost)
+IPAddressField.register_lookup(lookups.NetIn)
 IPAddressField.register_lookup(lookups.NetHostContained)
+IPAddressField.register_lookup(lookups.NetFamily)
 IPAddressField.register_lookup(lookups.NetMaskLength)

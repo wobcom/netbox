@@ -1,12 +1,13 @@
-import hashlib
-import hmac
-import json
+import logging
 
 import requests
 from django_rq import job
-from rest_framework.utils.encoders import JSONEncoder
+from jinja2.exceptions import TemplateError
 
-from extras.constants import WEBHOOK_CT_JSON, WEBHOOK_CT_X_WWW_FORM_ENCODED, OBJECTCHANGE_ACTION_CHOICES
+from .choices import ObjectChangeActionChoices
+from .webhooks import generate_signature
+
+logger = logging.getLogger('netbox.webhooks_worker')
 
 
 @job('default')
@@ -14,46 +15,69 @@ def process_webhook(webhook, data, model_name, event, timestamp, username, reque
     """
     Make a POST request to the defined Webhook
     """
-    payload = {
-        'event': dict(OBJECTCHANGE_ACTION_CHOICES)[event].lower(),
+    context = {
+        'event': dict(ObjectChangeActionChoices)[event].lower(),
         'timestamp': timestamp,
         'model': model_name,
         'username': username,
         'request_id': request_id,
         'data': data
     }
+
+    # Build the headers for the HTTP request
     headers = {
-        'Content-Type': webhook.get_http_content_type_display(),
+        'Content-Type': webhook.http_content_type,
     }
+    try:
+        headers.update(webhook.render_headers(context))
+    except (TemplateError, ValueError) as e:
+        logger.error("Error parsing HTTP headers for webhook {}: {}".format(webhook, e))
+        raise e
+
+    # Render the request body
+    try:
+        body = webhook.render_body(context)
+    except TemplateError as e:
+        logger.error("Error rendering request body for webhook {}: {}".format(webhook, e))
+        raise e
+
+    # Prepare the HTTP request
     params = {
-        'method': 'POST',
+        'method': webhook.http_method,
         'url': webhook.payload_url,
-        'headers': headers
+        'headers': headers,
+        'data': body,
     }
-
-    if webhook.http_content_type == WEBHOOK_CT_JSON:
-        params.update({'data': json.dumps(payload, cls=JSONEncoder)})
-    elif webhook.http_content_type == WEBHOOK_CT_X_WWW_FORM_ENCODED:
-        params.update({'data': payload})
-
-    prepared_request = requests.Request(**params).prepare()
-
-    if webhook.secret != '':
-        # Sign the request with a hash of the secret key and its content.
-        hmac_prep = hmac.new(
-            key=webhook.secret.encode('utf8'),
-            msg=prepared_request.body.encode('utf8'),
-            digestmod=hashlib.sha512
+    logger.info(
+        "Sending {} request to {} ({} {})".format(
+            params['method'], params['url'], context['model'], context['event']
         )
-        prepared_request.headers['X-Hook-Signature'] = hmac_prep.hexdigest()
+    )
+    logger.debug(params)
+    try:
+        prepared_request = requests.Request(**params).prepare()
+    except requests.exceptions.RequestException as e:
+        logger.error("Error forming HTTP request: {}".format(e))
+        raise e
 
+    # If a secret key is defined, sign the request with a hash of the key and its content
+    if webhook.secret != '':
+        prepared_request.headers['X-Hook-Signature'] = generate_signature(prepared_request.body, webhook.secret)
+
+    # Send the request
     with requests.Session() as session:
         session.verify = webhook.ssl_verification
+        if webhook.ca_file_path:
+            session.verify = webhook.ca_file_path
         response = session.send(prepared_request)
 
-    if response.status_code >= 200 and response.status_code <= 299:
+    if 200 <= response.status_code <= 299:
+        logger.info("Request succeeded; response status {}".format(response.status_code))
         return 'Status {} returned, webhook successfully processed.'.format(response.status_code)
     else:
+        logger.warning("Request failed; response status {}: {}".format(response.status_code, response.content))
         raise requests.exceptions.RequestException(
-            "Status {} returned, webhook FAILED to process.".format(response.status_code)
+            "Status {} returned with content '{}', webhook FAILED to process.".format(
+                response.status_code, response.content
+            )
         )

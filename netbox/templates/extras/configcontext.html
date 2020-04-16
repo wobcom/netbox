@@ -1,5 +1,6 @@
-{% extends '_base.html' %}
+{% extends 'base.html' %}
 {% load helpers %}
+{% load static %}
 
 {% block header %}
     <div class="row noprint">
@@ -112,7 +113,7 @@
                             {% if configcontext.roles.all %}
                                 <ul>
                                     {% for role in configcontext.roles.all %}
-                                        <li><a href="{{ role.get_absolute_url }}">{{ role }}</a></li>
+                                        <li><a href="{% url 'dcim:device_list' %}?role={{ role.slug }}">{{ role }}</a></li>
                                     {% endfor %}
                                 </ul>
                             {% else %}
@@ -127,6 +128,34 @@
                                 <ul>
                                     {% for platform in configcontext.platforms.all %}
                                         <li><a href="{{ platform.get_absolute_url }}">{{ platform }}</a></li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <span class="text-muted">None</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Cluster Groups</td>
+                        <td>
+                            {% if configcontext.cluster_groups.all %}
+                                <ul>
+                                    {% for cluster_group in configcontext.cluster_groups.all %}
+                                        <li><a href="{{ cluster_group.get_absolute_url }}">{{ cluster_group }}</a></li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <span class="text-muted">None</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Clusters</td>
+                        <td>
+                            {% if configcontext.clusters.all %}
+                                <ul>
+                                    {% for cluster in configcontext.clusters.all %}
+                                        <li><a href="{{ cluster.get_absolute_url }}">{{ cluster }}</a></li>
                                     {% endfor %}
                                 </ul>
                             {% else %}
@@ -162,6 +191,20 @@
                             {% endif %}
                         </td>
                     </tr>
+                    <tr>
+                        <td>Tags</td>
+                        <td>
+                            {% if configcontext.tags.all %}
+                                <ul>
+                                    {% for tag in configcontext.tags.all %}
+                                        <li><a href="{{ tag.get_absolute_url }}">{{ tag }}</a></li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <span class="text-muted">None</span>
+                            {% endif %}
+                        </td>
+                    </tr>
                 </table>
             </div>
         </div>
@@ -169,11 +212,16 @@
             <div class="panel panel-default">
                 <div class="panel-heading">
                     <strong>Data</strong>
+                    {% include 'extras/inc/configcontext_format.html' %}
                 </div>
                 <div class="panel-body">
-                    <pre>{{ configcontext.data|render_json }}</pre>
+                    {% include 'extras/inc/configcontext_data.html' with data=configcontext.data %}
                 </div>
             </div>
         </div>
     </div>
+{% endblock %}
+
+{% block javascript %}
+<script src="{% static 'js/configcontext.js' %}?v{{ settings.VERSION }}"></script>
 {% endblock %}

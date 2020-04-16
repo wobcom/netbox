@@ -7,6 +7,11 @@ from django.db import models
 from django.utils import timezone
 
 
+__all__ = (
+    'Token',
+)
+
+
 class Token(models.Model):
     """
     An API token used for user authentication. This extends the stock model to allow each user to have multiple tokens.
@@ -34,7 +39,7 @@ class Token(models.Model):
         help_text='Permit create/update/delete operations using this key'
     )
     description = models.CharField(
-        max_length=100,
+        max_length=200,
         blank=True
     )
 
