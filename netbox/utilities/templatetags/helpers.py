@@ -187,6 +187,7 @@ def get_docs(model):
         model._meta.app_label,
         model._meta.model_name
     )
+    print("---------------------------", path)
     try:
         with open(path) as docfile:
             content = docfile.read()
