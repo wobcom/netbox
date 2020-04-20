@@ -3,7 +3,7 @@
 
 {% block content %}
 <div class="pull-right">
-    {% if perms.ipam.add_overlay_network %}
+    {% if perms.ipam.add_overlaynetwork %}
         {% add_button 'ipam:overlay_network_add' %}
         {% import_button 'ipam:overlay_network_import' %}
     {% endif %}
