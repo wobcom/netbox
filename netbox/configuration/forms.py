@@ -78,9 +78,10 @@ class CommunityListForm(BootstrapMixin, forms.ModelForm):
 
     class Meta:
         model = BGPCommunityList
-        fields = ['name']
+        fields = ['name', 'communities']
         labels = {
             'name': 'Community List Name',
+            'communities': 'Communities',
         }
 
 
