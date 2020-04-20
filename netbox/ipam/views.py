@@ -819,25 +819,25 @@ class OverlayNetworkGroupListView(ObjectListView):
 
 
 class OverlayNetworkGroupCreateView(PermissionRequiredMixin, ObjectEditView):
-    permission_required = 'ipam.add_overlay_networkgroup'
+    permission_required = 'ipam.add_overlaynetworkgroup'
     model = OverlayNetworkGroup
     model_form = forms.OverlayNetworkGroupForm
     default_return_url = 'ipam:overlay_networkgroup_list'
 
 
 class OverlayNetworkGroupEditView(OverlayNetworkGroupCreateView):
-    permission_required = 'ipam.change_overlay_networkgroup'
+    permission_required = 'ipam.change_overlaynetworkgroup'
 
 
 class OverlayNetworkGroupBulkImportView(PermissionRequiredMixin, BulkImportView):
-    permission_required = 'ipam.add_overlay_networkgroup'
+    permission_required = 'ipam.add_overlaynetworkgroup'
     model_form = forms.OverlayNetworkGroupCSVForm
     table = tables.OverlayNetworkGroupTable
     default_return_url = 'ipam:overlay_networkgroup_list'
 
 
 class OverlayNetworkGroupBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
-    permission_required = 'ipam.delete_overlay_networkgroup'
+    permission_required = 'ipam.delete_overlaynetworkgroup'
     queryset = OverlayNetworkGroup.objects.select_related('site').annotate(overlay_network_count=Count('overlay_networks'))
     filter = filters.OverlayNetworkGroupFilter
     table = tables.OverlayNetworkGroupTable
@@ -852,7 +852,7 @@ class OverlayNetworkGroupOverlayNetworksView(View):
         overlay_networks = OverlayNetwork.objects.filter(group_id=pk)
 
         overlay_network_table = tables.OverlayNetworkDetailTable(overlay_networks)
-        if request.user.has_perm('ipam.change_overlay_network') or request.user.has_perm('ipam.delete_overlay_network'):
+        if request.user.has_perm('ipam.change_overlaynetwork') or request.user.has_perm('ipam.delete_overlaynetwork'):
             overlay_network_table.columns.show('pk')
         overlay_network_table.columns.hide('site')
         overlay_network_table.columns.hide('group')
@@ -865,9 +865,9 @@ class OverlayNetworkGroupOverlayNetworksView(View):
 
         # Compile permissions list for rendering the object table
         permissions = {
-            'add': request.user.has_perm('ipam.add_overlay_network'),
-            'change': request.user.has_perm('ipam.change_overlay_network'),
-            'delete': request.user.has_perm('ipam.delete_overlay_network'),
+            'add': request.user.has_perm('ipam.add_overlaynetwork'),
+            'change': request.user.has_perm('ipam.change_overlaynetwork'),
+            'delete': request.user.has_perm('ipam.delete_overlaynetwork'),
         }
 
         return render(request, 'ipam/overlay_networkgroup_overlay_networks.html', {
@@ -1001,7 +1001,7 @@ class OverlayNetworkMembersView(View):
 
 
 class OverlayNetworkCreateView(PermissionRequiredMixin, ObjectEditView):
-    permission_required = 'ipam.add_overlay_network'
+    permission_required = 'ipam.add_overlaynetwork'
     model = OverlayNetwork
     model_form = forms.OverlayNetworkForm
     template_name = 'ipam/overlay_network_edit.html'
@@ -1009,24 +1009,24 @@ class OverlayNetworkCreateView(PermissionRequiredMixin, ObjectEditView):
 
 
 class OverlayNetworkEditView(OverlayNetworkCreateView):
-    permission_required = 'ipam.change_overlay_network'
+    permission_required = 'ipam.change_overlaynetwork'
 
 
 class OverlayNetworkDeleteView(PermissionRequiredMixin, ObjectDeleteView):
-    permission_required = 'ipam.delete_overlay_network'
+    permission_required = 'ipam.delete_overlaynetwork'
     model = OverlayNetwork
     default_return_url = 'ipam:overlay_network_list'
 
 
 class OverlayNetworkBulkImportView(PermissionRequiredMixin, BulkImportView):
-    permission_required = 'ipam.add_overlay_network'
+    permission_required = 'ipam.add_overlaynetwork'
     model_form = forms.OverlayNetworkCSVForm
     table = tables.OverlayNetworkTable
     default_return_url = 'ipam:overlay_network_list'
 
 
 class OverlayNetworkBulkEditView(PermissionRequiredMixin, BulkEditView):
-    permission_required = 'ipam.change_overlay_network'
+    permission_required = 'ipam.change_overlaynetwork'
     queryset = OverlayNetwork.objects.select_related('site', 'group', 'tenant', 'role')
     filter = filters.OverlayNetworkFilter
     table = tables.OverlayNetworkTable
@@ -1035,7 +1035,7 @@ class OverlayNetworkBulkEditView(PermissionRequiredMixin, BulkEditView):
 
 
 class OverlayNetworkBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
-    permission_required = 'ipam.delete_overlay_network'
+    permission_required = 'ipam.delete_overlaynetwork'
     queryset = OverlayNetwork.objects.select_related('site', 'group', 'tenant', 'role')
     filter = filters.OverlayNetworkFilter
     table = tables.OverlayNetworkTable
