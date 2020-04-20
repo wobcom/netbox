@@ -3,7 +3,7 @@
 
 {% block content %}
 <div class="pull-right">
-    {% if perms.configuration.add_bgp %}
+    {% if perms.configuration.add_bgpneighbor %}
         {% add_button 'configuration:neighbor_add' %}
         {% import_button 'configuration:neighbor_import' %}
     {% endif %}

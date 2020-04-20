@@ -38,25 +38,25 @@ class CommunityListView(ObjectListView):
 
 
 class CommunityCreateView(PermissionRequiredMixin, ObjectEditView):
-    permission_required = 'configuration.add_bgp'
+    permission_required = 'configuration.add_bgpcommunity'
     model = BGPCommunity
     model_form = forms.CommunityForm
     default_return_url = 'configuration:community_list'
 
 
 class CommunityEditView(CommunityCreateView):
-    permission_required = 'configuration.change_bgp'
+    permission_required = 'configuration.change_bgpcommunity'
 
 
 class CommunityBulkImportView(PermissionRequiredMixin, BulkImportView):
-    permission_required = 'configuration.add_bgp'
+    permission_required = 'configuration.add_bgpcommunity'
     model_form = forms.CommunityCSVForm
     table = tables.CommunityTable
     default_return_url = 'configuration:community_list'
 
 
 class CommunityBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
-    permission_required = 'configuration.delete_bgp'
+    permission_required = 'configuration.delete_bgpcommunity'
     queryset = BGPCommunity.objects
     filter = filters.CommunityFilter
     table = tables.CommunityTable
@@ -110,30 +110,30 @@ class CommunityListListView(ObjectListView):
 
 
 class CommunityListCreateView(PermissionRequiredMixin, ObjectEditView):
-    permission_required = 'configuration.add_bgp'
+    permission_required = 'configuration.add_bgpcommunitylist'
     model = BGPCommunityList
     model_form = forms.CommunityListForm
     default_return_url = 'configuration:communitylist_list'
 
 
 class CommunityListEditView(CommunityCreateView):
-    permission_required = 'configuration.change_bgp'
+    permission_required = 'configuration.change_bgpcommunitylist'
 
 
 class CommunityListDeleteView(PermissionRequiredMixin, ObjectDeleteView):
-    permission_required = 'configuration.delete_bgp'
+    permission_required = 'configuration.delete_bgpcommunitylist'
     model = BGPCommunityList
 
 
 class CommunityListBulkImportView(PermissionRequiredMixin, BulkImportView):
-    permission_required = 'configuration.add_bgp'
+    permission_required = 'configuration.add_bgpcommunitylist'
     model_form = forms.CommunityListCSVForm
     table = tables.CommunityListTable
     default_return_url = 'configuration:communitylist_list'
 
 
 class CommunityListBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
-    permission_required = 'configuration.delete_bgp'
+    permission_required = 'configuration.delete_bgpcommunitylist'
     queryset = BGPCommunityList.objects
     filter = filters.CommunityListFilter
     table = tables.CommunityListTable
@@ -149,7 +149,7 @@ class RouteMapListView(ObjectListView):
 
 
 class RouteMapCreateView(PermissionRequiredMixin, ObjectEditView):
-    permission_required = 'configuration.add_bgp'
+    permission_required = 'configuration.add_routemap'
     model = RouteMap
     model_form = forms.RouteMapForm
     default_return_url = 'configuration:routemap_list'
@@ -160,14 +160,14 @@ class RouteMapEditView(RouteMapCreateView):
 
 
 class RouteMapBulkImportView(PermissionRequiredMixin, BulkImportView):
-    permission_required = 'configuration.add_bgp'
+    permission_required = 'configuration.add_routemap'
     model_form = forms.RouteMapCSVForm
     table = tables.RouteMapTable
     default_return_url = 'configuration:routemap_list'
 
 
 class RouteMapBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
-    permission_required = 'configuration.delete_bgp'
+    permission_required = 'configuration.delete_routemap'
     queryset = RouteMap.objects
     filter = filters.RouteMapFilter
     table = tables.RouteMapTable
@@ -181,25 +181,25 @@ class BGPASNListView(ObjectListView):
 
 
 class BGPASNCreateView(PermissionRequiredMixin, ObjectEditView):
-    permission_required = 'configuration.add_asn'
+    permission_required = 'configuration.add_bgpasn'
     model = BGPASN
     model_form = forms.BGPASNForm
     default_return_url = 'configuration:asn_list'
 
 
 class BGPASNEditView(BGPASNCreateView):
-    permission_required = 'configuration.change_asn'
+    permission_required = 'configuration.change_bgpasn'
 
 
 class BGPASNBulkImportView(PermissionRequiredMixin, BulkImportView):
-    permission_required = 'configuration.add_asn'
+    permission_required = 'configuration.add_bgpasn'
     model_form = forms.BGPASNCSVForm
     table = tables.BGPASNTable
     default_return_url = 'configuration:asn_list'
 
 
 class BGPASNBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
-    permission_required = 'configuration.delete_asn'
+    permission_required = 'configuration.delete_bgpasn'
     queryset = BGPASN.objects
     table = tables.BGPASNTable
     default_return_url = 'configuration:asn_list'

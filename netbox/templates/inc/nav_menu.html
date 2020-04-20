@@ -540,7 +540,7 @@
                       <ul class="dropdown-menu">
                           <li class="dropdown-header">BGP</li>
                           <li>
-                              {% if perms.configuration.add_bgp %}
+                              {% if perms.configuration.add_bgpcommunity %}
                                   <div class="buttons pull-right">
                                       <a href="{% url 'configuration:community_add' %}" class="btn btn-xs btn-success" title="Add"><i class="fa fa-plus"></i></a>
                                       <a href="{% url 'configuration:community_import' %}" class="btn btn-xs btn-info" title="Import"><i class="fa fa-download"></i></a>
@@ -549,7 +549,7 @@
                               <a href="{% url 'configuration:community_list' %}">BGP Communities</a>
                           </li>
                           <li>
-                              {% if perms.configuration.add_bgp %}
+                              {% if perms.configuration.add_bgpcommunitylist %}
                                   <div class="buttons pull-right">
                                       <a href="{% url 'configuration:communitylist_add' %}" class="btn btn-xs btn-success" title="Add"><i class="fa fa-plus"></i></a>
                                       <a href="{% url 'configuration:communitylist_import' %}" class="btn btn-xs btn-info" title="Import"><i class="fa fa-download"></i></a>
@@ -558,7 +558,7 @@
                               <a href="{% url 'configuration:communitylist_list' %}">BGP Community Lists</a>
                           </li>
                           <li>
-                              {% if perms.configuration.add_bgp %}
+                              {% if perms.configuration.add_routemap %}
                                   <div class="buttons pull-right">
                                       <a href="{% url 'configuration:routemap_add' %}" class="btn btn-xs btn-success" title="Add"><i class="fa fa-plus"></i></a>
                                       <a href="{% url 'configuration:routemap_import' %}" class="btn btn-xs btn-info" title="Import"><i class="fa fa-download"></i></a>
@@ -567,7 +567,7 @@
                               <a href="{% url 'configuration:routemap_list' %}">Routemaps</a>
                           </li>
                           <li>
-                              {% if perms.configuration.add_asn %}
+                              {% if perms.configuration.add_bgpasn %}
                                   <div class="buttons pull-right">
                                       <a href="{% url 'configuration:asn_add' %}" class="btn btn-xs btn-success" title="Add"><i class="fa fa-plus"></i></a>
                                       <a href="{% url 'configuration:asn_import' %}" class="btn btn-xs btn-info" title="Import"><i class="fa fa-download"></i></a>

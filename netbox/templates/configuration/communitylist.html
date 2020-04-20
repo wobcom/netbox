@@ -10,11 +10,11 @@
         <div class="col-md-6">
             <div class="pull-right">
                 <div class="btn-group">
-                {% if perms.add_bgp %}
+                {% if perms.add_bgpcommunitylist %}
                     <a href="{% url 'configuration:communitylist_addto' pk=list.pk %}" class="btn btn-primary">
                             <span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Add Community</span>
                 {% endif %}
-                {% if perms.delete_bgp %}
+                {% if perms.delete_bgpcommunitylist %}
                     <a href="{% url 'configuration:communitylist_delete' pk=list.pk %}" class="btn btn-danger">
                         <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
                         Delete this list
