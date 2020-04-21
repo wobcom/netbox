@@ -342,9 +342,11 @@ TEMPLATES = [
 
 # Set up authentication backends
 AUTHENTICATION_BACKENDS = [
-    REMOTE_AUTH_BACKEND,
     'change.backends.model.ProxyBackend',
 ]
+
+if REMOTE_AUTH_ENABLED:
+    AUTHENTICATION_BACKENDS.insert(0, REMOTE_AUTH_BACKEND)
 
 # Internationalization
 LANGUAGE_CODE = 'en-us'
