@@ -612,6 +612,8 @@ class InterfaceTypeChoices(ChoiceSet):
             'Virtual interfaces',
             (
                 (TYPE_VIRTUAL, 'Virtual'),
+                (TYPE_BRIDGE, 'Bridge'),
+                (TYPE_ONTEP, 'ONTEP'),
                 (TYPE_LAG, 'Link Aggregation Group (LAG)'),
             ),
         ),
@@ -739,7 +741,9 @@ class InterfaceTypeChoices(ChoiceSet):
 
     LEGACY_MAP = {
         TYPE_VIRTUAL: 0,
+        TYPE_BRIDGE: 100,
         TYPE_LAG: 200,
+        TYPE_ONTEP: 150,
         TYPE_100ME_FIXED: 800,
         TYPE_1GE_FIXED: 1000,
         TYPE_1GE_GBIC: 1050,

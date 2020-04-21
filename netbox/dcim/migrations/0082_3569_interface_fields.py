@@ -3,6 +3,8 @@ from django.db import migrations, models
 
 INTERFACE_TYPE_CHOICES = (
     (0, 'virtual'),
+    (100, 'bridge'),
+    (150, 'ontep'),
     (200, 'lag'),
     (800, '100base-tx'),
     (1000, '1000base-t'),
