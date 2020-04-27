@@ -1,3 +1,10 @@
 #!/usr/bin/env bash
 
-su - netbox -c "/opt/netbox/venv/bin/python /opt/netbox/netbox/manage.py \"$@\""
+current_user=$(whoami)
+target_user=netbox
+
+if [ "$current_user" != "$target_user" ]; then
+        exec sudo -u ${target_user} -- /opt/netbox/venv/bin/python /opt/netbox/netbox/manage.py "$@"
+else
+        exec /opt/netbox/venv/bin/python /opt/netbox/netbox/manage.py "$@"
+fi
