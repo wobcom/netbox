@@ -1,98 +1,61 @@
+from .choices import IPAddressRoleChoices
 
-# IP address families
-AF_CHOICES = (
-    (4, 'IPv4'),
-    (6, 'IPv6'),
-)
+# BGP ASN bounds
+BGP_ASN_MIN = 1
+BGP_ASN_MAX = 2**32 - 1
 
-# Prefix statuses
-PREFIX_STATUS_CONTAINER = 0
-PREFIX_STATUS_ACTIVE = 1
-PREFIX_STATUS_RESERVED = 2
-PREFIX_STATUS_DEPRECATED = 3
-PREFIX_STATUS_CHOICES = (
-    (PREFIX_STATUS_CONTAINER, 'Container'),
-    (PREFIX_STATUS_ACTIVE, 'Active'),
-    (PREFIX_STATUS_RESERVED, 'Reserved'),
-    (PREFIX_STATUS_DEPRECATED, 'Deprecated')
-)
 
-# IP address statuses
-IPADDRESS_STATUS_ACTIVE = 1
-IPADDRESS_STATUS_RESERVED = 2
-IPADDRESS_STATUS_DEPRECATED = 3
-IPADDRESS_STATUS_DHCP = 5
-IPADDRESS_STATUS_CHOICES = (
-    (IPADDRESS_STATUS_ACTIVE, 'Active'),
-    (IPADDRESS_STATUS_RESERVED, 'Reserved'),
-    (IPADDRESS_STATUS_DEPRECATED, 'Deprecated'),
-    (IPADDRESS_STATUS_DHCP, 'DHCP')
-)
+#
+# VRFs
+#
 
-# IP address roles
-IPADDRESS_ROLE_LOOPBACK = 10
-IPADDRESS_ROLE_SECONDARY = 20
-IPADDRESS_ROLE_ANYCAST = 30
-IPADDRESS_ROLE_VIP = 40
-IPADDRESS_ROLE_VRRP = 41
-IPADDRESS_ROLE_HSRP = 42
-IPADDRESS_ROLE_GLBP = 43
-IPADDRESS_ROLE_CARP = 44
-IPADDRESS_ROLE_CHOICES = (
-    (IPADDRESS_ROLE_LOOPBACK, 'Loopback'),
-    (IPADDRESS_ROLE_SECONDARY, 'Secondary'),
-    (IPADDRESS_ROLE_ANYCAST, 'Anycast'),
-    (IPADDRESS_ROLE_VIP, 'VIP'),
-    (IPADDRESS_ROLE_VRRP, 'VRRP'),
-    (IPADDRESS_ROLE_HSRP, 'HSRP'),
-    (IPADDRESS_ROLE_GLBP, 'GLBP'),
-    (IPADDRESS_ROLE_CARP, 'CARP'),
-)
+# Per RFC 4364 section 4.2, a route distinguisher may be encoded as one of the following:
+#   * Type 0 (16-bit AS number : 32-bit integer)
+#   * Type 1 (32-bit IPv4 address : 16-bit integer)
+#   * Type 2 (32-bit AS number : 16-bit integer)
+# 21 characters are sufficient to convey the longest possible string value (255.255.255.255:65535)
+VRF_RD_MAX_LENGTH = 21
+
+
+#
+# Prefixes
+#
+
+PREFIX_LENGTH_MIN = 1
+PREFIX_LENGTH_MAX = 127  # IPv6
+
+
+#
+# IPAddresses
+#
+
+IPADDRESS_MASK_LENGTH_MIN = 1
+IPADDRESS_MASK_LENGTH_MAX = 128  # IPv6
 
 IPADDRESS_ROLES_NONUNIQUE = (
     # IPAddress roles which are exempt from unique address enforcement
-    IPADDRESS_ROLE_ANYCAST,
-    IPADDRESS_ROLE_VIP,
-    IPADDRESS_ROLE_VRRP,
-    IPADDRESS_ROLE_HSRP,
-    IPADDRESS_ROLE_GLBP,
-    IPADDRESS_ROLE_CARP,
+    IPAddressRoleChoices.ROLE_ANYCAST,
+    IPAddressRoleChoices.ROLE_VIP,
+    IPAddressRoleChoices.ROLE_VRRP,
+    IPAddressRoleChoices.ROLE_HSRP,
+    IPAddressRoleChoices.ROLE_GLBP,
+    IPAddressRoleChoices.ROLE_CARP,
 )
 
-# VLAN statuses
-VLAN_STATUS_ACTIVE = 1
-VLAN_STATUS_RESERVED = 2
-VLAN_STATUS_DEPRECATED = 3
-VLAN_STATUS_CHOICES = (
-    (VLAN_STATUS_ACTIVE, 'Active'),
-    (VLAN_STATUS_RESERVED, 'Reserved'),
-    (VLAN_STATUS_DEPRECATED, 'Deprecated')
-)
 
-# Bootstrap CSS classes
-STATUS_CHOICE_CLASSES = {
-    0: 'default',
-    1: 'primary',
-    2: 'info',
-    3: 'danger',
-    4: 'warning',
-    5: 'success',
-}
-ROLE_CHOICE_CLASSES = {
-    10: 'default',
-    20: 'primary',
-    30: 'warning',
-    40: 'success',
-    41: 'success',
-    42: 'success',
-    43: 'success',
-    44: 'success',
-}
+#
+# VLANs
+#
 
-# IP protocols (for services)
-IP_PROTOCOL_TCP = 6
-IP_PROTOCOL_UDP = 17
-IP_PROTOCOL_CHOICES = (
-    (IP_PROTOCOL_TCP, 'TCP'),
-    (IP_PROTOCOL_UDP, 'UDP'),
-)
+# 12-bit VLAN ID (values 0 and 4095 are reserved)
+VLAN_VID_MIN = 1
+VLAN_VID_MAX = 4094
+
+
+#
+# Services
+#
+
+# 16-bit port number
+SERVICE_PORT_MIN = 1
+SERVICE_PORT_MAX = 65535

@@ -1,6 +1,8 @@
-{% extends '_base.html' %}
+{% extends 'base.html' %}
+{% load buttons %}
 {% load custom_links %}
 {% load helpers %}
+{% load plugins %}
 
 {% block header %}
     <div class="row noprint" xmlns="http://www.w3.org/1999/html">
@@ -27,17 +29,15 @@
         </div>
     </div>
     <div class="pull-right noprint">
+        {% plugin_buttons cluster %}
+        {% if perms.virtualization.add_cluster %}
+            {% clone_button cluster %}
+        {% endif %}
         {% if perms.virtualization.change_cluster %}
-            <a href="{% url 'virtualization:cluster_edit' pk=cluster.pk %}" class="btn btn-warning">
-                <span class="fa fa-pencil" aria-hidden="true"></span>
-                Edit this cluster
-            </a>
+            {% edit_button cluster %}
         {% endif %}
         {% if perms.virtualization.delete_cluster %}
-            <a href="{% url 'virtualization:cluster_delete' pk=cluster.pk %}" class="btn btn-danger">
-                <span class="fa fa-trash" aria-hidden="true"></span>
-                Delete this cluster
-            </a>
+            {% delete_button cluster %}
         {% endif %}
     </div>
     <h1>{% block title %}{{ cluster }}{% endblock %}</h1>
@@ -51,7 +51,7 @@
         </li>
         {% if perms.extras.view_objectchange %}
             <li role="presentation"{% if active_tab == 'changelog' %} class="active"{% endif %}>
-                <a href="{% url 'virtualization:cluster_changelog' pk=cluster.pk %}">Changelog</a>
+                <a href="{% url 'virtualization:cluster_changelog' pk=cluster.pk %}">Change Log</a>
             </li>
         {% endif %}
     </ul>
@@ -84,6 +84,16 @@
                     </td>
                 </tr>
                 <tr>
+                    <td>Tenant</td>
+                    <td>
+                        {% if cluster.tenant %}
+                            <a href="{{ cluster.tenant.get_absolute_url }}">{{ cluster.tenant }}</a>
+                        {% else %}
+                            <span class="text-muted">None</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
                     <td>Site</td>
                     <td>
                         {% if cluster.site %}
@@ -107,12 +117,13 @@
             </div>
             <div class="panel-body rendered-markdown">
                 {% if cluster.comments %}
-                    {{ cluster.comments|gfm }}
+                    {{ cluster.comments|render_markdown }}
                 {% else %}
                     <span class="text-muted">None</span>
                 {% endif %}
             </div>
         </div>
+        {% plugin_left_page cluster %}
     </div>
     <div class="col-md-7">
         <div class="panel panel-default">
@@ -140,6 +151,12 @@
                 </form>
             {% endif %}
         </div>
+        {% plugin_right_page cluster %}
 	</div>
+</div>
+<div class="row">
+    <div class="col-md-12">
+        {% plugin_full_width_page cluster %}
+    </div>
 </div>
 {% endblock %}

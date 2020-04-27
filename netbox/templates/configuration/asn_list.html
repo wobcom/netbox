@@ -1,9 +1,9 @@
-{% extends '_base.html' %}
+{% extends 'base.html' %}
 {% load buttons %}
 
 {% block content %}
 <div class="pull-right">
-    {% if perms.configuration.add_asn %}
+    {% if perms.configuration.add_bgpasn %}
         {% add_button 'configuration:asn_add' %}
         {% import_button 'configuration:asn_import' %}
     {% endif %}

@@ -1,9 +1,9 @@
 from django import forms
 from django.contrib import admin
 
-from netbox.admin import admin_site
 from utilities.forms import LaxURLField
-from .models import CustomField, CustomFieldChoice, CustomLink, Graph, ExportTemplate, TopologyMap, Webhook
+from .models import CustomField, CustomFieldChoice, CustomLink, Graph, ExportTemplate, ReportResult, Webhook
+from .reports import get_report
 
 
 def order_content_types(field):
@@ -25,7 +25,7 @@ class WebhookForm(forms.ModelForm):
 
     class Meta:
         model = Webhook
-        exclude = []
+        exclude = ()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -34,13 +34,38 @@ class WebhookForm(forms.ModelForm):
             order_content_types(self.fields['obj_type'])
 
 
-@admin.register(Webhook, site=admin_site)
+@admin.register(Webhook)
 class WebhookAdmin(admin.ModelAdmin):
     list_display = [
-        'name', 'models', 'payload_url', 'http_content_type', 'enabled', 'type_create', 'type_update',
-        'type_delete', 'ssl_verification',
+        'name', 'models', 'payload_url', 'http_content_type', 'enabled', 'type_create', 'type_update', 'type_delete',
+        'ssl_verification',
+    ]
+    list_filter = [
+        'enabled', 'type_create', 'type_update', 'type_delete', 'obj_type',
     ]
     form = WebhookForm
+    fieldsets = (
+        (None, {
+            'fields': (
+                'name', 'obj_type', 'enabled',
+            )
+        }),
+        ('Events', {
+            'fields': (
+                'type_create', 'type_update', 'type_delete',
+            )
+        }),
+        ('HTTP Request', {
+            'fields': (
+                'payload_url', 'http_method', 'http_content_type', 'additional_headers', 'body_template', 'secret',
+            )
+        }),
+        ('SSL', {
+            'fields': (
+                'ssl_verification', 'ca_file_path',
+            )
+        })
+    )
 
     def models(self, obj):
         return ', '.join([ct.name for ct in obj.obj_type.all()])
@@ -67,10 +92,15 @@ class CustomFieldChoiceAdmin(admin.TabularInline):
     extra = 5
 
 
-@admin.register(CustomField, site=admin_site)
+@admin.register(CustomField)
 class CustomFieldAdmin(admin.ModelAdmin):
     inlines = [CustomFieldChoiceAdmin]
-    list_display = ['name', 'models', 'type', 'required', 'filter_logic', 'default', 'weight', 'description']
+    list_display = [
+        'name', 'models', 'type', 'required', 'filter_logic', 'default', 'weight', 'description',
+    ]
+    list_filter = [
+        'type', 'required', 'obj_type',
+    ]
     form = CustomFieldForm
 
     def models(self, obj):
@@ -86,6 +116,10 @@ class CustomLinkForm(forms.ModelForm):
     class Meta:
         model = CustomLink
         exclude = []
+        widgets = {
+            'text': forms.Textarea,
+            'url': forms.Textarea,
+        }
         help_texts = {
             'text': 'Jinja2 template code for the link text. Reference the object as <code>{{ obj }}</code>. Links '
                     'which render as empty text will not be displayed.',
@@ -100,9 +134,14 @@ class CustomLinkForm(forms.ModelForm):
         self.fields['content_type'].choices.insert(0, ('', '---------'))
 
 
-@admin.register(CustomLink, site=admin_site)
+@admin.register(CustomLink)
 class CustomLinkAdmin(admin.ModelAdmin):
-    list_display = ['name', 'content_type', 'group_name', 'weight']
+    list_display = [
+        'name', 'content_type', 'group_name', 'weight',
+    ]
+    list_filter = [
+        'content_type',
+    ]
     form = CustomLinkForm
 
 
@@ -110,9 +149,14 @@ class CustomLinkAdmin(admin.ModelAdmin):
 # Graphs
 #
 
-@admin.register(Graph, site=admin_site)
+@admin.register(Graph)
 class GraphAdmin(admin.ModelAdmin):
-    list_display = ['name', 'type', 'weight', 'source']
+    list_display = [
+        'name', 'type', 'weight', 'template_language', 'source',
+    ]
+    list_filter = [
+        'type', 'template_language',
+    ]
 
 
 #
@@ -133,19 +177,42 @@ class ExportTemplateForm(forms.ModelForm):
         self.fields['content_type'].choices.insert(0, ('', '---------'))
 
 
-@admin.register(ExportTemplate, site=admin_site)
+@admin.register(ExportTemplate)
 class ExportTemplateAdmin(admin.ModelAdmin):
-    list_display = ['name', 'content_type', 'description', 'mime_type', 'file_extension']
+    list_display = [
+        'name', 'content_type', 'description', 'mime_type', 'file_extension',
+    ]
+    list_filter = [
+        'content_type',
+    ]
     form = ExportTemplateForm
 
 
 #
-# Topology maps
+# Reports
 #
 
-@admin.register(TopologyMap, site=admin_site)
-class TopologyMapAdmin(admin.ModelAdmin):
-    list_display = ['name', 'slug', 'site']
-    prepopulated_fields = {
-        'slug': ['name'],
-    }
+@admin.register(ReportResult)
+class ReportResultAdmin(admin.ModelAdmin):
+    list_display = [
+        'report', 'active', 'created', 'user', 'passing',
+    ]
+    fields = [
+        'report', 'user', 'passing', 'data',
+    ]
+    list_filter = [
+        'failed',
+    ]
+    readonly_fields = fields
+
+    def has_add_permission(self, request):
+        return False
+
+    def active(self, obj):
+        module, report_name = obj.report.split('.')
+        return True if get_report(module, report_name) else False
+    active.boolean = True
+
+    def passing(self, obj):
+        return not obj.failed
+    passing.boolean = True

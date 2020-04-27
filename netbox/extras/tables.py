@@ -5,7 +5,7 @@ from utilities.tables import BaseTable, BooleanColumn, ColorColumn, ToggleColumn
 from .models import ConfigContext, ObjectChange, Tag, TaggedItem
 
 TAG_ACTIONS = """
-<a href="{% url 'extras:tag_changelog' slug=record.slug %}" class="btn btn-default btn-xs" title="Changelog">
+<a href="{% url 'extras:tag_changelog' slug=record.slug %}" class="btn btn-default btn-xs" title="Change log">
     <i class="fa fa-history"></i>
 </a>
 {% if perms.taggit.change_tag %}
@@ -38,11 +38,11 @@ OBJECTCHANGE_TIME = """
 """
 
 OBJECTCHANGE_ACTION = """
-{% if record.action == 1 %}
+{% if record.action == 'create' %}
     <span class="label label-success">Created</span>
-{% elif record.action == 2 %}
+{% elif record.action == 'update' %}
     <span class="label label-primary">Updated</span>
-{% elif record.action == 3 %}
+{% elif record.action == 'delete' %}
     <span class="label label-danger">Deleted</span>
 {% endif %}
 """
@@ -77,7 +77,7 @@ class TagTable(BaseTable):
 
     class Meta(BaseTable.Meta):
         model = Tag
-        fields = ('pk', 'name', 'items', 'slug', 'color', 'actions')
+        fields = ('pk', 'name', 'items', 'slug', 'color', 'description', 'actions')
 
 
 class TaggedItemTable(BaseTable):

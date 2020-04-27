@@ -1,36 +1,52 @@
 import django_filters
 from django.db.models import Q
 
-from extras.filters import CustomFieldFilterSet
-from utilities.filters import NameSlugSearchFilterSet, NumericInFilter, TagFilter
+from extras.filters import CustomFieldFilterSet, CreatedUpdatedFilterSet
+from utilities.filters import BaseFilterSet, NameSlugSearchFilterSet, TagFilter, TreeNodeMultipleChoiceFilter
 from .models import Tenant, TenantGroup
 
 
-class TenantGroupFilter(NameSlugSearchFilterSet):
+__all__ = (
+    'TenancyFilterSet',
+    'TenantFilterSet',
+    'TenantGroupFilterSet',
+)
+
+
+class TenantGroupFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
+    parent_id = django_filters.ModelMultipleChoiceFilter(
+        queryset=TenantGroup.objects.all(),
+        label='Tenant group (ID)',
+    )
+    parent = django_filters.ModelMultipleChoiceFilter(
+        field_name='parent__slug',
+        queryset=TenantGroup.objects.all(),
+        to_field_name='slug',
+        label='Tenant group group (slug)',
+    )
 
     class Meta:
         model = TenantGroup
-        fields = ['id', 'name', 'slug']
+        fields = ['id', 'name', 'slug', 'description']
 
 
-class TenantFilter(CustomFieldFilterSet):
-    id__in = NumericInFilter(
-        field_name='id',
-        lookup_expr='in'
-    )
+class TenantFilterSet(BaseFilterSet, CustomFieldFilterSet, CreatedUpdatedFilterSet):
     q = django_filters.CharFilter(
         method='search',
         label='Search',
     )
-    group_id = django_filters.ModelMultipleChoiceFilter(
+    group_id = TreeNodeMultipleChoiceFilter(
         queryset=TenantGroup.objects.all(),
-        label='Group (ID)',
+        field_name='group',
+        lookup_expr='in',
+        label='Tenant group (ID)',
     )
-    group = django_filters.ModelMultipleChoiceFilter(
-        field_name='group__slug',
+    group = TreeNodeMultipleChoiceFilter(
         queryset=TenantGroup.objects.all(),
+        field_name='group',
+        lookup_expr='in',
         to_field_name='slug',
-        label='Group (slug)',
+        label='Tenant group (slug)',
     )
     tag = TagFilter()
 
@@ -47,3 +63,32 @@ class TenantFilter(CustomFieldFilterSet):
             Q(description__icontains=value) |
             Q(comments__icontains=value)
         )
+
+
+class TenancyFilterSet(django_filters.FilterSet):
+    """
+    An inheritable FilterSet for models which support Tenant assignment.
+    """
+    tenant_group_id = TreeNodeMultipleChoiceFilter(
+        queryset=TenantGroup.objects.all(),
+        field_name='tenant__group',
+        lookup_expr='in',
+        label='Tenant Group (ID)',
+    )
+    tenant_group = TreeNodeMultipleChoiceFilter(
+        queryset=TenantGroup.objects.all(),
+        field_name='tenant__group',
+        to_field_name='slug',
+        lookup_expr='in',
+        label='Tenant Group (slug)',
+    )
+    tenant_id = django_filters.ModelMultipleChoiceFilter(
+        queryset=Tenant.objects.all(),
+        label='Tenant (ID)',
+    )
+    tenant = django_filters.ModelMultipleChoiceFilter(
+        queryset=Tenant.objects.all(),
+        field_name='tenant__slug',
+        to_field_name='slug',
+        label='Tenant (slug)',
+    )

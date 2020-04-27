@@ -1,6 +1,8 @@
-{% extends '_base.html' %}
+{% extends 'base.html' %}
+{% load buttons %}
 {% load custom_links %}
 {% load helpers %}
+{% load plugins %}
 
 {% block header %}
     <div class="row noprint">
@@ -12,15 +14,12 @@
         </div>
     </div>
     <div class="pull-right noprint">
+        {% plugin_buttons cable %}
         {% if perms.dcim.change_cable %}
-            <a href="{% url 'dcim:cable_edit' pk=cable.pk %}" class="btn btn-warning">
-                <span class="fa fa-pencil" aria-hidden="true"></span> Edit this cable
-            </a>
+            {% edit_button cable %}
         {% endif %}
         {% if perms.dcim.delete_cable %}
-            <a href="{% url 'dcim:cable_delete' pk=cable.pk %}" class="btn btn-danger">
-                <span class="fa fa-trash" aria-hidden="true"></span> Delete this cable
-            </a>
+            {% delete_button cable %}
         {% endif %}
     </div>
     <h1>{% block title %}Cable {{ cable }}{% endblock %}</h1>
@@ -34,7 +33,7 @@
         </li>
         {% if perms.extras.view_objectchange %}
             <li role="presentation"{% if active_tab == 'changelog' %} class="active"{% endif %}>
-                <a href="{% url 'dcim:cable_changelog' pk=cable.pk %}">Changelog</a>
+                <a href="{% url 'dcim:cable_changelog' pk=cable.pk %}">Change Log</a>
             </li>
         {% endif %}
     </ul>
@@ -82,6 +81,7 @@
                     </tr>
                 </table>
             </div>
+            {% plugin_left_page cable %}
         </div>
         <div class="col-md-6">
             <div class="panel panel-default">
@@ -96,6 +96,12 @@
                 </div>
                 {% include 'dcim/inc/cable_termination.html' with termination=cable.termination_b %}
             </div>
+            {% plugin_right_page cable %}
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+            {% plugin_full_width_page cable %}
         </div>
     </div>
 {% endblock %}

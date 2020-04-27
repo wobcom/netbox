@@ -14,35 +14,32 @@ class ExtrasRootView(routers.APIRootView):
 router = routers.DefaultRouter()
 router.APIRootView = ExtrasRootView
 
-# Field choices
-router.register(r'_choices', views.ExtrasFieldChoicesViewSet, basename='field-choice')
-
 # Custom field choices
-router.register(r'_custom_field_choices', views.CustomFieldChoicesViewSet, base_name='custom-field-choice')
+router.register('_custom_field_choices', views.CustomFieldChoicesViewSet, basename='custom-field-choice')
 
 # Graphs
-router.register(r'graphs', views.GraphViewSet)
+router.register('graphs', views.GraphViewSet)
 
 # Export templates
-router.register(r'export-templates', views.ExportTemplateViewSet)
-
-# Topology maps
-router.register(r'topology-maps', views.TopologyMapViewSet)
+router.register('export-templates', views.ExportTemplateViewSet)
 
 # Tags
-router.register(r'tags', views.TagViewSet)
+router.register('tags', views.TagViewSet)
 
 # Image attachments
-router.register(r'image-attachments', views.ImageAttachmentViewSet)
+router.register('image-attachments', views.ImageAttachmentViewSet)
 
 # Config contexts
-router.register(r'config-contexts', views.ConfigContextViewSet)
+router.register('config-contexts', views.ConfigContextViewSet)
 
 # Reports
-router.register(r'reports', views.ReportViewSet, basename='report')
+router.register('reports', views.ReportViewSet, basename='report')
+
+# Scripts
+router.register('scripts', views.ScriptViewSet, basename='script')
 
 # Change logging
-router.register(r'object-changes', views.ObjectChangeViewSet)
+router.register('object-changes', views.ObjectChangeViewSet)
 
 app_name = 'extras-api'
 urlpatterns = router.urls

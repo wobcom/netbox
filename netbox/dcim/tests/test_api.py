@@ -1,8 +1,10 @@
+from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from netaddr import IPNetwork
 from rest_framework import status
 
 from circuits.models import Circuit, CircuitTermination, CircuitType, Provider
+from dcim.choices import *
 from dcim.constants import *
 from dcim.models import (
     Cable, ConsolePort, ConsolePortTemplate, ConsoleServerPort, ConsoleServerPortTemplate, Device, DeviceBay,
@@ -11,10 +13,20 @@ from dcim.models import (
     Rack, RackGroup, RackReservation, RackRole, RearPort, Region, Site, VirtualChassis,
 )
 from ipam.models import IPAddress, VLAN
-from extras.models import Graph, GRAPH_TYPE_INTERFACE, GRAPH_TYPE_SITE
+from extras.models import Graph
 from utilities.testing import APITestCase
 from virtualization.models import Cluster, ClusterType
 from tenancy.models import Tenant
+
+
+class AppTest(APITestCase):
+
+    def test_root(self):
+
+        url = reverse('dcim-api:api-root')
+        response = self.client.get('{}?format=api'.format(url), **self.header)
+
+        self.assertEqual(response.status_code, 200)
 
 
 class RegionTest(APITestCase):
@@ -139,16 +151,20 @@ class SiteTest(APITestCase):
 
     def test_get_site_graphs(self):
 
+        site_ct = ContentType.objects.get_for_model(Site)
         self.graph1 = Graph.objects.create(
-            type=GRAPH_TYPE_SITE, name='Test Graph 1',
+            type=site_ct,
+            name='Test Graph 1',
             source='http://example.com/graphs.py?site={{ obj.slug }}&foo=1'
         )
         self.graph2 = Graph.objects.create(
-            type=GRAPH_TYPE_SITE, name='Test Graph 2',
+            type=site_ct,
+            name='Test Graph 2',
             source='http://example.com/graphs.py?site={{ obj.slug }}&foo=2'
         )
         self.graph3 = Graph.objects.create(
-            type=GRAPH_TYPE_SITE, name='Test Graph 3',
+            type=site_ct,
+            name='Test Graph 3',
             source='http://example.com/graphs.py?site={{ obj.slug }}&foo=3'
         )
 
@@ -181,7 +197,7 @@ class SiteTest(APITestCase):
             'name': 'Test Site 4',
             'slug': 'test-site-4',
             'region': self.region1.pk,
-            'status': SITE_STATUS_ACTIVE,
+            'status': SiteStatusChoices.STATUS_ACTIVE,
         }
 
         url = reverse('dcim-api:site-list')
@@ -201,19 +217,19 @@ class SiteTest(APITestCase):
                 'name': 'Test Site 4',
                 'slug': 'test-site-4',
                 'region': self.region1.pk,
-                'status': SITE_STATUS_ACTIVE,
+                'status': SiteStatusChoices.STATUS_ACTIVE,
             },
             {
                 'name': 'Test Site 5',
                 'slug': 'test-site-5',
                 'region': self.region1.pk,
-                'status': SITE_STATUS_ACTIVE,
+                'status': SiteStatusChoices.STATUS_ACTIVE,
             },
             {
                 'name': 'Test Site 6',
                 'slug': 'test-site-6',
                 'region': self.region1.pk,
-                'status': SITE_STATUS_ACTIVE,
+                'status': SiteStatusChoices.STATUS_ACTIVE,
             },
         ]
 
@@ -261,9 +277,11 @@ class RackGroupTest(APITestCase):
 
         self.site1 = Site.objects.create(name='Test Site 1', slug='test-site-1')
         self.site2 = Site.objects.create(name='Test Site 2', slug='test-site-2')
-        self.rackgroup1 = RackGroup.objects.create(site=self.site1, name='Test Rack Group 1', slug='test-rack-group-1')
-        self.rackgroup2 = RackGroup.objects.create(site=self.site1, name='Test Rack Group 2', slug='test-rack-group-2')
-        self.rackgroup3 = RackGroup.objects.create(site=self.site1, name='Test Rack Group 3', slug='test-rack-group-3')
+        self.parent_rackgroup1 = RackGroup.objects.create(site=self.site1, name='Parent Rack Group 1', slug='parent-rack-group-1')
+        self.parent_rackgroup2 = RackGroup.objects.create(site=self.site2, name='Parent Rack Group 2', slug='parent-rack-group-2')
+        self.rackgroup1 = RackGroup.objects.create(site=self.site1, name='Rack Group 1', slug='rack-group-1', parent=self.parent_rackgroup1)
+        self.rackgroup2 = RackGroup.objects.create(site=self.site1, name='Rack Group 2', slug='rack-group-2', parent=self.parent_rackgroup1)
+        self.rackgroup3 = RackGroup.objects.create(site=self.site1, name='Rack Group 3', slug='rack-group-3', parent=self.parent_rackgroup1)
 
     def test_get_rackgroup(self):
 
@@ -277,7 +295,7 @@ class RackGroupTest(APITestCase):
         url = reverse('dcim-api:rackgroup-list')
         response = self.client.get(url, **self.header)
 
-        self.assertEqual(response.data['count'], 3)
+        self.assertEqual(response.data['count'], 5)
 
     def test_list_rackgroups_brief(self):
 
@@ -292,20 +310,22 @@ class RackGroupTest(APITestCase):
     def test_create_rackgroup(self):
 
         data = {
-            'name': 'Test Rack Group 4',
-            'slug': 'test-rack-group-4',
+            'name': 'Rack Group 4',
+            'slug': 'rack-group-4',
             'site': self.site1.pk,
+            'parent': self.parent_rackgroup1.pk,
         }
 
         url = reverse('dcim-api:rackgroup-list')
         response = self.client.post(url, data, format='json', **self.header)
 
         self.assertHttpStatus(response, status.HTTP_201_CREATED)
-        self.assertEqual(RackGroup.objects.count(), 4)
+        self.assertEqual(RackGroup.objects.count(), 6)
         rackgroup4 = RackGroup.objects.get(pk=response.data['id'])
         self.assertEqual(rackgroup4.name, data['name'])
         self.assertEqual(rackgroup4.slug, data['slug'])
         self.assertEqual(rackgroup4.site_id, data['site'])
+        self.assertEqual(rackgroup4.parent_id, data['parent'])
 
     def test_create_rackgroup_bulk(self):
 
@@ -314,16 +334,19 @@ class RackGroupTest(APITestCase):
                 'name': 'Test Rack Group 4',
                 'slug': 'test-rack-group-4',
                 'site': self.site1.pk,
+                'parent': self.parent_rackgroup1.pk,
             },
             {
                 'name': 'Test Rack Group 5',
                 'slug': 'test-rack-group-5',
                 'site': self.site1.pk,
+                'parent': self.parent_rackgroup1.pk,
             },
             {
                 'name': 'Test Rack Group 6',
                 'slug': 'test-rack-group-6',
                 'site': self.site1.pk,
+                'parent': self.parent_rackgroup1.pk,
             },
         ]
 
@@ -331,7 +354,7 @@ class RackGroupTest(APITestCase):
         response = self.client.post(url, data, format='json', **self.header)
 
         self.assertHttpStatus(response, status.HTTP_201_CREATED)
-        self.assertEqual(RackGroup.objects.count(), 6)
+        self.assertEqual(RackGroup.objects.count(), 8)
         self.assertEqual(response.data[0]['name'], data[0]['name'])
         self.assertEqual(response.data[1]['name'], data[1]['name'])
         self.assertEqual(response.data[2]['name'], data[2]['name'])
@@ -342,17 +365,19 @@ class RackGroupTest(APITestCase):
             'name': 'Test Rack Group X',
             'slug': 'test-rack-group-x',
             'site': self.site2.pk,
+            'parent': self.parent_rackgroup2.pk,
         }
 
         url = reverse('dcim-api:rackgroup-detail', kwargs={'pk': self.rackgroup1.pk})
         response = self.client.put(url, data, format='json', **self.header)
 
         self.assertHttpStatus(response, status.HTTP_200_OK)
-        self.assertEqual(RackGroup.objects.count(), 3)
+        self.assertEqual(RackGroup.objects.count(), 5)
         rackgroup1 = RackGroup.objects.get(pk=response.data['id'])
         self.assertEqual(rackgroup1.name, data['name'])
         self.assertEqual(rackgroup1.slug, data['slug'])
         self.assertEqual(rackgroup1.site_id, data['site'])
+        self.assertEqual(rackgroup1.parent_id, data['parent'])
 
     def test_delete_rackgroup(self):
 
@@ -360,7 +385,7 @@ class RackGroupTest(APITestCase):
         response = self.client.delete(url, **self.header)
 
         self.assertHttpStatus(response, status.HTTP_204_NO_CONTENT)
-        self.assertEqual(RackGroup.objects.count(), 2)
+        self.assertEqual(RackGroup.objects.count(), 4)
 
 
 class RackRoleTest(APITestCase):
@@ -500,12 +525,42 @@ class RackTest(APITestCase):
 
         self.assertEqual(response.data['name'], self.rack1.name)
 
-    def test_get_rack_units(self):
+    def test_get_elevation_rack_units(self):
 
-        url = reverse('dcim-api:rack-units', kwargs={'pk': self.rack1.pk})
+        url = '{}?q=3'.format(reverse('dcim-api:rack-elevation', kwargs={'pk': self.rack1.pk}))
+        response = self.client.get(url, **self.header)
+
+        self.assertEqual(response.data['count'], 13)
+
+        url = '{}?q=U3'.format(reverse('dcim-api:rack-elevation', kwargs={'pk': self.rack1.pk}))
+        response = self.client.get(url, **self.header)
+
+        self.assertEqual(response.data['count'], 11)
+
+        url = '{}?q=10'.format(reverse('dcim-api:rack-elevation', kwargs={'pk': self.rack1.pk}))
+        response = self.client.get(url, **self.header)
+
+        self.assertEqual(response.data['count'], 1)
+
+        url = '{}?q=U20'.format(reverse('dcim-api:rack-elevation', kwargs={'pk': self.rack1.pk}))
+        response = self.client.get(url, **self.header)
+
+        self.assertEqual(response.data['count'], 1)
+
+    def test_get_rack_elevation(self):
+
+        url = reverse('dcim-api:rack-elevation', kwargs={'pk': self.rack1.pk})
         response = self.client.get(url, **self.header)
 
         self.assertEqual(response.data['count'], 42)
+
+    def test_get_rack_elevation_svg(self):
+
+        url = '{}?render=svg'.format(reverse('dcim-api:rack-elevation', kwargs={'pk': self.rack1.pk}))
+        response = self.client.get(url, **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+        self.assertEqual(response.get('Content-Type'), 'image/svg+xml')
 
     def test_list_racks(self):
 
@@ -1344,13 +1399,13 @@ class InterfaceTemplateTest(APITestCase):
             manufacturer=self.manufacturer, model='Test Device Type 1', slug='test-device-type-1'
         )
         self.interfacetemplate1 = InterfaceTemplate.objects.create(
-            device_type=self.devicetype, name='Test Interface Template 1'
+            device_type=self.devicetype, name='Test Interface Template 1', type='1000base-t'
         )
         self.interfacetemplate2 = InterfaceTemplate.objects.create(
-            device_type=self.devicetype, name='Test Interface Template 2'
+            device_type=self.devicetype, name='Test Interface Template 2', type='1000base-t'
         )
         self.interfacetemplate3 = InterfaceTemplate.objects.create(
-            device_type=self.devicetype, name='Test Interface Template 3'
+            device_type=self.devicetype, name='Test Interface Template 3', type='1000base-t'
         )
 
     def test_get_interfacetemplate(self):
@@ -1372,6 +1427,7 @@ class InterfaceTemplateTest(APITestCase):
         data = {
             'device_type': self.devicetype.pk,
             'name': 'Test Interface Template 4',
+            'type': '1000base-t',
         }
 
         url = reverse('dcim-api:interfacetemplate-list')
@@ -1389,14 +1445,17 @@ class InterfaceTemplateTest(APITestCase):
             {
                 'device_type': self.devicetype.pk,
                 'name': 'Test Interface Template 4',
+                'type': '1000base-t',
             },
             {
                 'device_type': self.devicetype.pk,
                 'name': 'Test Interface Template 5',
+                'type': '1000base-t',
             },
             {
                 'device_type': self.devicetype.pk,
                 'name': 'Test Interface Template 6',
+                'type': '1000base-t',
             },
         ]
 
@@ -1414,6 +1473,7 @@ class InterfaceTemplateTest(APITestCase):
         data = {
             'device_type': self.devicetype.pk,
             'name': 'Test Interface Template X',
+            'type': '1000base-x-gbic',
         }
 
         url = reverse('dcim-api:interfacetemplate-detail', kwargs={'pk': self.interfacetemplate1.pk})
@@ -1812,6 +1872,31 @@ class DeviceTest(APITestCase):
         self.assertEqual(response.data['device_role']['id'], self.devicerole1.pk)
         self.assertEqual(response.data['cluster']['id'], self.cluster1.pk)
 
+    def test_get_device_graphs(self):
+
+        device_ct = ContentType.objects.get_for_model(Device)
+        self.graph1 = Graph.objects.create(
+            type=device_ct,
+            name='Test Graph 1',
+            source='http://example.com/graphs.py?device={{ obj.name }}&foo=1'
+        )
+        self.graph2 = Graph.objects.create(
+            type=device_ct,
+            name='Test Graph 2',
+            source='http://example.com/graphs.py?device={{ obj.name }}&foo=2'
+        )
+        self.graph3 = Graph.objects.create(
+            type=device_ct,
+            name='Test Graph 3',
+            source='http://example.com/graphs.py?device={{ obj.name }}&foo=3'
+        )
+
+        url = reverse('dcim-api:device-graphs', kwargs={'pk': self.device1.pk})
+        response = self.client.get(url, **self.header)
+
+        self.assertEqual(len(response.data), 3)
+        self.assertEqual(response.data[0]['embed_url'], 'http://example.com/graphs.py?device=Test Device 1&foo=1')
+
     def test_list_devices(self):
 
         url = reverse('dcim-api:device-list')
@@ -1933,6 +2018,20 @@ class DeviceTest(APITestCase):
 
         self.assertFalse('config_context' in response.data['results'][0])
 
+    def test_unique_name_per_site_constraint(self):
+
+        data = {
+            'device_type': self.devicetype1.pk,
+            'device_role': self.devicerole1.pk,
+            'name': 'Test Device 1',
+            'site': self.site1.pk,
+        }
+
+        url = reverse('dcim-api:device-list')
+        response = self.client.post(url, data, format='json', **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
+
 
 class ConsolePortTest(APITestCase):
 
@@ -2046,6 +2145,31 @@ class ConsolePortTest(APITestCase):
         self.assertHttpStatus(response, status.HTTP_204_NO_CONTENT)
         self.assertEqual(ConsolePort.objects.count(), 2)
 
+    def test_trace_consoleport(self):
+
+        peer_device = Device.objects.create(
+            site=Site.objects.first(),
+            device_type=DeviceType.objects.first(),
+            device_role=DeviceRole.objects.first(),
+            name='Peer Device'
+        )
+        console_server_port = ConsoleServerPort.objects.create(
+            device=peer_device,
+            name='Console Server Port 1'
+        )
+        cable = Cable(termination_a=self.consoleport1, termination_b=console_server_port, label='Cable 1')
+        cable.save()
+
+        url = reverse('dcim-api:consoleport-trace', kwargs={'pk': self.consoleport1.pk})
+        response = self.client.get(url, **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        segment1 = response.data[0]
+        self.assertEqual(segment1[0]['name'], self.consoleport1.name)
+        self.assertEqual(segment1[1]['label'], cable.label)
+        self.assertEqual(segment1[2]['name'], console_server_port.name)
+
 
 class ConsoleServerPortTest(APITestCase):
 
@@ -2156,6 +2280,31 @@ class ConsoleServerPortTest(APITestCase):
 
         self.assertHttpStatus(response, status.HTTP_204_NO_CONTENT)
         self.assertEqual(ConsoleServerPort.objects.count(), 2)
+
+    def test_trace_consoleserverport(self):
+
+        peer_device = Device.objects.create(
+            site=Site.objects.first(),
+            device_type=DeviceType.objects.first(),
+            device_role=DeviceRole.objects.first(),
+            name='Peer Device'
+        )
+        console_port = ConsolePort.objects.create(
+            device=peer_device,
+            name='Console Port 1'
+        )
+        cable = Cable(termination_a=self.consoleserverport1, termination_b=console_port, label='Cable 1')
+        cable.save()
+
+        url = reverse('dcim-api:consoleserverport-trace', kwargs={'pk': self.consoleserverport1.pk})
+        response = self.client.get(url, **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        segment1 = response.data[0]
+        self.assertEqual(segment1[0]['name'], self.consoleserverport1.name)
+        self.assertEqual(segment1[1]['label'], cable.label)
+        self.assertEqual(segment1[2]['name'], console_port.name)
 
 
 class PowerPortTest(APITestCase):
@@ -2270,6 +2419,31 @@ class PowerPortTest(APITestCase):
         self.assertHttpStatus(response, status.HTTP_204_NO_CONTENT)
         self.assertEqual(PowerPort.objects.count(), 2)
 
+    def test_trace_powerport(self):
+
+        peer_device = Device.objects.create(
+            site=Site.objects.first(),
+            device_type=DeviceType.objects.first(),
+            device_role=DeviceRole.objects.first(),
+            name='Peer Device'
+        )
+        power_outlet = PowerOutlet.objects.create(
+            device=peer_device,
+            name='Power Outlet 1'
+        )
+        cable = Cable(termination_a=self.powerport1, termination_b=power_outlet, label='Cable 1')
+        cable.save()
+
+        url = reverse('dcim-api:powerport-trace', kwargs={'pk': self.powerport1.pk})
+        response = self.client.get(url, **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        segment1 = response.data[0]
+        self.assertEqual(segment1[0]['name'], self.powerport1.name)
+        self.assertEqual(segment1[1]['label'], cable.label)
+        self.assertEqual(segment1[2]['name'], power_outlet.name)
+
 
 class PowerOutletTest(APITestCase):
 
@@ -2381,6 +2555,31 @@ class PowerOutletTest(APITestCase):
         self.assertHttpStatus(response, status.HTTP_204_NO_CONTENT)
         self.assertEqual(PowerOutlet.objects.count(), 2)
 
+    def test_trace_poweroutlet(self):
+
+        peer_device = Device.objects.create(
+            site=Site.objects.first(),
+            device_type=DeviceType.objects.first(),
+            device_role=DeviceRole.objects.first(),
+            name='Peer Device'
+        )
+        power_port = PowerPort.objects.create(
+            device=peer_device,
+            name='Power Port 1'
+        )
+        cable = Cable(termination_a=self.poweroutlet1, termination_b=power_port, label='Cable 1')
+        cable.save()
+
+        url = reverse('dcim-api:poweroutlet-trace', kwargs={'pk': self.poweroutlet1.pk})
+        response = self.client.get(url, **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        segment1 = response.data[0]
+        self.assertEqual(segment1[0]['name'], self.poweroutlet1.name)
+        self.assertEqual(segment1[1]['label'], cable.label)
+        self.assertEqual(segment1[2]['name'], power_port.name)
+
 
 class InterfaceTest(APITestCase):
 
@@ -2399,9 +2598,9 @@ class InterfaceTest(APITestCase):
         self.device = Device.objects.create(
             device_type=devicetype, device_role=devicerole, name='Test Device 1', site=site
         )
-        self.interface1 = Interface.objects.create(device=self.device, name='Test Interface 1')
-        self.interface2 = Interface.objects.create(device=self.device, name='Test Interface 2')
-        self.interface3 = Interface.objects.create(device=self.device, name='Test Interface 3')
+        self.interface1 = Interface.objects.create(device=self.device, name='Test Interface 1', type='1000base-t')
+        self.interface2 = Interface.objects.create(device=self.device, name='Test Interface 2', type='1000base-t')
+        self.interface3 = Interface.objects.create(device=self.device, name='Test Interface 3', type='1000base-t')
 
         self.tenant = Tenant.objects.create(name="Test Tenant 1", slug="test-tenant-1")
 
@@ -2419,16 +2618,20 @@ class InterfaceTest(APITestCase):
 
     def test_get_interface_graphs(self):
 
+        interface_ct = ContentType.objects.get_for_model(Interface)
         self.graph1 = Graph.objects.create(
-            type=GRAPH_TYPE_INTERFACE, name='Test Graph 1',
+            type=interface_ct,
+            name='Test Graph 1',
             source='http://example.com/graphs.py?interface={{ obj.name }}&foo=1'
         )
         self.graph2 = Graph.objects.create(
-            type=GRAPH_TYPE_INTERFACE, name='Test Graph 2',
+            type=interface_ct,
+            name='Test Graph 2',
             source='http://example.com/graphs.py?interface={{ obj.name }}&foo=2'
         )
         self.graph3 = Graph.objects.create(
-            type=GRAPH_TYPE_INTERFACE, name='Test Graph 3',
+            type=interface_ct,
+            name='Test Graph 3',
             source='http://example.com/graphs.py?interface={{ obj.name }}&foo=3'
         )
 
@@ -2460,6 +2663,7 @@ class InterfaceTest(APITestCase):
         data = {
             'device': self.device.pk,
             'name': 'Test Interface 4',
+            'type': '1000base-t',
         }
 
         url = reverse('dcim-api:interface-list')
@@ -2476,7 +2680,8 @@ class InterfaceTest(APITestCase):
         data = {
             'device': self.device.pk,
             'name': 'Test Interface 4',
-            'mode': IFACE_MODE_TAGGED,
+            'type': '1000base-t',
+            'mode': InterfaceModeChoices.MODE_TAGGED,
             'untagged_vlan': self.vlan3.id,
             'tagged_vlans': [self.vlan1.id, self.vlan2.id],
         }
@@ -2497,14 +2702,17 @@ class InterfaceTest(APITestCase):
             {
                 'device': self.device.pk,
                 'name': 'Test Interface 4',
+                'type': '1000base-t',
             },
             {
                 'device': self.device.pk,
                 'name': 'Test Interface 5',
+                'type': '1000base-t',
             },
             {
                 'device': self.device.pk,
                 'name': 'Test Interface 6',
+                'type': '1000base-t',
             },
         ]
 
@@ -2523,21 +2731,24 @@ class InterfaceTest(APITestCase):
             {
                 'device': self.device.pk,
                 'name': 'Test Interface 4',
-                'mode': IFACE_MODE_TAGGED,
+                'type': '1000base-t',
+                'mode': InterfaceModeChoices.MODE_TAGGED,
                 'untagged_vlan': self.vlan2.id,
                 'tagged_vlans': [self.vlan1.id],
             },
             {
                 'device': self.device.pk,
                 'name': 'Test Interface 5',
-                'mode': IFACE_MODE_TAGGED,
+                'type': '1000base-t',
+                'mode': InterfaceModeChoices.MODE_TAGGED,
                 'untagged_vlan': self.vlan2.id,
                 'tagged_vlans': [self.vlan1.id],
             },
             {
                 'device': self.device.pk,
                 'name': 'Test Interface 6',
-                'mode': IFACE_MODE_TAGGED,
+                'type': '1000base-t',
+                'mode': InterfaceModeChoices.MODE_TAGGED,
                 'untagged_vlan': self.vlan2.id,
                 'tagged_vlans': [self.vlan1.id],
             },
@@ -2556,12 +2767,13 @@ class InterfaceTest(APITestCase):
     def test_update_interface(self):
 
         lag_interface = Interface.objects.create(
-            device=self.device, name='Test LAG Interface', type=IFACE_TYPE_LAG
+            device=self.device, name='Test LAG Interface', type=InterfaceTypeChoices.TYPE_LAG
         )
 
         data = {
             'device': self.device.pk,
             'name': 'Test Interface X',
+            'type': '1000base-x-gbic',
             'lag': lag_interface.pk,
         }
 
@@ -2583,6 +2795,262 @@ class InterfaceTest(APITestCase):
         self.assertEqual(Interface.objects.count(), 2)
 
 
+class FrontPortTest(APITestCase):
+
+    def setUp(self):
+
+        super().setUp()
+
+        site = Site.objects.create(name='Test Site 1', slug='test-site-1')
+        manufacturer = Manufacturer.objects.create(name='Test Manufacturer 1', slug='test-manufacturer-1')
+        devicetype = DeviceType.objects.create(
+            manufacturer=manufacturer, model='Test Device Type 1', slug='test-device-type-1'
+        )
+        devicerole = DeviceRole.objects.create(
+            name='Test Device Role 1', slug='test-device-role-1', color='ff0000'
+        )
+        self.device = Device.objects.create(
+            device_type=devicetype, device_role=devicerole, name='Test Device 1', site=site
+        )
+        rear_ports = RearPort.objects.bulk_create((
+            RearPort(device=self.device, name='Rear Port 1', type=PortTypeChoices.TYPE_8P8C),
+            RearPort(device=self.device, name='Rear Port 2', type=PortTypeChoices.TYPE_8P8C),
+            RearPort(device=self.device, name='Rear Port 3', type=PortTypeChoices.TYPE_8P8C),
+            RearPort(device=self.device, name='Rear Port 4', type=PortTypeChoices.TYPE_8P8C),
+            RearPort(device=self.device, name='Rear Port 5', type=PortTypeChoices.TYPE_8P8C),
+            RearPort(device=self.device, name='Rear Port 6', type=PortTypeChoices.TYPE_8P8C),
+        ))
+        self.frontport1 = FrontPort.objects.create(device=self.device, name='Front Port 1', type=PortTypeChoices.TYPE_8P8C, rear_port=rear_ports[0])
+        self.frontport3 = FrontPort.objects.create(device=self.device, name='Front Port 2', type=PortTypeChoices.TYPE_8P8C, rear_port=rear_ports[1])
+        self.frontport1 = FrontPort.objects.create(device=self.device, name='Front Port 3', type=PortTypeChoices.TYPE_8P8C, rear_port=rear_ports[2])
+
+    def test_get_frontport(self):
+
+        url = reverse('dcim-api:frontport-detail', kwargs={'pk': self.frontport1.pk})
+        response = self.client.get(url, **self.header)
+
+        self.assertEqual(response.data['name'], self.frontport1.name)
+
+    def test_list_frontports(self):
+
+        url = reverse('dcim-api:frontport-list')
+        response = self.client.get(url, **self.header)
+
+        self.assertEqual(response.data['count'], 3)
+
+    def test_list_frontports_brief(self):
+
+        url = reverse('dcim-api:frontport-list')
+        response = self.client.get('{}?brief=1'.format(url), **self.header)
+
+        self.assertEqual(
+            sorted(response.data['results'][0]),
+            ['cable', 'device', 'id', 'name', 'url']
+        )
+
+    def test_create_frontport(self):
+
+        rear_port = RearPort.objects.get(name='Rear Port 4')
+        data = {
+            'device': self.device.pk,
+            'name': 'Front Port 4',
+            'type': PortTypeChoices.TYPE_8P8C,
+            'rear_port': rear_port.pk,
+            'rear_port_position': 1,
+        }
+
+        url = reverse('dcim-api:frontport-list')
+        response = self.client.post(url, data, format='json', **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+        self.assertEqual(FrontPort.objects.count(), 4)
+        frontport4 = FrontPort.objects.get(pk=response.data['id'])
+        self.assertEqual(frontport4.device_id, data['device'])
+        self.assertEqual(frontport4.name, data['name'])
+
+    def test_create_frontport_bulk(self):
+
+        rear_ports = RearPort.objects.filter(frontports__isnull=True)
+        data = [
+            {
+                'device': self.device.pk,
+                'name': 'Front Port 4',
+                'type': PortTypeChoices.TYPE_8P8C,
+                'rear_port': rear_ports[0].pk,
+                'rear_port_position': 1,
+            },
+            {
+                'device': self.device.pk,
+                'name': 'Front Port 5',
+                'type': PortTypeChoices.TYPE_8P8C,
+                'rear_port': rear_ports[1].pk,
+                'rear_port_position': 1,
+            },
+            {
+                'device': self.device.pk,
+                'name': 'Front Port 6',
+                'type': PortTypeChoices.TYPE_8P8C,
+                'rear_port': rear_ports[2].pk,
+                'rear_port_position': 1,
+            },
+        ]
+
+        url = reverse('dcim-api:frontport-list')
+        response = self.client.post(url, data, format='json', **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+        self.assertEqual(FrontPort.objects.count(), 6)
+        self.assertEqual(response.data[0]['name'], data[0]['name'])
+        self.assertEqual(response.data[1]['name'], data[1]['name'])
+        self.assertEqual(response.data[2]['name'], data[2]['name'])
+
+    def test_update_frontport(self):
+
+        rear_port = RearPort.objects.get(name='Rear Port 4')
+        data = {
+            'device': self.device.pk,
+            'name': 'Front Port X',
+            'type': PortTypeChoices.TYPE_110_PUNCH,
+            'rear_port': rear_port.pk,
+            'rear_port_position': 1,
+        }
+
+        url = reverse('dcim-api:frontport-detail', kwargs={'pk': self.frontport1.pk})
+        response = self.client.put(url, data, format='json', **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+        self.assertEqual(FrontPort.objects.count(), 3)
+        frontport1 = FrontPort.objects.get(pk=response.data['id'])
+        self.assertEqual(frontport1.name, data['name'])
+        self.assertEqual(frontport1.type, data['type'])
+        self.assertEqual(frontport1.rear_port, rear_port)
+
+    def test_delete_frontport(self):
+
+        url = reverse('dcim-api:frontport-detail', kwargs={'pk': self.frontport1.pk})
+        response = self.client.delete(url, **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(FrontPort.objects.count(), 2)
+
+
+class RearPortTest(APITestCase):
+
+    def setUp(self):
+
+        super().setUp()
+
+        site = Site.objects.create(name='Test Site 1', slug='test-site-1')
+        manufacturer = Manufacturer.objects.create(name='Test Manufacturer 1', slug='test-manufacturer-1')
+        devicetype = DeviceType.objects.create(
+            manufacturer=manufacturer, model='Test Device Type 1', slug='test-device-type-1'
+        )
+        devicerole = DeviceRole.objects.create(
+            name='Test Device Role 1', slug='test-device-role-1', color='ff0000'
+        )
+        self.device = Device.objects.create(
+            device_type=devicetype, device_role=devicerole, name='Test Device 1', site=site
+        )
+        self.rearport1 = RearPort.objects.create(device=self.device, type=PortTypeChoices.TYPE_8P8C, name='Rear Port 1')
+        self.rearport3 = RearPort.objects.create(device=self.device, type=PortTypeChoices.TYPE_8P8C, name='Rear Port 2')
+        self.rearport1 = RearPort.objects.create(device=self.device, type=PortTypeChoices.TYPE_8P8C, name='Rear Port 3')
+
+    def test_get_rearport(self):
+
+        url = reverse('dcim-api:rearport-detail', kwargs={'pk': self.rearport1.pk})
+        response = self.client.get(url, **self.header)
+
+        self.assertEqual(response.data['name'], self.rearport1.name)
+
+    def test_list_rearports(self):
+
+        url = reverse('dcim-api:rearport-list')
+        response = self.client.get(url, **self.header)
+
+        self.assertEqual(response.data['count'], 3)
+
+    def test_list_rearports_brief(self):
+
+        url = reverse('dcim-api:rearport-list')
+        response = self.client.get('{}?brief=1'.format(url), **self.header)
+
+        self.assertEqual(
+            sorted(response.data['results'][0]),
+            ['cable', 'device', 'id', 'name', 'url']
+        )
+
+    def test_create_rearport(self):
+
+        data = {
+            'device': self.device.pk,
+            'name': 'Front Port 4',
+            'type': PortTypeChoices.TYPE_8P8C,
+        }
+
+        url = reverse('dcim-api:rearport-list')
+        response = self.client.post(url, data, format='json', **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+        self.assertEqual(RearPort.objects.count(), 4)
+        rearport4 = RearPort.objects.get(pk=response.data['id'])
+        self.assertEqual(rearport4.device_id, data['device'])
+        self.assertEqual(rearport4.name, data['name'])
+
+    def test_create_rearport_bulk(self):
+
+        data = [
+            {
+                'device': self.device.pk,
+                'name': 'Rear Port 4',
+                'type': PortTypeChoices.TYPE_8P8C,
+            },
+            {
+                'device': self.device.pk,
+                'name': 'Rear Port 5',
+                'type': PortTypeChoices.TYPE_8P8C,
+            },
+            {
+                'device': self.device.pk,
+                'name': 'Rear Port 6',
+                'type': PortTypeChoices.TYPE_8P8C,
+            },
+        ]
+
+        url = reverse('dcim-api:rearport-list')
+        response = self.client.post(url, data, format='json', **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+        self.assertEqual(RearPort.objects.count(), 6)
+        self.assertEqual(response.data[0]['name'], data[0]['name'])
+        self.assertEqual(response.data[1]['name'], data[1]['name'])
+        self.assertEqual(response.data[2]['name'], data[2]['name'])
+
+    def test_update_rearport(self):
+
+        data = {
+            'device': self.device.pk,
+            'name': 'Front Port X',
+            'type': PortTypeChoices.TYPE_110_PUNCH
+        }
+
+        url = reverse('dcim-api:rearport-detail', kwargs={'pk': self.rearport1.pk})
+        response = self.client.put(url, data, format='json', **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+        self.assertEqual(RearPort.objects.count(), 3)
+        rearport1 = RearPort.objects.get(pk=response.data['id'])
+        self.assertEqual(rearport1.name, data['name'])
+        self.assertEqual(rearport1.type, data['type'])
+
+    def test_delete_rearport(self):
+
+        url = reverse('dcim-api:rearport-detail', kwargs={'pk': self.rearport1.pk})
+        response = self.client.delete(url, **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(RearPort.objects.count(), 2)
+
+
 class DeviceBayTest(APITestCase):
 
     def setUp(self):
@@ -2593,11 +3061,11 @@ class DeviceBayTest(APITestCase):
         manufacturer = Manufacturer.objects.create(name='Test Manufacturer 1', slug='test-manufacturer-1')
         self.devicetype1 = DeviceType.objects.create(
             manufacturer=manufacturer, model='Parent Device Type', slug='parent-device-type',
-            subdevice_role=SUBDEVICE_ROLE_PARENT
+            subdevice_role=SubdeviceRoleChoices.ROLE_PARENT
         )
         self.devicetype2 = DeviceType.objects.create(
             manufacturer=manufacturer, model='Child Device Type', slug='child-device-type',
-            subdevice_role=SUBDEVICE_ROLE_CHILD
+            subdevice_role=SubdeviceRoleChoices.ROLE_CHILD
         )
         devicerole = DeviceRole.objects.create(
             name='Test Device Role 1', slug='test-device-role-1', color='ff0000'
@@ -2844,7 +3312,7 @@ class CableTest(APITestCase):
         )
         for device in [self.device1, self.device2]:
             for i in range(0, 10):
-                Interface(device=device, type=IFACE_TYPE_1GE_FIXED, name='eth{}'.format(i)).save()
+                Interface(device=device, type=InterfaceTypeChoices.TYPE_1GE_FIXED, name='eth{}'.format(i)).save()
 
         self.cable1 = Cable(
             termination_a=self.device1.interfaces.get(name='eth0'),
@@ -2888,7 +3356,7 @@ class CableTest(APITestCase):
             'termination_a_id': interface_a.pk,
             'termination_b_type': 'dcim.interface',
             'termination_b_id': interface_b.pk,
-            'status': CONNECTION_STATUS_PLANNED,
+            'status': CableStatusChoices.STATUS_PLANNED,
             'label': 'Test Cable 4',
         }
 
@@ -2942,7 +3410,7 @@ class CableTest(APITestCase):
 
         data = {
             'label': 'Test Cable X',
-            'status': CONNECTION_STATUS_CONNECTED,
+            'status': CableStatusChoices.STATUS_CONNECTED,
         }
 
         url = reverse('dcim-api:cable-detail', kwargs={'pk': self.cable1.pk})
@@ -3036,16 +3504,16 @@ class ConnectionTest(APITestCase):
             device=self.device2, name='Test Console Server Port 1'
         )
         rearport1 = RearPort.objects.create(
-            device=self.panel1, name='Test Rear Port 1', type=PORT_TYPE_8P8C
+            device=self.panel1, name='Test Rear Port 1', type=PortTypeChoices.TYPE_8P8C
         )
         frontport1 = FrontPort.objects.create(
-            device=self.panel1, name='Test Front Port 1', type=PORT_TYPE_8P8C, rear_port=rearport1
+            device=self.panel1, name='Test Front Port 1', type=PortTypeChoices.TYPE_8P8C, rear_port=rearport1
         )
         rearport2 = RearPort.objects.create(
-            device=self.panel2, name='Test Rear Port 2', type=PORT_TYPE_8P8C
+            device=self.panel2, name='Test Rear Port 2', type=PortTypeChoices.TYPE_8P8C
         )
         frontport2 = FrontPort.objects.create(
-            device=self.panel2, name='Test Front Port 2', type=PORT_TYPE_8P8C, rear_port=rearport2
+            device=self.panel2, name='Test Front Port 2', type=PortTypeChoices.TYPE_8P8C, rear_port=rearport2
         )
 
         url = reverse('dcim-api:cable-list')
@@ -3164,16 +3632,16 @@ class ConnectionTest(APITestCase):
             device=self.device2, name='Test Interface 2'
         )
         rearport1 = RearPort.objects.create(
-            device=self.panel1, name='Test Rear Port 1', type=PORT_TYPE_8P8C
+            device=self.panel1, name='Test Rear Port 1', type=PortTypeChoices.TYPE_8P8C
         )
         frontport1 = FrontPort.objects.create(
-            device=self.panel1, name='Test Front Port 1', type=PORT_TYPE_8P8C, rear_port=rearport1
+            device=self.panel1, name='Test Front Port 1', type=PortTypeChoices.TYPE_8P8C, rear_port=rearport1
         )
         rearport2 = RearPort.objects.create(
-            device=self.panel2, name='Test Rear Port 2', type=PORT_TYPE_8P8C
+            device=self.panel2, name='Test Rear Port 2', type=PortTypeChoices.TYPE_8P8C
         )
         frontport2 = FrontPort.objects.create(
-            device=self.panel2, name='Test Front Port 2', type=PORT_TYPE_8P8C, rear_port=rearport2
+            device=self.panel2, name='Test Front Port 2', type=PortTypeChoices.TYPE_8P8C, rear_port=rearport2
         )
 
         url = reverse('dcim-api:cable-list')
@@ -3275,16 +3743,16 @@ class ConnectionTest(APITestCase):
             circuit=circuit, term_side='A', site=self.site, port_speed=10000
         )
         rearport1 = RearPort.objects.create(
-            device=self.panel1, name='Test Rear Port 1', type=PORT_TYPE_8P8C
+            device=self.panel1, name='Test Rear Port 1', type=PortTypeChoices.TYPE_8P8C
         )
         frontport1 = FrontPort.objects.create(
-            device=self.panel1, name='Test Front Port 1', type=PORT_TYPE_8P8C, rear_port=rearport1
+            device=self.panel1, name='Test Front Port 1', type=PortTypeChoices.TYPE_8P8C, rear_port=rearport1
         )
         rearport2 = RearPort.objects.create(
-            device=self.panel2, name='Test Rear Port 2', type=PORT_TYPE_8P8C
+            device=self.panel2, name='Test Rear Port 2', type=PortTypeChoices.TYPE_8P8C
         )
         frontport2 = FrontPort.objects.create(
-            device=self.panel2, name='Test Front Port 2', type=PORT_TYPE_8P8C, rear_port=rearport2
+            device=self.panel2, name='Test Front Port 2', type=PortTypeChoices.TYPE_8P8C, rear_port=rearport2
         )
 
         url = reverse('dcim-api:cable-list')
@@ -3413,23 +3881,23 @@ class VirtualChassisTest(APITestCase):
             device_type=device_type, device_role=device_role, name='StackSwitch9', site=site
         )
         for i in range(0, 13):
-            Interface.objects.create(device=self.device1, name='1/{}'.format(i), type=IFACE_TYPE_1GE_FIXED)
+            Interface.objects.create(device=self.device1, name='1/{}'.format(i), type=InterfaceTypeChoices.TYPE_1GE_FIXED)
         for i in range(0, 13):
-            Interface.objects.create(device=self.device2, name='2/{}'.format(i), type=IFACE_TYPE_1GE_FIXED)
+            Interface.objects.create(device=self.device2, name='2/{}'.format(i), type=InterfaceTypeChoices.TYPE_1GE_FIXED)
         for i in range(0, 13):
-            Interface.objects.create(device=self.device3, name='3/{}'.format(i), type=IFACE_TYPE_1GE_FIXED)
+            Interface.objects.create(device=self.device3, name='3/{}'.format(i), type=InterfaceTypeChoices.TYPE_1GE_FIXED)
         for i in range(0, 13):
-            Interface.objects.create(device=self.device4, name='1/{}'.format(i), type=IFACE_TYPE_1GE_FIXED)
+            Interface.objects.create(device=self.device4, name='1/{}'.format(i), type=InterfaceTypeChoices.TYPE_1GE_FIXED)
         for i in range(0, 13):
-            Interface.objects.create(device=self.device5, name='2/{}'.format(i), type=IFACE_TYPE_1GE_FIXED)
+            Interface.objects.create(device=self.device5, name='2/{}'.format(i), type=InterfaceTypeChoices.TYPE_1GE_FIXED)
         for i in range(0, 13):
-            Interface.objects.create(device=self.device6, name='3/{}'.format(i), type=IFACE_TYPE_1GE_FIXED)
+            Interface.objects.create(device=self.device6, name='3/{}'.format(i), type=InterfaceTypeChoices.TYPE_1GE_FIXED)
         for i in range(0, 13):
-            Interface.objects.create(device=self.device7, name='1/{}'.format(i), type=IFACE_TYPE_1GE_FIXED)
+            Interface.objects.create(device=self.device7, name='1/{}'.format(i), type=InterfaceTypeChoices.TYPE_1GE_FIXED)
         for i in range(0, 13):
-            Interface.objects.create(device=self.device8, name='2/{}'.format(i), type=IFACE_TYPE_1GE_FIXED)
+            Interface.objects.create(device=self.device8, name='2/{}'.format(i), type=InterfaceTypeChoices.TYPE_1GE_FIXED)
         for i in range(0, 13):
-            Interface.objects.create(device=self.device9, name='3/{}'.format(i), type=IFACE_TYPE_1GE_FIXED)
+            Interface.objects.create(device=self.device9, name='3/{}'.format(i), type=InterfaceTypeChoices.TYPE_1GE_FIXED)
 
         # Create two VirtualChassis with three members each
         self.vc1 = VirtualChassis.objects.create(master=self.device1, domain='test-domain-1')
@@ -3681,22 +4149,22 @@ class PowerFeedTest(APITestCase):
             site=self.site1, rack_group=self.rackgroup1, name='Test Power Panel 2'
         )
         self.powerfeed1 = PowerFeed.objects.create(
-            power_panel=self.powerpanel1, rack=self.rack1, name='Test Power Feed 1A', type=POWERFEED_TYPE_PRIMARY
+            power_panel=self.powerpanel1, rack=self.rack1, name='Test Power Feed 1A', type=PowerFeedTypeChoices.TYPE_PRIMARY
         )
         self.powerfeed2 = PowerFeed.objects.create(
-            power_panel=self.powerpanel2, rack=self.rack1, name='Test Power Feed 1B', type=POWERFEED_TYPE_REDUNDANT
+            power_panel=self.powerpanel2, rack=self.rack1, name='Test Power Feed 1B', type=PowerFeedTypeChoices.TYPE_REDUNDANT
         )
         self.powerfeed3 = PowerFeed.objects.create(
-            power_panel=self.powerpanel1, rack=self.rack2, name='Test Power Feed 2A', type=POWERFEED_TYPE_PRIMARY
+            power_panel=self.powerpanel1, rack=self.rack2, name='Test Power Feed 2A', type=PowerFeedTypeChoices.TYPE_PRIMARY
         )
         self.powerfeed4 = PowerFeed.objects.create(
-            power_panel=self.powerpanel2, rack=self.rack2, name='Test Power Feed 2B', type=POWERFEED_TYPE_REDUNDANT
+            power_panel=self.powerpanel2, rack=self.rack2, name='Test Power Feed 2B', type=PowerFeedTypeChoices.TYPE_REDUNDANT
         )
         self.powerfeed5 = PowerFeed.objects.create(
-            power_panel=self.powerpanel1, rack=self.rack3, name='Test Power Feed 3A', type=POWERFEED_TYPE_PRIMARY
+            power_panel=self.powerpanel1, rack=self.rack3, name='Test Power Feed 3A', type=PowerFeedTypeChoices.TYPE_PRIMARY
         )
         self.powerfeed6 = PowerFeed.objects.create(
-            power_panel=self.powerpanel2, rack=self.rack3, name='Test Power Feed 3B', type=POWERFEED_TYPE_REDUNDANT
+            power_panel=self.powerpanel2, rack=self.rack3, name='Test Power Feed 3B', type=PowerFeedTypeChoices.TYPE_REDUNDANT
         )
 
     def test_get_powerfeed(self):
@@ -3729,7 +4197,7 @@ class PowerFeedTest(APITestCase):
             'name': 'Test Power Feed 4A',
             'power_panel': self.powerpanel1.pk,
             'rack': self.rack4.pk,
-            'type': POWERFEED_TYPE_PRIMARY,
+            'type': PowerFeedTypeChoices.TYPE_PRIMARY,
         }
 
         url = reverse('dcim-api:powerfeed-list')
@@ -3749,13 +4217,13 @@ class PowerFeedTest(APITestCase):
                 'name': 'Test Power Feed 4A',
                 'power_panel': self.powerpanel1.pk,
                 'rack': self.rack4.pk,
-                'type': POWERFEED_TYPE_PRIMARY,
+                'type': PowerFeedTypeChoices.TYPE_PRIMARY,
             },
             {
                 'name': 'Test Power Feed 4B',
                 'power_panel': self.powerpanel1.pk,
                 'rack': self.rack4.pk,
-                'type': POWERFEED_TYPE_REDUNDANT,
+                'type': PowerFeedTypeChoices.TYPE_REDUNDANT,
             },
         ]
 
@@ -3772,7 +4240,7 @@ class PowerFeedTest(APITestCase):
         data = {
             'name': 'Test Power Feed X',
             'rack': self.rack4.pk,
-            'type': POWERFEED_TYPE_REDUNDANT,
+            'type': PowerFeedTypeChoices.TYPE_REDUNDANT,
         }
 
         url = reverse('dcim-api:powerfeed-detail', kwargs={'pk': self.powerfeed1.pk})

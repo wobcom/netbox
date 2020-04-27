@@ -1,13 +1,13 @@
 from rest_framework import serializers
 from taggit_serializer.serializers import TaggitSerializer, TagListSerializerField
 
-from circuits.constants import CIRCUIT_STATUS_CHOICES
+from circuits.choices import CircuitStatusChoices
 from circuits.models import Provider, Circuit, CircuitTermination, CircuitType
-from dcim.api.nested_serializers import NestedCableSerializer, NestedSiteSerializer
+from dcim.api.nested_serializers import NestedCableSerializer, NestedInterfaceSerializer, NestedSiteSerializer
 from dcim.api.serializers import ConnectedEndpointSerializer
 from extras.api.customfields import CustomFieldModelSerializer
 from tenancy.api.nested_serializers import NestedTenantSerializer
-from utilities.api import ChoiceField, ValidatedModelSerializer
+from utilities.api import ChoiceField, ValidatedModelSerializer, WritableNestedSerializer
 from .nested_serializers import *
 
 
@@ -36,21 +36,33 @@ class CircuitTypeSerializer(ValidatedModelSerializer):
 
     class Meta:
         model = CircuitType
-        fields = ['id', 'name', 'slug', 'circuit_count']
+        fields = ['id', 'name', 'slug', 'description', 'circuit_count']
+
+
+class CircuitCircuitTerminationSerializer(WritableNestedSerializer):
+    url = serializers.HyperlinkedIdentityField(view_name='circuits-api:circuittermination-detail')
+    site = NestedSiteSerializer()
+    connected_endpoint = NestedInterfaceSerializer()
+
+    class Meta:
+        model = CircuitTermination
+        fields = ['id', 'url', 'site', 'connected_endpoint', 'port_speed', 'upstream_speed', 'xconnect_id']
 
 
 class CircuitSerializer(TaggitSerializer, CustomFieldModelSerializer):
     provider = NestedProviderSerializer()
-    status = ChoiceField(choices=CIRCUIT_STATUS_CHOICES, required=False)
+    status = ChoiceField(choices=CircuitStatusChoices, required=False)
     type = NestedCircuitTypeSerializer()
     tenant = NestedTenantSerializer(required=False, allow_null=True)
+    termination_a = CircuitCircuitTerminationSerializer(read_only=True)
+    termination_z = CircuitCircuitTerminationSerializer(read_only=True)
     tags = TagListSerializerField(required=False)
 
     class Meta:
         model = Circuit
         fields = [
             'id', 'cid', 'provider', 'type', 'status', 'tenant', 'install_date', 'commit_rate', 'description',
-            'comments', 'tags', 'custom_fields', 'created', 'last_updated',
+            'termination_a', 'termination_z', 'comments', 'tags', 'custom_fields', 'created', 'last_updated',
         ]
 
 

@@ -12,7 +12,7 @@ A NetBox report is a mechanism for validating the integrity of data within NetBo
 
 ## Writing Reports
 
-Reports must be saved as files in the [`REPORTS_ROOT`](../configuration/optional-settings/#reports_root) path (which defaults to `netbox/reports/`). Each file created within this path is considered a separate module. Each module holds one or more reports (Python classes), each of which performs a certain function. The logic of each report is broken into discrete test methods, each of which applies a small portion of the logic comprising the overall test.
+Reports must be saved as files in the [`REPORTS_ROOT`](../../configuration/optional-settings/#reports_root) path (which defaults to `netbox/reports/`). Each file created within this path is considered a separate module. Each module holds one or more reports (Python classes), each of which performs a certain function. The logic of each report is broken into discrete test methods, each of which applies a small portion of the logic comprising the overall test.
 
 !!! warning
     The reports path includes a file named `__init__.py`, which registers the path as a Python module. Do not delete this file.
@@ -32,7 +32,8 @@ class DeviceIPsReport(Report):
 Within each report class, we'll create a number of test methods to execute our report's logic. In DeviceConnectionsReport, for instance, we want to ensure that every live device has a console connection, an out-of-band management connection, and two power connections.
 
 ```
-from dcim.constants import CONNECTION_STATUS_PLANNED, DEVICE_STATUS_ACTIVE
+from dcim.choices import DeviceStatusChoices
+from dcim.constants import CONNECTION_STATUS_PLANNED
 from dcim.models import ConsolePort, Device, PowerPort
 from extras.reports import Report
 
@@ -43,7 +44,8 @@ class DeviceConnectionsReport(Report):
     def test_console_connection(self):
 
         # Check that every console port for every active device has a connection defined.
-        for console_port in ConsolePort.objects.prefetch_related('device').filter(device__status=DEVICE_STATUS_ACTIVE):
+        active = DeviceStatusChoices.STATUS_ACTIVE
+        for console_port in ConsolePort.objects.prefetch_related('device').filter(device__status=active):
             if console_port.connected_endpoint is None:
                 self.log_failure(
                     console_port.device,
@@ -60,7 +62,7 @@ class DeviceConnectionsReport(Report):
     def test_power_connections(self):
 
         # Check that every active device has at least two connected power supplies.
-        for device in Device.objects.filter(status=DEVICE_STATUS_ACTIVE):
+        for device in Device.objects.filter(status=DeviceStatusChoices.STATUS_ACTIVE):
             connected_ports = 0
             for power_port in PowerPort.objects.filter(device=device):
                 if power_port.connected_endpoint is not None:

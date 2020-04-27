@@ -1,18 +1,19 @@
-import urllib.parse
+from netaddr import EUI
 
-from django.test import Client, TestCase
-from django.urls import reverse
-
-from utilities.testing import create_test_user
+from dcim.choices import InterfaceModeChoices
+from dcim.models import DeviceRole, Interface, Platform, Site
+from ipam.models import VLAN
+from tenancy.models import Tenant
+from utilities.testing import ViewTestCases
+from virtualization.choices import *
 from virtualization.models import Cluster, ClusterGroup, ClusterType, VirtualMachine
 
 
-class ClusterGroupTestCase(TestCase):
+class ClusterGroupTestCase(ViewTestCases.OrganizationalObjectViewTestCase):
+    model = ClusterGroup
 
-    def setUp(self):
-        user = create_test_user(permissions=['virtualization.view_clustergroup'])
-        self.client = Client()
-        self.client.force_login(user)
+    @classmethod
+    def setUpTestData(cls):
 
         ClusterGroup.objects.bulk_create([
             ClusterGroup(name='Cluster Group 1', slug='cluster-group-1'),
@@ -20,20 +21,25 @@ class ClusterGroupTestCase(TestCase):
             ClusterGroup(name='Cluster Group 3', slug='cluster-group-3'),
         ])
 
-    def test_clustergroup_list(self):
+        cls.form_data = {
+            'name': 'Cluster Group X',
+            'slug': 'cluster-group-x',
+            'description': 'A new cluster group',
+        }
 
-        url = reverse('virtualization:clustergroup_list')
+        cls.csv_data = (
+            "name,slug,description",
+            "Cluster Group 4,cluster-group-4,Fourth cluster group",
+            "Cluster Group 5,cluster-group-5,Fifth cluster group",
+            "Cluster Group 6,cluster-group-6,Sixth cluster group",
+        )
 
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
 
+class ClusterTypeTestCase(ViewTestCases.OrganizationalObjectViewTestCase):
+    model = ClusterType
 
-class ClusterTypeTestCase(TestCase):
-
-    def setUp(self):
-        user = create_test_user(permissions=['virtualization.view_clustertype'])
-        self.client = Client()
-        self.client.force_login(user)
+    @classmethod
+    def setUpTestData(cls):
 
         ClusterType.objects.bulk_create([
             ClusterType(name='Cluster Type 1', slug='cluster-type-1'),
@@ -41,82 +47,230 @@ class ClusterTypeTestCase(TestCase):
             ClusterType(name='Cluster Type 3', slug='cluster-type-3'),
         ])
 
-    def test_clustertype_list(self):
+        cls.form_data = {
+            'name': 'Cluster Type X',
+            'slug': 'cluster-type-x',
+            'description': 'A new cluster type',
+        }
 
-        url = reverse('virtualization:clustertype_list')
+        cls.csv_data = (
+            "name,slug,description",
+            "Cluster Type 4,cluster-type-4,Fourth cluster type",
+            "Cluster Type 5,cluster-type-5,Fifth cluster type",
+            "Cluster Type 6,cluster-type-6,Sixth cluster type",
+        )
 
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
 
+class ClusterTestCase(ViewTestCases.PrimaryObjectViewTestCase):
+    model = Cluster
 
-class ClusterTestCase(TestCase):
+    @classmethod
+    def setUpTestData(cls):
 
-    def setUp(self):
-        user = create_test_user(permissions=['virtualization.view_cluster'])
-        self.client = Client()
-        self.client.force_login(user)
+        sites = (
+            Site(name='Site 1', slug='site-1'),
+            Site(name='Site 2', slug='site-2'),
+        )
+        Site.objects.bulk_create(sites)
 
-        clustergroup = ClusterGroup(name='Cluster Group 1', slug='cluster-group-1')
-        clustergroup.save()
+        clustergroups = (
+            ClusterGroup(name='Cluster Group 1', slug='cluster-group-1'),
+            ClusterGroup(name='Cluster Group 2', slug='cluster-group-2'),
+        )
+        ClusterGroup.objects.bulk_create(clustergroups)
 
-        clustertype = ClusterType(name='Cluster Type 1', slug='cluster-type-1')
-        clustertype.save()
+        clustertypes = (
+            ClusterType(name='Cluster Type 1', slug='cluster-type-1'),
+            ClusterType(name='Cluster Type 2', slug='cluster-type-2'),
+        )
+        ClusterType.objects.bulk_create(clustertypes)
 
         Cluster.objects.bulk_create([
-            Cluster(name='Cluster 1', group=clustergroup, type=clustertype),
-            Cluster(name='Cluster 2', group=clustergroup, type=clustertype),
-            Cluster(name='Cluster 3', group=clustergroup, type=clustertype),
+            Cluster(name='Cluster 1', group=clustergroups[0], type=clustertypes[0], site=sites[0]),
+            Cluster(name='Cluster 2', group=clustergroups[0], type=clustertypes[0], site=sites[0]),
+            Cluster(name='Cluster 3', group=clustergroups[0], type=clustertypes[0], site=sites[0]),
         ])
 
-    def test_cluster_list(self):
-
-        url = reverse('virtualization:cluster_list')
-        params = {
-            "group": ClusterGroup.objects.first().slug,
-            "type": ClusterType.objects.first().slug,
+        cls.form_data = {
+            'name': 'Cluster X',
+            'group': clustergroups[1].pk,
+            'type': clustertypes[1].pk,
+            'tenant': None,
+            'site': sites[1].pk,
+            'comments': 'Some comments',
+            'tags': 'Alpha,Bravo,Charlie',
         }
 
-        response = self.client.get('{}?{}'.format(url, urllib.parse.urlencode(params)))
-        self.assertEqual(response.status_code, 200)
+        cls.csv_data = (
+            "name,type",
+            "Cluster 4,Cluster Type 1",
+            "Cluster 5,Cluster Type 1",
+            "Cluster 6,Cluster Type 1",
+        )
 
-    def test_cluster(self):
+        cls.bulk_edit_data = {
+            'group': clustergroups[1].pk,
+            'type': clustertypes[1].pk,
+            'tenant': None,
+            'site': sites[1].pk,
+            'comments': 'New comments',
+        }
 
-        cluster = Cluster.objects.first()
-        response = self.client.get(cluster.get_absolute_url())
-        self.assertEqual(response.status_code, 200)
 
+class VirtualMachineTestCase(ViewTestCases.PrimaryObjectViewTestCase):
+    model = VirtualMachine
 
-class VirtualMachineTestCase(TestCase):
+    @classmethod
+    def setUpTestData(cls):
 
-    def setUp(self):
-        user = create_test_user(permissions=['virtualization.view_virtualmachine'])
-        self.client = Client()
-        self.client.force_login(user)
+        deviceroles = (
+            DeviceRole(name='Device Role 1', slug='device-role-1'),
+            DeviceRole(name='Device Role 2', slug='device-role-2'),
+        )
+        DeviceRole.objects.bulk_create(deviceroles)
 
-        clustertype = ClusterType(name='Cluster Type 1', slug='cluster-type-1')
-        clustertype.save()
+        platforms = (
+            Platform(name='Platform 1', slug='platform-1'),
+            Platform(name='Platform 2', slug='platform-2'),
+        )
+        Platform.objects.bulk_create(platforms)
 
-        cluster = Cluster(name='Cluster 1', type=clustertype)
-        cluster.save()
+        clustertype = ClusterType.objects.create(name='Cluster Type 1', slug='cluster-type-1')
+
+        clusters = (
+            Cluster(name='Cluster 1', type=clustertype),
+            Cluster(name='Cluster 2', type=clustertype),
+        )
+        Cluster.objects.bulk_create(clusters)
 
         VirtualMachine.objects.bulk_create([
-            VirtualMachine(name='Virtual Machine 1', cluster=cluster),
-            VirtualMachine(name='Virtual Machine 2', cluster=cluster),
-            VirtualMachine(name='Virtual Machine 3', cluster=cluster),
+            VirtualMachine(name='Virtual Machine 1', cluster=clusters[0], role=deviceroles[0], platform=platforms[0]),
+            VirtualMachine(name='Virtual Machine 2', cluster=clusters[0], role=deviceroles[0], platform=platforms[0]),
+            VirtualMachine(name='Virtual Machine 3', cluster=clusters[0], role=deviceroles[0], platform=platforms[0]),
         ])
 
-    def test_virtualmachine_list(self):
-
-        url = reverse('virtualization:virtualmachine_list')
-        params = {
-            "cluster_id": Cluster.objects.first().pk,
+        cls.form_data = {
+            'cluster': clusters[1].pk,
+            'tenant': None,
+            'platform': platforms[1].pk,
+            'name': 'Virtual Machine X',
+            'status': VirtualMachineStatusChoices.STATUS_STAGED,
+            'role': deviceroles[1].pk,
+            'primary_ip4': None,
+            'primary_ip6': None,
+            'vcpus': 4,
+            'memory': 32768,
+            'disk': 4000,
+            'comments': 'Some comments',
+            'tags': 'Alpha,Bravo,Charlie',
+            'local_context_data': None,
         }
 
-        response = self.client.get('{}?{}'.format(url, urllib.parse.urlencode(params)))
-        self.assertEqual(response.status_code, 200)
+        cls.csv_data = (
+            "name,cluster",
+            "Virtual Machine 4,Cluster 1",
+            "Virtual Machine 5,Cluster 1",
+            "Virtual Machine 6,Cluster 1",
+        )
 
-    def test_virtualmachine(self):
+        cls.bulk_edit_data = {
+            'cluster': clusters[1].pk,
+            'tenant': None,
+            'platform': platforms[1].pk,
+            'status': VirtualMachineStatusChoices.STATUS_STAGED,
+            'role': deviceroles[1].pk,
+            'vcpus': 8,
+            'memory': 65535,
+            'disk': 8000,
+            'comments': 'New comments',
+        }
 
-        virtualmachine = VirtualMachine.objects.first()
-        response = self.client.get(virtualmachine.get_absolute_url())
-        self.assertEqual(response.status_code, 200)
+
+class InterfaceTestCase(
+    ViewTestCases.GetObjectViewTestCase,
+    ViewTestCases.DeviceComponentViewTestCase,
+):
+    model = Interface
+
+    # Disable inapplicable tests
+    test_list_objects = None
+    test_import_objects = None
+
+    def _get_base_url(self):
+        # Interface belongs to the DCIM app, so we have to override the base URL
+        return 'virtualization:interface_{}'
+
+    @classmethod
+    def setUpTestData(cls):
+
+        site = Site.objects.create(name='Site 1', slug='site-1')
+        devicerole = DeviceRole.objects.create(name='Device Role 1', slug='device-role-1')
+        clustertype = ClusterType.objects.create(name='Cluster Type 1', slug='cluster-type-1')
+        cluster = Cluster.objects.create(name='Cluster 1', type=clustertype, site=site)
+        tenant = Tenant.objects.create(name="My Tenant", slug="mytenant")
+        virtualmachines = (
+            VirtualMachine(name='Virtual Machine 1', cluster=cluster, role=devicerole),
+            VirtualMachine(name='Virtual Machine 2', cluster=cluster, role=devicerole),
+        )
+        VirtualMachine.objects.bulk_create(virtualmachines)
+
+        Interface.objects.bulk_create([
+            Interface(virtual_machine=virtualmachines[0], name='Interface 1', type=InterfaceTypeChoices.TYPE_VIRTUAL),
+            Interface(virtual_machine=virtualmachines[0], name='Interface 2', type=InterfaceTypeChoices.TYPE_VIRTUAL),
+            Interface(virtual_machine=virtualmachines[0], name='Interface 3', type=InterfaceTypeChoices.TYPE_VIRTUAL),
+        ])
+
+        vlans = (
+            VLAN(vid=1, name='VLAN1', site=site, tenant=tenant),
+            VLAN(vid=101, name='VLAN101', site=site, tenant=tenant),
+            VLAN(vid=102, name='VLAN102', site=site, tenant=tenant),
+            VLAN(vid=103, name='VLAN103', site=site, tenant=tenant),
+        )
+        VLAN.objects.bulk_create(vlans)
+
+        cls.form_data = {
+            'virtual_machine': virtualmachines[1].pk,
+            'name': 'Interface X',
+            'type': InterfaceTypeChoices.TYPE_VIRTUAL,
+            'enabled': False,
+            'mgmt_only': False,
+            'mac_address': EUI('01-02-03-04-05-06'),
+            'mtu': 2000,
+            'description': 'New description',
+            'mode': InterfaceModeChoices.MODE_TAGGED,
+            'untagged_vlan': vlans[0].pk,
+            'tagged_vlans': [v.pk for v in vlans[1:4]],
+            'tags': 'Alpha,Bravo,Charlie',
+        }
+
+        cls.bulk_create_data = {
+            'virtual_machine': virtualmachines[1].pk,
+            'name_pattern': 'Interface [4-6]',
+            'type': InterfaceTypeChoices.TYPE_VIRTUAL,
+            'enabled': False,
+            'mgmt_only': False,
+            'mac_address': EUI('01-02-03-04-05-06'),
+            'mtu': 2000,
+            'description': 'New description',
+            'mode': InterfaceModeChoices.MODE_TAGGED,
+            'untagged_vlan': vlans[0].pk,
+            'tagged_vlans': [v.pk for v in vlans[1:4]],
+            'tags': 'Alpha,Bravo,Charlie',
+        }
+
+        cls.bulk_edit_data = {
+            'virtual_machine': virtualmachines[1].pk,
+            'enabled': False,
+            'mtu': 2000,
+            'description': 'New description',
+            'mode': InterfaceModeChoices.MODE_TAGGED,
+            # 'untagged_vlan': vlans[0].pk,
+            # 'tagged_vlans': [v.pk for v in vlans[1:4]],
+        }
+
+        cls.csv_data = (
+            "device,name,type",
+            "Device 1,Interface 4,1000BASE-T (1GE)",
+            "Device 1,Interface 5,1000BASE-T (1GE)",
+            "Device 1,Interface 6,1000BASE-T (1GE)",
+        )

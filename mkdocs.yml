@@ -1,49 +1,68 @@
-site_name: NetBox
-theme: readthedocs
+site_name: NetBox Documentation
+site_url: https://netbox.readthedocs.io/
 repo_url: https://github.com/netbox-community/netbox
-
-pages:
+python:
+    install:
+        - requirements: docs/requirements.txt
+theme:
+    name: readthedocs
+    navigation_depth: 3
+extra_css:
+    - extra.css
+markdown_extensions:
+    - admonition:
+    - markdown_include.include:
+        headingOffset: 1
+nav:
     - Introduction: 'index.md'
     - Installation:
         - Installing NetBox: 'installation/index.md'
         - 1. PostgreSQL: 'installation/1-postgresql.md'
-        - 2. NetBox: 'installation/2-netbox.md'
-        - 3. HTTP Daemon: 'installation/3-http-daemon.md'
-        - 4. LDAP (Optional): 'installation/4-ldap.md'
+        - 2. Redis: 'installation/2-redis.md'
+        - 3. NetBox: 'installation/3-netbox.md'
+        - 4. HTTP Daemon: 'installation/4-http-daemon.md'
+        - 5. LDAP (Optional): 'installation/5-ldap.md'
         - Upgrading NetBox: 'installation/upgrading.md'
-        - Migrating to Python3: 'installation/migrating-to-python3.md'
+        - Migrating to systemd: 'installation/migrating-to-systemd.md'
     - Configuration:
         - Configuring NetBox: 'configuration/index.md'
         - Required Settings: 'configuration/required-settings.md'
         - Optional Settings: 'configuration/optional-settings.md'
     - Core Functionality:
         - IP Address Management: 'core-functionality/ipam.md'
-        - VLANs: 'core-functionality/vlans.md'
+        - VLAN Management: 'core-functionality/vlans.md'
         - Sites and Racks: 'core-functionality/sites-and-racks.md'
-        - Devices: 'core-functionality/devices.md'
-        - Virtual Machines: 'core-functionality/virtual-machines.md'
-        - Services: 'core-functionality/services.md'
+        - Devices and Cabling: 'core-functionality/devices.md'
+        - Device Types: 'core-functionality/device-types.md'
+        - Virtualization: 'core-functionality/virtualization.md'
+        - Service Mapping: 'core-functionality/services.md'
         - Circuits: 'core-functionality/circuits.md'
+        - Power Tracking: 'core-functionality/power.md'
         - Secrets: 'core-functionality/secrets.md'
-        - Tenancy: 'core-functionality/tenancy.md'
+        - Tenancy Assignment: 'core-functionality/tenancy.md'
     - Additional Features:
         - Caching: 'additional-features/caching.md'
         - Change Logging: 'additional-features/change-logging.md'
         - Context Data: 'additional-features/context-data.md'
         - Custom Fields: 'additional-features/custom-fields.md'
+        - Custom Links: 'additional-features/custom-links.md'
         - Custom Scripts: 'additional-features/custom-scripts.md'
         - Export Templates: 'additional-features/export-templates.md'
         - Graphs: 'additional-features/graphs.md'
+        - NAPALM: 'additional-features/napalm.md'
         - Prometheus Metrics: 'additional-features/prometheus-metrics.md'
         - Reports: 'additional-features/reports.md'
         - Tags: 'additional-features/tags.md'
-        - Topology Maps: 'additional-features/topology-maps.md'
         - Webhooks: 'additional-features/webhooks.md'
+    - Plugins:
+        - Using Plugins: 'plugins/index.md'
+        - Developing Plugins: 'plugins/development.md'
     - Administration:
         - Replicating NetBox: 'administration/replicating-netbox.md'
         - NetBox Shell: 'administration/netbox-shell.md'
     - API:
         - Overview: 'api/overview.md'
+        - Filtering: 'api/filtering.md'
         - Authentication: 'api/authentication.md'
         - Working with Secrets: 'api/working-with-secrets.md'
         - Examples: 'api/examples.md'
@@ -52,7 +71,16 @@ pages:
         - Style Guide: 'development/style-guide.md'
         - Utility Views: 'development/utility-views.md'
         - Extending Models: 'development/extending-models.md'
+        - Application Registry: 'development/application-registry.md'
         - Release Checklist: 'development/release-checklist.md'
-
-markdown_extensions:
-    - admonition:
+        - Squashing Migrations: 'development/squashing-migrations.md'
+    - Release Notes:
+        - Version 2.8: 'release-notes/version-2.8.md'
+        - Version 2.7: 'release-notes/version-2.7.md'
+        - Version 2.6: 'release-notes/version-2.6.md'
+        - Version 2.5: 'release-notes/version-2.5.md'
+        - Version 2.4: 'release-notes/version-2.4.md'
+        - Version 2.3: 'release-notes/version-2.3.md'
+        - Version 2.2: 'release-notes/version-2.2.md'
+        - Version 2.1: 'release-notes/version-2.1.md'
+        - Version 2.0: 'release-notes/version-2.0.md'

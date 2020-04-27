@@ -9,7 +9,7 @@ from ipam.models import IPAddress, Prefix, VLAN, VRF
 from utilities.views import (
     BulkDeleteView, BulkEditView, BulkImportView, ObjectDeleteView, ObjectEditView, ObjectListView,
 )
-from virtualization.models import VirtualMachine
+from virtualization.models import VirtualMachine, Cluster
 from . import filters, forms, tables
 from .models import Tenant, TenantGroup
 
@@ -20,9 +20,14 @@ from .models import Tenant, TenantGroup
 
 class TenantGroupListView(PermissionRequiredMixin, ObjectListView):
     permission_required = 'tenancy.view_tenantgroup'
-    queryset = TenantGroup.objects.annotate(tenant_count=Count('tenants'))
+    queryset = TenantGroup.objects.add_related_count(
+        TenantGroup.objects.all(),
+        Tenant,
+        'group',
+        'tenant_count',
+        cumulative=True
+    )
     table = tables.TenantGroupTable
-    template_name = 'tenancy/tenantgroup_list.html'
 
 
 class TenantGroupCreateView(PermissionRequiredMixin, ObjectEditView):
@@ -57,10 +62,9 @@ class TenantGroupBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
 class TenantListView(PermissionRequiredMixin, ObjectListView):
     permission_required = 'tenancy.view_tenant'
     queryset = Tenant.objects.prefetch_related('group')
-    filter = filters.TenantFilter
-    filter_form = forms.TenantFilterForm
+    filterset = filters.TenantFilterSet
+    filterset_form = forms.TenantFilterForm
     table = tables.TenantTable
-    template_name = 'tenancy/tenant_list.html'
 
 
 class TenantView(PermissionRequiredMixin, View):
@@ -80,6 +84,7 @@ class TenantView(PermissionRequiredMixin, View):
             'vlan_count': VLAN.objects.filter(tenant=tenant).count(),
             'circuit_count': Circuit.objects.filter(tenant=tenant).count(),
             'virtualmachine_count': VirtualMachine.objects.filter(tenant=tenant).count(),
+            'cluster_count': Cluster.objects.filter(tenant=tenant).count(),
         }
 
         return render(request, 'tenancy/tenant.html', {
@@ -116,7 +121,7 @@ class TenantBulkImportView(PermissionRequiredMixin, BulkImportView):
 class TenantBulkEditView(PermissionRequiredMixin, BulkEditView):
     permission_required = 'tenancy.change_tenant'
     queryset = Tenant.objects.prefetch_related('group')
-    filter = filters.TenantFilter
+    filterset = filters.TenantFilterSet
     table = tables.TenantTable
     form = forms.TenantBulkEditForm
     default_return_url = 'tenancy:tenant_list'
@@ -125,6 +130,6 @@ class TenantBulkEditView(PermissionRequiredMixin, BulkEditView):
 class TenantBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
     permission_required = 'tenancy.delete_tenant'
     queryset = Tenant.objects.prefetch_related('group')
-    filter = filters.TenantFilter
+    filterset = filters.TenantFilterSet
     table = tables.TenantTable
     default_return_url = 'tenancy:tenant_list'

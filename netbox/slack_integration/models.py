@@ -1,8 +1,6 @@
 from django.db import models
 from django.contrib.contenttypes.models import ContentType
 
-from utilities.utils import model_names_to_filter_dict
-
 from .constants import SLACK_MESSAGE_MODELS
 
 
@@ -31,7 +29,9 @@ class SlackMessage(models.Model):
         to=ContentType,
         related_name='slack_messages',
         verbose_name='Object types',
-        limit_choices_to=model_names_to_filter_dict(SLACK_MESSAGE_MODELS),
+        limit_choices_to={
+            'model__in': [model.split('.')[1] for model in SLACK_MESSAGE_MODELS],
+        },
         help_text="The object(s) to which this message applies",
     )
     on_create = models.BooleanField(

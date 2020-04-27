@@ -7,20 +7,9 @@ from circuits import filters
 from circuits.models import Provider, CircuitTermination, CircuitType, Circuit
 from extras.api.serializers import RenderedGraphSerializer
 from extras.api.views import CustomFieldModelViewSet
-from extras.models import Graph, GRAPH_TYPE_PROVIDER
-from utilities.api import FieldChoicesViewSet, ModelViewSet
+from extras.models import Graph
+from utilities.api import ModelViewSet
 from . import serializers
-
-
-#
-# Field choices
-#
-
-class CircuitsFieldChoicesViewSet(FieldChoicesViewSet):
-    fields = (
-        (Circuit, ['status']),
-        (CircuitTermination, ['term_side']),
-    )
 
 
 #
@@ -32,7 +21,7 @@ class ProviderViewSet(CustomFieldModelViewSet):
         circuit_count=Count('circuits')
     )
     serializer_class = serializers.ProviderSerializer
-    filterset_class = filters.ProviderFilter
+    filterset_class = filters.ProviderFilterSet
 
     @action(detail=True)
     def graphs(self, request, pk):
@@ -40,7 +29,7 @@ class ProviderViewSet(CustomFieldModelViewSet):
         A convenience method for rendering graphs for a particular provider.
         """
         provider = get_object_or_404(Provider, pk=pk)
-        queryset = Graph.objects.filter(type=GRAPH_TYPE_PROVIDER)
+        queryset = Graph.objects.filter(type__model='provider')
         serializer = RenderedGraphSerializer(queryset, many=True, context={'graphed_object': provider})
         return Response(serializer.data)
 
@@ -54,7 +43,7 @@ class CircuitTypeViewSet(ModelViewSet):
         circuit_count=Count('circuits')
     )
     serializer_class = serializers.CircuitTypeSerializer
-    filterset_class = filters.CircuitTypeFilter
+    filterset_class = filters.CircuitTypeFilterSet
 
 
 #
@@ -62,9 +51,11 @@ class CircuitTypeViewSet(ModelViewSet):
 #
 
 class CircuitViewSet(CustomFieldModelViewSet):
-    queryset = Circuit.objects.prefetch_related('type', 'tenant', 'provider').prefetch_related('tags')
+    queryset = Circuit.objects.prefetch_related(
+        'type', 'tenant', 'provider', 'terminations__site', 'terminations__connected_endpoint__device'
+    ).prefetch_related('tags')
     serializer_class = serializers.CircuitSerializer
-    filterset_class = filters.CircuitFilter
+    filterset_class = filters.CircuitFilterSet
 
 
 #
@@ -76,4 +67,4 @@ class CircuitTerminationViewSet(ModelViewSet):
         'circuit', 'site', 'connected_endpoint__device', 'cable'
     )
     serializer_class = serializers.CircuitTerminationSerializer
-    filterset_class = filters.CircuitTerminationFilter
+    filterset_class = filters.CircuitTerminationFilterSet

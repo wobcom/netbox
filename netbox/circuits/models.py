@@ -3,15 +3,26 @@ from django.db import models
 from django.urls import reverse
 from taggit.managers import TaggableManager
 
-from dcim.constants import CONNECTION_STATUS_CHOICES, STATUS_CLASSES
+from dcim.constants import CONNECTION_STATUS_CHOICES
 from dcim.fields import ASNField
 from dcim.models import CableTermination
 from extras.models import CustomFieldModel, ObjectChange, TaggedItem
+from extras.utils import extras_features
 from utilities.models import ChangeLoggedModel
 from utilities.utils import serialize_object
-from .constants import CIRCUIT_STATUS_ACTIVE, CIRCUIT_STATUS_CHOICES, TERM_SIDE_CHOICES
+from .choices import *
+from .querysets import CircuitQuerySet
 
 
+__all__ = (
+    'Circuit',
+    'CircuitTermination',
+    'CircuitType',
+    'Provider',
+)
+
+
+@extras_features('custom_fields', 'custom_links', 'graphs', 'export_templates', 'webhooks')
 class Provider(ChangeLoggedModel, CustomFieldModel):
     """
     Each Circuit belongs to a Provider. This is usually a telecommunications company or similar organization. This model
@@ -57,7 +68,12 @@ class Provider(ChangeLoggedModel, CustomFieldModel):
 
     tags = TaggableManager(through=TaggedItem)
 
-    csv_headers = ['name', 'slug', 'asn', 'account', 'portal_url', 'noc_contact', 'admin_contact', 'comments']
+    csv_headers = [
+        'name', 'slug', 'asn', 'account', 'portal_url', 'noc_contact', 'admin_contact', 'comments',
+    ]
+    clone_fields = [
+        'asn', 'account', 'portal_url', 'noc_contact', 'admin_contact',
+    ]
 
     class Meta:
         ordering = ['name']
@@ -93,8 +109,12 @@ class CircuitType(ChangeLoggedModel):
     slug = models.SlugField(
         unique=True
     )
+    description = models.CharField(
+        max_length=200,
+        blank=True,
+    )
 
-    csv_headers = ['name', 'slug']
+    csv_headers = ['name', 'slug', 'description']
 
     class Meta:
         ordering = ['name']
@@ -109,9 +129,11 @@ class CircuitType(ChangeLoggedModel):
         return (
             self.name,
             self.slug,
+            self.description,
         )
 
 
+@extras_features('custom_fields', 'custom_links', 'export_templates', 'webhooks')
 class Circuit(ChangeLoggedModel, CustomFieldModel):
     """
     A communications circuit connects two points. Each Circuit belongs to a Provider; Providers may have multiple
@@ -132,9 +154,10 @@ class Circuit(ChangeLoggedModel, CustomFieldModel):
         on_delete=models.PROTECT,
         related_name='circuits'
     )
-    status = models.PositiveSmallIntegerField(
-        choices=CIRCUIT_STATUS_CHOICES,
-        default=CIRCUIT_STATUS_ACTIVE
+    status = models.CharField(
+        max_length=50,
+        choices=CircuitStatusChoices,
+        default=CircuitStatusChoices.STATUS_ACTIVE
     )
     tenant = models.ForeignKey(
         to='tenancy.Tenant',
@@ -153,7 +176,7 @@ class Circuit(ChangeLoggedModel, CustomFieldModel):
         null=True,
         verbose_name='Commit rate (Kbps)')
     description = models.CharField(
-        max_length=100,
+        max_length=200,
         blank=True
     )
     comments = models.TextField(
@@ -165,11 +188,24 @@ class Circuit(ChangeLoggedModel, CustomFieldModel):
         object_id_field='obj_id'
     )
 
+    objects = CircuitQuerySet.as_manager()
     tags = TaggableManager(through=TaggedItem)
 
     csv_headers = [
         'cid', 'provider', 'type', 'status', 'tenant', 'install_date', 'commit_rate', 'description', 'comments',
     ]
+    clone_fields = [
+        'provider', 'type', 'status', 'tenant', 'install_date', 'commit_rate', 'description',
+    ]
+
+    STATUS_CLASS_MAP = {
+        CircuitStatusChoices.STATUS_DEPROVISIONING: 'warning',
+        CircuitStatusChoices.STATUS_ACTIVE: 'success',
+        CircuitStatusChoices.STATUS_PLANNED: 'info',
+        CircuitStatusChoices.STATUS_PROVISIONING: 'primary',
+        CircuitStatusChoices.STATUS_OFFLINE: 'danger',
+        CircuitStatusChoices.STATUS_DECOMMISSIONED: 'default',
+    }
 
     class Meta:
         ordering = ['provider', 'cid']
@@ -195,7 +231,7 @@ class Circuit(ChangeLoggedModel, CustomFieldModel):
         )
 
     def get_status_class(self):
-        return STATUS_CLASSES[self.status]
+        return self.STATUS_CLASS_MAP.get(self.status)
 
     def _get_termination(self, side):
         for ct in self.terminations.all():
@@ -220,7 +256,7 @@ class CircuitTermination(CableTermination):
     )
     term_side = models.CharField(
         max_length=1,
-        choices=TERM_SIDE_CHOICES,
+        choices=CircuitTerminationSideChoices,
         verbose_name='Termination'
     )
     site = models.ForeignKey(
@@ -259,7 +295,7 @@ class CircuitTermination(CableTermination):
         verbose_name='Patch panel/port(s)'
     )
     description = models.CharField(
-        max_length=100,
+        max_length=200,
         blank=True
     )
 

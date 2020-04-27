@@ -1,9 +1,9 @@
-{% extends '_base.html' %}
+{% extends 'base.html' %}
 {% load buttons %}
 
 {% block content %}
 <div class="pull-right">
-    {% if perms.configuration.add_bgp %}
+    {% if perms.configuration.add_communitylist %}
         {% add_button 'configuration:communitylist_add' %}
         {% import_button 'configuration:communitylist_import' %}
     {% endif %}

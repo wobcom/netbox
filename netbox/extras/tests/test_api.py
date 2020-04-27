@@ -1,12 +1,27 @@
+import datetime
+
 from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework import status
 
-from dcim.models import Device, DeviceRole, DeviceType, Manufacturer, Platform, Region, Site
-from extras.constants import GRAPH_TYPE_SITE
+from dcim.models import Device, DeviceRole, DeviceType, Manufacturer, Platform, Rack, RackGroup, RackRole, Region, Site
+from extras.api.views import ScriptViewSet
 from extras.models import ConfigContext, Graph, ExportTemplate, Tag
+from extras.scripts import BooleanVar, IntegerVar, Script, StringVar
+from extras.utils import FeatureQuery
 from tenancy.models import Tenant, TenantGroup
 from utilities.testing import APITestCase
+
+
+class AppTest(APITestCase):
+
+    def test_root(self):
+
+        url = reverse('extras-api:api-root')
+        response = self.client.get('{}?format=api'.format(url), **self.header)
+
+        self.assertEqual(response.status_code, 200)
 
 
 class GraphTest(APITestCase):
@@ -15,14 +30,21 @@ class GraphTest(APITestCase):
 
         super().setUp()
 
+        site_ct = ContentType.objects.get_for_model(Site)
         self.graph1 = Graph.objects.create(
-            type=GRAPH_TYPE_SITE, name='Test Graph 1', source='http://example.com/graphs.py?site={{ obj.name }}&foo=1'
+            type=site_ct,
+            name='Test Graph 1',
+            source='http://example.com/graphs.py?site={{ obj.name }}&foo=1'
         )
         self.graph2 = Graph.objects.create(
-            type=GRAPH_TYPE_SITE, name='Test Graph 2', source='http://example.com/graphs.py?site={{ obj.name }}&foo=2'
+            type=site_ct,
+            name='Test Graph 2',
+            source='http://example.com/graphs.py?site={{ obj.name }}&foo=2'
         )
         self.graph3 = Graph.objects.create(
-            type=GRAPH_TYPE_SITE, name='Test Graph 3', source='http://example.com/graphs.py?site={{ obj.name }}&foo=3'
+            type=site_ct,
+            name='Test Graph 3',
+            source='http://example.com/graphs.py?site={{ obj.name }}&foo=3'
         )
 
     def test_get_graph(self):
@@ -42,7 +64,7 @@ class GraphTest(APITestCase):
     def test_create_graph(self):
 
         data = {
-            'type': GRAPH_TYPE_SITE,
+            'type': 'dcim.site',
             'name': 'Test Graph 4',
             'source': 'http://example.com/graphs.py?site={{ obj.name }}&foo=4',
         }
@@ -53,7 +75,7 @@ class GraphTest(APITestCase):
         self.assertHttpStatus(response, status.HTTP_201_CREATED)
         self.assertEqual(Graph.objects.count(), 4)
         graph4 = Graph.objects.get(pk=response.data['id'])
-        self.assertEqual(graph4.type, data['type'])
+        self.assertEqual(graph4.type, ContentType.objects.get_for_model(Site))
         self.assertEqual(graph4.name, data['name'])
         self.assertEqual(graph4.source, data['source'])
 
@@ -61,17 +83,17 @@ class GraphTest(APITestCase):
 
         data = [
             {
-                'type': GRAPH_TYPE_SITE,
+                'type': 'dcim.site',
                 'name': 'Test Graph 4',
                 'source': 'http://example.com/graphs.py?site={{ obj.name }}&foo=4',
             },
             {
-                'type': GRAPH_TYPE_SITE,
+                'type': 'dcim.site',
                 'name': 'Test Graph 5',
                 'source': 'http://example.com/graphs.py?site={{ obj.name }}&foo=5',
             },
             {
-                'type': GRAPH_TYPE_SITE,
+                'type': 'dcim.site',
                 'name': 'Test Graph 6',
                 'source': 'http://example.com/graphs.py?site={{ obj.name }}&foo=6',
             },
@@ -89,7 +111,7 @@ class GraphTest(APITestCase):
     def test_update_graph(self):
 
         data = {
-            'type': GRAPH_TYPE_SITE,
+            'type': 'dcim.site',
             'name': 'Test Graph X',
             'source': 'http://example.com/graphs.py?site={{ obj.name }}&foo=99',
         }
@@ -100,7 +122,7 @@ class GraphTest(APITestCase):
         self.assertHttpStatus(response, status.HTTP_200_OK)
         self.assertEqual(Graph.objects.count(), 3)
         graph1 = Graph.objects.get(pk=response.data['id'])
-        self.assertEqual(graph1.type, data['type'])
+        self.assertEqual(graph1.type, ContentType.objects.get_for_model(Site))
         self.assertEqual(graph1.name, data['name'])
         self.assertEqual(graph1.source, data['source'])
 
@@ -119,17 +141,17 @@ class ExportTemplateTest(APITestCase):
 
         super().setUp()
 
-        self.content_type = ContentType.objects.get_for_model(Device)
+        content_type = ContentType.objects.get_for_model(Device)
         self.exporttemplate1 = ExportTemplate.objects.create(
-            content_type=self.content_type, name='Test Export Template 1',
+            content_type=content_type, name='Test Export Template 1',
             template_code='{% for obj in queryset %}{{ obj.name }}\n{% endfor %}'
         )
         self.exporttemplate2 = ExportTemplate.objects.create(
-            content_type=self.content_type, name='Test Export Template 2',
+            content_type=content_type, name='Test Export Template 2',
             template_code='{% for obj in queryset %}{{ obj.name }}\n{% endfor %}'
         )
         self.exporttemplate3 = ExportTemplate.objects.create(
-            content_type=self.content_type, name='Test Export Template 3',
+            content_type=content_type, name='Test Export Template 3',
             template_code='{% for obj in queryset %}{{ obj.name }}\n{% endfor %}'
         )
 
@@ -150,7 +172,7 @@ class ExportTemplateTest(APITestCase):
     def test_create_exporttemplate(self):
 
         data = {
-            'content_type': self.content_type.pk,
+            'content_type': 'dcim.device',
             'name': 'Test Export Template 4',
             'template_code': '{% for obj in queryset %}{{ obj.name }}\n{% endfor %}',
         }
@@ -161,7 +183,7 @@ class ExportTemplateTest(APITestCase):
         self.assertHttpStatus(response, status.HTTP_201_CREATED)
         self.assertEqual(ExportTemplate.objects.count(), 4)
         exporttemplate4 = ExportTemplate.objects.get(pk=response.data['id'])
-        self.assertEqual(exporttemplate4.content_type_id, data['content_type'])
+        self.assertEqual(exporttemplate4.content_type, ContentType.objects.get_for_model(Device))
         self.assertEqual(exporttemplate4.name, data['name'])
         self.assertEqual(exporttemplate4.template_code, data['template_code'])
 
@@ -169,17 +191,17 @@ class ExportTemplateTest(APITestCase):
 
         data = [
             {
-                'content_type': self.content_type.pk,
+                'content_type': 'dcim.device',
                 'name': 'Test Export Template 4',
                 'template_code': '{% for obj in queryset %}{{ obj.name }}\n{% endfor %}',
             },
             {
-                'content_type': self.content_type.pk,
+                'content_type': 'dcim.device',
                 'name': 'Test Export Template 5',
                 'template_code': '{% for obj in queryset %}{{ obj.name }}\n{% endfor %}',
             },
             {
-                'content_type': self.content_type.pk,
+                'content_type': 'dcim.device',
                 'name': 'Test Export Template 6',
                 'template_code': '{% for obj in queryset %}{{ obj.name }}\n{% endfor %}',
             },
@@ -197,7 +219,7 @@ class ExportTemplateTest(APITestCase):
     def test_update_exporttemplate(self):
 
         data = {
-            'content_type': self.content_type.pk,
+            'content_type': 'dcim.device',
             'name': 'Test Export Template X',
             'template_code': '{% for obj in queryset %}{{ obj.name }}\n{% endfor %}',
         }
@@ -358,10 +380,14 @@ class ConfigContextTest(APITestCase):
         role2 = DeviceRole.objects.create(name='Test Role 2', slug='test-role-2')
         platform1 = Platform.objects.create(name='Test Platform 1', slug='test-platform-1')
         platform2 = Platform.objects.create(name='Test Platform 2', slug='test-platform-2')
-        tenantgroup1 = TenantGroup.objects.create(name='Test Tenant Group 1', slug='test-tenant-group-1')
-        tenantgroup2 = TenantGroup.objects.create(name='Test Tenant Group 2', slug='test-tenant-group-2')
+        tenantgroup1 = TenantGroup(name='Test Tenant Group 1', slug='test-tenant-group-1')
+        tenantgroup1.save()
+        tenantgroup2 = TenantGroup(name='Test Tenant Group 2', slug='test-tenant-group-2')
+        tenantgroup2.save()
         tenant1 = Tenant.objects.create(name='Test Tenant 1', slug='test-tenant-1')
         tenant2 = Tenant.objects.create(name='Test Tenant 2', slug='test-tenant-2')
+        tag1 = Tag.objects.create(name='Test Tag 1', slug='test-tag-1')
+        tag2 = Tag.objects.create(name='Test Tag 2', slug='test-tag-2')
 
         data = {
             'name': 'Test Config Context 4',
@@ -372,6 +398,7 @@ class ConfigContextTest(APITestCase):
             'platforms': [platform1.pk, platform2.pk],
             'tenant_groups': [tenantgroup1.pk, tenantgroup2.pk],
             'tenants': [tenant1.pk, tenant2.pk],
+            'tags': [tag1.slug, tag2.slug],
             'data': {'foo': 'XXX'}
         }
 
@@ -394,6 +421,8 @@ class ConfigContextTest(APITestCase):
         self.assertEqual(tenantgroup2.pk, data['tenant_groups'][1])
         self.assertEqual(tenant1.pk, data['tenants'][0])
         self.assertEqual(tenant2.pk, data['tenants'][1])
+        self.assertEqual(tag1.slug, data['tags'][0])
+        self.assertEqual(tag2.slug, data['tags'][1])
         self.assertEqual(configcontext4.data, data['data'])
 
     def test_create_configcontext_bulk(self):
@@ -520,3 +549,133 @@ class ConfigContextTest(APITestCase):
         configcontext6.sites.add(site2)
         rendered_context = device.get_config_context()
         self.assertEqual(rendered_context['bar'], 456)
+
+
+class ScriptTest(APITestCase):
+
+    class TestScript(Script):
+
+        class Meta:
+            name = "Test script"
+
+        var1 = StringVar()
+        var2 = IntegerVar()
+        var3 = BooleanVar()
+
+        def run(self, data, commit=True):
+
+            self.log_info(data['var1'])
+            self.log_success(data['var2'])
+            self.log_failure(data['var3'])
+
+            return 'Script complete'
+
+    def get_test_script(self, *args):
+        return self.TestScript
+
+    def setUp(self):
+
+        super().setUp()
+
+        # Monkey-patch the API viewset's _get_script method to return our test script above
+        ScriptViewSet._get_script = self.get_test_script
+
+    def test_get_script(self):
+
+        url = reverse('extras-api:script-detail', kwargs={'pk': None})
+        response = self.client.get(url, **self.header)
+
+        self.assertEqual(response.data['name'], self.TestScript.Meta.name)
+        self.assertEqual(response.data['vars']['var1'], 'StringVar')
+        self.assertEqual(response.data['vars']['var2'], 'IntegerVar')
+        self.assertEqual(response.data['vars']['var3'], 'BooleanVar')
+
+    def test_run_script(self):
+
+        script_data = {
+            'var1': 'FooBar',
+            'var2': 123,
+            'var3': False,
+        }
+
+        data = {
+            'data': script_data,
+            'commit': True,
+        }
+
+        url = reverse('extras-api:script-detail', kwargs={'pk': None})
+        response = self.client.post(url, data, format='json', **self.header)
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+
+        self.assertEqual(response.data['log'][0]['status'], 'info')
+        self.assertEqual(response.data['log'][0]['message'], script_data['var1'])
+        self.assertEqual(response.data['log'][1]['status'], 'success')
+        self.assertEqual(response.data['log'][1]['message'], script_data['var2'])
+        self.assertEqual(response.data['log'][2]['status'], 'failure')
+        self.assertEqual(response.data['log'][2]['message'], script_data['var3'])
+        self.assertEqual(response.data['output'], 'Script complete')
+
+
+class CreatedUpdatedFilterTest(APITestCase):
+
+    def setUp(self):
+
+        super().setUp()
+
+        self.site1 = Site.objects.create(name='Test Site 1', slug='test-site-1')
+        self.rackgroup1 = RackGroup.objects.create(site=self.site1, name='Test Rack Group 1', slug='test-rack-group-1')
+        self.rackrole1 = RackRole.objects.create(name='Test Rack Role 1', slug='test-rack-role-1', color='ff0000')
+        self.rack1 = Rack.objects.create(
+            site=self.site1, group=self.rackgroup1, role=self.rackrole1, name='Test Rack 1', u_height=42,
+        )
+        self.rack2 = Rack.objects.create(
+            site=self.site1, group=self.rackgroup1, role=self.rackrole1, name='Test Rack 2', u_height=42,
+        )
+
+        # change the created and last_updated of one
+        Rack.objects.filter(pk=self.rack2.pk).update(
+            last_updated=datetime.datetime(2001, 2, 3, 1, 2, 3, 4, tzinfo=timezone.utc),
+            created=datetime.datetime(2001, 2, 3)
+        )
+
+    def test_get_rack_created(self):
+        url = reverse('dcim-api:rack-list')
+        response = self.client.get('{}?created=2001-02-03'.format(url), **self.header)
+
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['results'][0]['id'], self.rack2.pk)
+
+    def test_get_rack_created_gte(self):
+        url = reverse('dcim-api:rack-list')
+        response = self.client.get('{}?created__gte=2001-02-04'.format(url), **self.header)
+
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['results'][0]['id'], self.rack1.pk)
+
+    def test_get_rack_created_lte(self):
+        url = reverse('dcim-api:rack-list')
+        response = self.client.get('{}?created__lte=2001-02-04'.format(url), **self.header)
+
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['results'][0]['id'], self.rack2.pk)
+
+    def test_get_rack_last_updated(self):
+        url = reverse('dcim-api:rack-list')
+        response = self.client.get('{}?last_updated=2001-02-03%2001:02:03.000004'.format(url), **self.header)
+
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['results'][0]['id'], self.rack2.pk)
+
+    def test_get_rack_last_updated_gte(self):
+        url = reverse('dcim-api:rack-list')
+        response = self.client.get('{}?last_updated__gte=2001-02-04%2001:02:03.000004'.format(url), **self.header)
+
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['results'][0]['id'], self.rack1.pk)
+
+    def test_get_rack_last_updated_lte(self):
+        url = reverse('dcim-api:rack-list')
+        response = self.client.get('{}?last_updated__lte=2001-02-04%2001:02:03.000004'.format(url), **self.header)
+
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['results'][0]['id'], self.rack2.pk)

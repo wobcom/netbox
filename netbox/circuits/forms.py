@@ -2,15 +2,17 @@ from django import forms
 from taggit.forms import TagField
 
 from dcim.models import Region, Site
-from extras.forms import AddRemoveTagsForm, CustomFieldForm, CustomFieldBulkEditForm, CustomFieldFilterForm
-from tenancy.forms import TenancyForm
-from tenancy.forms import TenancyFilterForm
+from extras.forms import (
+    AddRemoveTagsForm, CustomFieldBulkEditForm, CustomFieldFilterForm, CustomFieldModelForm, CustomFieldModelCSVForm,
+)
+from tenancy.forms import TenancyFilterForm, TenancyForm
 from tenancy.models import Tenant
 from utilities.forms import (
-    APISelect, APISelectMultiple, add_blank_choice, BootstrapMixin, CommentField, CSVChoiceField,
-    FilterChoiceField, SmallTextarea, SlugField, StaticSelect2, StaticSelect2Multiple
+    APISelect, APISelectMultiple, add_blank_choice, BootstrapMixin, CommentField, CSVChoiceField, DatePicker,
+    DynamicModelChoiceField, DynamicModelMultipleChoiceField, SmallTextarea, SlugField, StaticSelect2,
+    StaticSelect2Multiple, TagFilterField,
 )
-from .constants import CIRCUIT_STATUS_CHOICES
+from .choices import CircuitStatusChoices
 from .models import Circuit, CircuitTermination, CircuitType, Provider
 
 
@@ -18,7 +20,7 @@ from .models import Circuit, CircuitTermination, CircuitType, Provider
 # Providers
 #
 
-class ProviderForm(BootstrapMixin, CustomFieldForm):
+class ProviderForm(BootstrapMixin, CustomFieldModelForm):
     slug = SlugField()
     comments = CommentField()
     tags = TagField(
@@ -47,7 +49,7 @@ class ProviderForm(BootstrapMixin, CustomFieldForm):
         }
 
 
-class ProviderCSVForm(forms.ModelForm):
+class ProviderCSVForm(CustomFieldModelCSVForm):
     slug = SlugField()
 
     class Meta:
@@ -90,7 +92,8 @@ class ProviderBulkEditForm(BootstrapMixin, AddRemoveTagsForm, CustomFieldBulkEdi
         label='Admin contact'
     )
     comments = CommentField(
-        widget=SmallTextarea()
+        widget=SmallTextarea,
+        label='Comments'
     )
 
     class Meta:
@@ -105,11 +108,22 @@ class ProviderFilterForm(BootstrapMixin, CustomFieldFilterForm):
         required=False,
         label='Search'
     )
-    site = FilterChoiceField(
+    region = DynamicModelMultipleChoiceField(
+        queryset=Region.objects.all(),
+        to_field_name='slug',
+        required=False,
+        widget=APISelectMultiple(
+            value_field="slug",
+            filter_for={
+                'site': 'region'
+            }
+        )
+    )
+    site = DynamicModelMultipleChoiceField(
         queryset=Site.objects.all(),
         to_field_name='slug',
+        required=False,
         widget=APISelectMultiple(
-            api_url="/api/dcim/sites/",
             value_field="slug",
         )
     )
@@ -117,6 +131,7 @@ class ProviderFilterForm(BootstrapMixin, CustomFieldFilterForm):
         required=False,
         label='ASN'
     )
+    tag = TagFilterField(model)
 
 
 #
@@ -129,7 +144,7 @@ class CircuitTypeForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = CircuitType
         fields = [
-            'name', 'slug',
+            'name', 'slug', 'description',
         ]
 
 
@@ -148,7 +163,13 @@ class CircuitTypeCSVForm(forms.ModelForm):
 # Circuits
 #
 
-class CircuitForm(BootstrapMixin, TenancyForm, CustomFieldForm):
+class CircuitForm(BootstrapMixin, TenancyForm, CustomFieldModelForm):
+    provider = DynamicModelChoiceField(
+        queryset=Provider.objects.all()
+    )
+    type = DynamicModelChoiceField(
+        queryset=CircuitType.objects.all()
+    )
     comments = CommentField()
     tags = TagField(
         required=False
@@ -162,22 +183,15 @@ class CircuitForm(BootstrapMixin, TenancyForm, CustomFieldForm):
         ]
         help_texts = {
             'cid': "Unique circuit ID",
-            'install_date': "Format: YYYY-MM-DD",
             'commit_rate': "Committed rate",
         }
         widgets = {
-            'provider': APISelect(
-                api_url="/api/circuits/providers/"
-            ),
-            'type': APISelect(
-                api_url="/api/circuits/circuit-types/"
-            ),
             'status': StaticSelect2(),
-
+            'install_date': DatePicker(),
         }
 
 
-class CircuitCSVForm(forms.ModelForm):
+class CircuitCSVForm(CustomFieldModelCSVForm):
     provider = forms.ModelChoiceField(
         queryset=Provider.objects.all(),
         to_field_name='name',
@@ -195,7 +209,7 @@ class CircuitCSVForm(forms.ModelForm):
         }
     )
     status = CSVChoiceField(
-        choices=CIRCUIT_STATUS_CHOICES,
+        choices=CircuitStatusChoices,
         required=False,
         help_text='Operational status'
     )
@@ -221,32 +235,23 @@ class CircuitBulkEditForm(BootstrapMixin, AddRemoveTagsForm, CustomFieldBulkEdit
         queryset=Circuit.objects.all(),
         widget=forms.MultipleHiddenInput
     )
-    type = forms.ModelChoiceField(
+    type = DynamicModelChoiceField(
         queryset=CircuitType.objects.all(),
-        required=False,
-        widget=APISelect(
-            api_url="/api/circuits/circuit-types/"
-        )
+        required=False
     )
-    provider = forms.ModelChoiceField(
+    provider = DynamicModelChoiceField(
         queryset=Provider.objects.all(),
-        required=False,
-        widget=APISelect(
-            api_url="/api/circuits/providers/"
-        )
+        required=False
     )
     status = forms.ChoiceField(
-        choices=add_blank_choice(CIRCUIT_STATUS_CHOICES),
+        choices=add_blank_choice(CircuitStatusChoices),
         required=False,
         initial='',
         widget=StaticSelect2()
     )
-    tenant = forms.ModelChoiceField(
+    tenant = DynamicModelChoiceField(
         queryset=Tenant.objects.all(),
-        required=False,
-        widget=APISelect(
-            api_url="/api/tenancy/tenants/"
-        )
+        required=False
     )
     commit_rate = forms.IntegerField(
         required=False,
@@ -257,7 +262,8 @@ class CircuitBulkEditForm(BootstrapMixin, AddRemoveTagsForm, CustomFieldBulkEdit
         required=False
     )
     comments = CommentField(
-        widget=SmallTextarea
+        widget=SmallTextarea,
+        label='Comments'
     )
 
     class Meta:
@@ -275,41 +281,43 @@ class CircuitFilterForm(BootstrapMixin, TenancyFilterForm, CustomFieldFilterForm
         required=False,
         label='Search'
     )
-    type = FilterChoiceField(
+    type = DynamicModelMultipleChoiceField(
         queryset=CircuitType.objects.all(),
         to_field_name='slug',
+        required=False,
         widget=APISelectMultiple(
-            api_url="/api/circuits/circuit-types/",
             value_field="slug",
         )
     )
-    provider = FilterChoiceField(
+    provider = DynamicModelMultipleChoiceField(
         queryset=Provider.objects.all(),
         to_field_name='slug',
+        required=False,
         widget=APISelectMultiple(
-            api_url="/api/circuits/providers/",
             value_field="slug",
         )
     )
     status = forms.MultipleChoiceField(
-        choices=CIRCUIT_STATUS_CHOICES,
+        choices=CircuitStatusChoices,
         required=False,
         widget=StaticSelect2Multiple()
     )
-    region = forms.ModelMultipleChoiceField(
+    region = DynamicModelMultipleChoiceField(
         queryset=Region.objects.all(),
         to_field_name='slug',
         required=False,
         widget=APISelectMultiple(
-            api_url="/api/dcim/regions/",
             value_field="slug",
+            filter_for={
+                'site': 'region'
+            }
         )
     )
-    site = FilterChoiceField(
+    site = DynamicModelMultipleChoiceField(
         queryset=Site.objects.all(),
         to_field_name='slug',
+        required=False,
         widget=APISelectMultiple(
-            api_url="/api/dcim/sites/",
             value_field="slug",
         )
     )
@@ -318,6 +326,7 @@ class CircuitFilterForm(BootstrapMixin, TenancyFilterForm, CustomFieldFilterForm
         min_value=0,
         label='Commit rate (Kbps)'
     )
+    tag = TagFilterField(model)
 
 
 #
@@ -325,6 +334,9 @@ class CircuitFilterForm(BootstrapMixin, TenancyFilterForm, CustomFieldFilterForm
 #
 
 class CircuitTerminationForm(BootstrapMixin, forms.ModelForm):
+    site = DynamicModelChoiceField(
+        queryset=Site.objects.all()
+    )
 
     class Meta:
         model = CircuitTermination
@@ -338,7 +350,4 @@ class CircuitTerminationForm(BootstrapMixin, forms.ModelForm):
         }
         widgets = {
             'term_side': forms.HiddenInput(),
-            'site': APISelect(
-                api_url="/api/dcim/sites/"
-            )
         }

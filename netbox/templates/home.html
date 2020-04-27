@@ -1,5 +1,18 @@
-{% extends '_base.html' %}
+{% extends 'base.html' %}
 {% load helpers %}
+
+{% block header %}
+    {{ block.super }}
+    {% if new_release %}
+        {# new_release is set only if the current user is a superuser or staff member #}
+        <div class="alert alert-info text-center" role="alert">
+            <i class="fa fa-info-circle"></i>
+            A new release is available: <a href="{{ new_release.url }}">NetBox v{{ new_release.version }}</a> |
+            <a href="https://netbox.readthedocs.io/en/stable/installation/upgrading/">Upgrade instructions</a>
+        </div>
+    {% endif %}
+{% endblock %}
+
 
 {% block content %}
 {% include 'search_form.html' %}
@@ -137,23 +150,6 @@
                 </div>
             </div>
         </div>
-        <div class="panel panel-default">
-            <div class="panel-heading">
-                <strong>Secrets</strong>
-            </div>
-            <div class="list-group">
-                <div class="list-group-item">
-                    {% if perms.secrets.view_secret %}
-                        <span class="badge pull-right">{{ stats.secret_count }}</span>
-                        <h4 class="list-group-item-heading"><a href="{% url 'secrets:secret_list' %}">Secrets</a></h4>
-                    {% else %}
-                        <span class="badge pull-right"><i class="fa fa-lock"></i></span>
-                        <h4 class="list-group-item-heading">Secrets</h4>
-                    {% endif %}
-                    <p class="list-group-item-text text-muted">Cryptographically secured secret data</p>
-                </div>
-            </div>
-        </div>
     </div>
     <div class="col-sm-6 col-md-4">
         <div class="panel panel-default">
@@ -271,26 +267,20 @@
     <div class="col-sm-6 col-md-4">
         <div class="panel panel-default">
             <div class="panel-heading">
-                <strong>Global Topology Maps</strong>
+                <strong>Secrets</strong>
             </div>
-            {% if topology_maps and perms.extras.view_topologymap %}
-                <table class="table table-hover panel-body">
-                    {% for tm in topology_maps %}
-                        <tr>
-                            <td><i class="fa fa-fw fa-map-o"></i> <a href="{% url 'extras-api:topologymap-render' pk=tm.pk %}" target="_blank">{{ tm }}</a></td>
-                            <td>{{ tm.description }}</td>
-                        </tr>
-                    {% endfor %}
-                </table>
-            {% elif perms.extras.view_topologymap %}
-                <div class="panel-body text-muted">
-                    None found
+            <div class="list-group">
+                <div class="list-group-item">
+                    {% if perms.secrets.view_secret %}
+                        <span class="badge pull-right">{{ stats.secret_count }}</span>
+                        <h4 class="list-group-item-heading"><a href="{% url 'secrets:secret_list' %}">Secrets</a></h4>
+                    {% else %}
+                        <span class="badge pull-right"><i class="fa fa-lock"></i></span>
+                        <h4 class="list-group-item-heading">Secrets</h4>
+                    {% endif %}
+                    <p class="list-group-item-text text-muted">Cryptographically secured secret data</p>
                 </div>
-            {% else %}
-                <div class="panel-body text-muted">
-                    <i class="fa fa-lock"></i> No permission
-                </div>
-            {% endif %}
+            </div>
         </div>
         <div class="panel panel-default">
             <div class="panel-heading">
@@ -317,7 +307,7 @@
         </div>
         <div class="panel panel-default">
             <div class="panel-heading">
-                <strong>Changelog</strong>
+                <strong>Change Log</strong>
             </div>
             {% if changelog and perms.extras.view_objectchange %}
                 <div class="list-group">

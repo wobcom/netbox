@@ -5,10 +5,20 @@ from netaddr import IPNetwork
 from rest_framework import status
 
 from dcim.models import Device, DeviceRole, DeviceType, Manufacturer, Site
-from ipam.constants import IP_PROTOCOL_TCP, IP_PROTOCOL_UDP
+from ipam.choices import *
 from ipam.models import Aggregate, IPAddress, Prefix, RIR, Role, Service, VLAN, VLANGroup, VRF
 from tenancy.models import Tenant
-from utilities.testing import APITestCase
+from utilities.testing import APITestCase, disable_warnings
+
+
+class AppTest(APITestCase):
+
+    def test_root(self):
+
+        url = reverse('ipam-api:api-root')
+        response = self.client.get('{}?format=api'.format(url), **self.header)
+
+        self.assertEqual(response.status_code, 200)
 
 
 class VRFTest(APITestCase):
@@ -237,6 +247,7 @@ class AggregateTest(APITestCase):
         url = reverse('ipam-api:aggregate-detail', kwargs={'pk': self.aggregate1.pk})
         response = self.client.get(url, **self.header)
 
+        self.assertEqual(response.data['family']['value'], 4)
         self.assertEqual(response.data['prefix'], str(self.aggregate1.prefix))
 
     def test_list_aggregates(self):
@@ -444,6 +455,7 @@ class PrefixTest(APITestCase):
         url = reverse('ipam-api:prefix-detail', kwargs={'pk': self.prefix1.pk})
         response = self.client.get(url, **self.header)
 
+        self.assertEqual(response.data['family']['value'], 4)
         self.assertEqual(response.data['prefix'], str(self.prefix1.prefix))
 
     def test_list_prefixes(self):
@@ -576,9 +588,14 @@ class PrefixTest(APITestCase):
             self.assertEqual(response.data['description'], data['description'])
 
         # Try to create one more prefix
-        response = self.client.post(url, {'prefix_length': 30}, **self.header)
+        response = self.client.post(url, {'prefix_length': 30}, format='json', **self.header)
         self.assertHttpStatus(response, status.HTTP_204_NO_CONTENT)
         self.assertIn('detail', response.data)
+
+        # Try to create invalid prefix type
+        response = self.client.post(url, {'prefix_length': '30'}, format='json', **self.header)
+        self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('prefix_length', response.data[0])
 
     def test_create_multiple_available_prefixes(self):
 
@@ -680,6 +697,7 @@ class IPAddressTest(APITestCase):
         url = reverse('ipam-api:ipaddress-detail', kwargs={'pk': self.ipaddress1.pk})
         response = self.client.get(url, **self.header)
 
+        self.assertEqual(response.data['family']['value'], 4)
         self.assertEqual(response.data['address'], str(self.ipaddress1.address))
 
     def test_list_ipaddresss(self):
@@ -984,10 +1002,10 @@ class VLANTest(APITestCase):
         self.prefix1.save()
 
         url = reverse('ipam-api:vlan-detail', kwargs={'pk': self.vlan1.pk})
-        response = self.client.delete(url, **self.header)
+        with disable_warnings('django.request'):
+            response = self.client.delete(url, **self.header)
 
-        # can't use assertHttpStatus here because we don't have response.data
-        self.assertEqual(response.status_code, 409)
+        self.assertHttpStatus(response, status.HTTP_409_CONFLICT)
 
         content = json.loads(response.content.decode('utf-8'))
         self.assertIn('detail', content)
@@ -1011,13 +1029,13 @@ class ServiceTest(APITestCase):
             name='Test Device 2', site=site, device_type=devicetype, device_role=devicerole
         )
         self.service1 = Service.objects.create(
-            device=self.device1, name='Test Service 1', protocol=IP_PROTOCOL_TCP, port=1
+            device=self.device1, name='Test Service 1', protocol=ServiceProtocolChoices.PROTOCOL_TCP, port=1
         )
         self.service1 = Service.objects.create(
-            device=self.device1, name='Test Service 2', protocol=IP_PROTOCOL_TCP, port=2
+            device=self.device1, name='Test Service 2', protocol=ServiceProtocolChoices.PROTOCOL_TCP, port=2
         )
         self.service1 = Service.objects.create(
-            device=self.device1, name='Test Service 3', protocol=IP_PROTOCOL_TCP, port=3
+            device=self.device1, name='Test Service 3', protocol=ServiceProtocolChoices.PROTOCOL_TCP, port=3
         )
 
     def test_get_service(self):
@@ -1039,8 +1057,9 @@ class ServiceTest(APITestCase):
         data = {
             'device': self.device1.pk,
             'name': 'Test Service 4',
-            'protocol': IP_PROTOCOL_TCP,
+            'protocol': ServiceProtocolChoices.PROTOCOL_TCP,
             'port': 4,
+            'tags': ['Foo', 'Bar'],
         }
 
         url = reverse('ipam-api:service-list')
@@ -1053,6 +1072,8 @@ class ServiceTest(APITestCase):
         self.assertEqual(service4.name, data['name'])
         self.assertEqual(service4.protocol, data['protocol'])
         self.assertEqual(service4.port, data['port'])
+        tags = [tag.name for tag in service4.tags.all()]
+        self.assertEqual(sorted(tags), sorted(data['tags']))
 
     def test_create_service_bulk(self):
 
@@ -1060,19 +1081,19 @@ class ServiceTest(APITestCase):
             {
                 'device': self.device1.pk,
                 'name': 'Test Service 4',
-                'protocol': IP_PROTOCOL_TCP,
+                'protocol': ServiceProtocolChoices.PROTOCOL_TCP,
                 'port': 4,
             },
             {
                 'device': self.device1.pk,
                 'name': 'Test Service 5',
-                'protocol': IP_PROTOCOL_TCP,
+                'protocol': ServiceProtocolChoices.PROTOCOL_TCP,
                 'port': 5,
             },
             {
                 'device': self.device1.pk,
                 'name': 'Test Service 6',
-                'protocol': IP_PROTOCOL_TCP,
+                'protocol': ServiceProtocolChoices.PROTOCOL_TCP,
                 'port': 6,
             },
         ]
@@ -1091,7 +1112,7 @@ class ServiceTest(APITestCase):
         data = {
             'device': self.device2.pk,
             'name': 'Test Service X',
-            'protocol': IP_PROTOCOL_UDP,
+            'protocol': ServiceProtocolChoices.PROTOCOL_UDP,
             'port': 99,
         }
 

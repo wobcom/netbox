@@ -1,8 +1,13 @@
-<tr class="powerport{% if pp.cable.status %} success{% elif pp.cable %} info{% endif %}">
+<tr class="powerport{% if pp.cable %} {{ pp.cable.get_status_class }}{% endif %}">
 
     {# Name #}
     <td>
         <i class="fa fa-fw fa-bolt"></i> {{ pp }}
+    </td>
+
+    {# Type #}
+    <td>
+        {{ pp.get_type_display }}
     </td>
 
     {# Current draw #}

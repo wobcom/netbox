@@ -124,6 +124,7 @@ class ChangeFormView(GetReturnURLMixin, PermissionRequiredMixin, CreateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['return_url'] = self.get_return_url(self.request)
+        context['obj'] = ChangeInformation()
         return context
 
     def post(self, request, *args, **kwargs):

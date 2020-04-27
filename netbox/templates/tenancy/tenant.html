@@ -1,6 +1,8 @@
-{% extends '_base.html' %}
+{% extends 'base.html' %}
+{% load buttons %}
 {% load custom_links %}
 {% load helpers %}
+{% load plugins %}
 
 {% block header %}
     <div class="row noprint">
@@ -27,17 +29,15 @@
         </div>
     </div>
     <div class="pull-right noprint">
+        {% plugin_buttons tenant %}
+        {% if perms.tenancy.add_tenant %}
+            {% clone_button tenant %}
+        {% endif %}
         {% if perms.tenancy.change_tenant %}
-            <a href="{% url 'tenancy:tenant_edit' slug=tenant.slug %}" class="btn btn-warning">
-                <span class="fa fa-pencil" aria-hidden="true"></span>
-                Edit this tenant
-            </a>
+            {% edit_button tenant %}
         {% endif %}
         {% if perms.tenancy.delete_tenant %}
-            <a href="{% url 'tenancy:tenant_delete' slug=tenant.slug %}" class="btn btn-danger">
-                <span class="fa fa-trash" aria-hidden="true"></span>
-                Delete this tenant
-            </a>
+            {% delete_button tenant %}
         {% endif %}
     </div>
     <h1>{% block title %}{{ tenant }}{% endblock %}</h1>
@@ -51,7 +51,7 @@
         </li>
         {% if perms.extras.view_objectchange %}
             <li role="presentation"{% if active_tab == 'changelog' %} class="active"{% endif %}>
-                <a href="{% url 'tenancy:tenant_changelog' slug=tenant.slug %}">Changelog</a>
+                <a href="{% url 'tenancy:tenant_changelog' slug=tenant.slug %}">Change Log</a>
             </li>
         {% endif %}
     </ul>
@@ -89,12 +89,13 @@
             </div>
             <div class="panel-body rendered-markdown">
                 {% if tenant.comments %}
-                    {{ tenant.comments|gfm }}
+                    {{ tenant.comments|render_markdown }}
                 {% else %}
                     <span class="text-muted">None</span>
                 {% endif %}
             </div>
         </div>
+        {% plugin_left_page tenant %}
 	</div>
 	<div class="col-md-5">
         <div class="panel panel-default">
@@ -142,8 +143,18 @@
                     <h2><a href="{% url 'virtualization:virtualmachine_list' %}?tenant={{ tenant.slug }}" class="btn {% if stats.virtualmachine_count %}btn-primary{% else %}btn-default{% endif %} btn-lg">{{ stats.virtualmachine_count }}</a></h2>
                     <p>Virtual machines</p>
                 </div>
+                <div class="col-md-4 text-center">
+                    <h2><a href="{% url 'virtualization:cluster_list' %}?tenant={{ tenant.slug }}" class="btn {% if stats.cluster_count %}btn-primary{% else %}btn-default{% endif %} btn-lg">{{ stats.cluster_count }}</a></h2>
+                    <p>Clusters</p>
+                </div>
             </div>
         </div>
+        {% plugin_right_page tenant %}
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-12">
+        {% plugin_full_width_page tenant %}
     </div>
 </div>
 {% endblock %}

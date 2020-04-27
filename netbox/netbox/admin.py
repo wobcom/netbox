@@ -1,28 +1,14 @@
 from django.conf import settings
-from django.contrib.admin import AdminSite
-from django.contrib.auth.admin import GroupAdmin, UserAdmin
-from django.contrib.auth.models import Group, User
+from django.contrib.admin import site as admin_site
+from taggit.models import Tag
 
 
-class NetBoxAdminSite(AdminSite):
-    """
-    Custom admin site
-    """
-    site_header = 'NetBox Administration'
-    site_title = 'NetBox'
-    site_url = '/{}'.format(settings.BASE_PATH)
+# Override default AdminSite attributes so we can avoid creating and
+# registering our own class
+admin_site.site_header = 'NetBox Administration'
+admin_site.site_title = 'NetBox'
+admin_site.site_url = '/{}'.format(settings.BASE_PATH)
+admin_site.index_template = 'admin/index.html'
 
-
-admin_site = NetBoxAdminSite(name='admin')
-
-# Register external models
-admin_site.register(Group, GroupAdmin)
-admin_site.register(User, UserAdmin)
-
-# Modify the template to include an RQ link if django_rq is installed (see RQ_SHOW_ADMIN_LINK)
-if settings.WEBHOOKS_ENABLED:
-    try:
-        import django_rq
-        admin_site.index_template = 'django_rq/index.html'
-    except ImportError:
-        pass
+# Unregister the unused stock Tag model provided by django-taggit
+admin_site.unregister(Tag)

@@ -1,9 +1,9 @@
-{% extends '_base.html' %}
+{% extends 'base.html' %}
 {% load buttons %}
 
 {% block content %}
 <div class="pull-right">
-    {% if perms.ipam.add_overlay_networkgroup %}
+    {% if perms.ipam.add_overlaynetworkgroup %}
         {% add_button 'ipam:overlay_networkgroup_add' %}
         {% import_button 'ipam:overlay_networkgroup_import' %}
     {% endif %}

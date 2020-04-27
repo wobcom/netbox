@@ -3,13 +3,23 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from netaddr import AddrFormatError, EUI, mac_unix_expanded
 
+from ipam.constants import BGP_ASN_MAX, BGP_ASN_MIN
+
 
 class ASNField(models.BigIntegerField):
     description = "32-bit ASN field"
     default_validators = [
-        MinValueValidator(1),
-        MaxValueValidator(4294967295),
+        MinValueValidator(BGP_ASN_MIN),
+        MaxValueValidator(BGP_ASN_MAX),
     ]
+
+    def formfield(self, **kwargs):
+        defaults = {
+            'min_value': BGP_ASN_MIN,
+            'max_value': BGP_ASN_MAX,
+        }
+        defaults.update(**kwargs)
+        return super().formfield(**defaults)
 
 
 class mac_unix_expanded_uppercase(mac_unix_expanded):
@@ -22,7 +32,7 @@ class MACAddressField(models.Field):
     def python_type(self):
         return EUI
 
-    def from_db_value(self, value, expression, connection, context):
+    def from_db_value(self, value, expression, connection):
         return self.to_python(value)
 
     def to_python(self, value):

@@ -1,5 +1,5 @@
 {% load helpers %}
-<tr class="interface{% if not iface.enabled %} danger{% elif iface.cable.status %} success{% elif iface.cable %} info{% elif iface.is_virtual %} warning{% endif %}" id="interface_{{ iface.name }}">
+<tr class="interface{% if not iface.enabled %} danger{% elif iface.cable %} {{ iface.cable.get_status_class }}{% elif iface.is_virtual %} warning{% endif %}" id="interface_{{ iface.name }}">
 
     {# Checkbox #}
     {% if perms.dcim.change_interface or perms.dcim.delete_interface %}
@@ -48,6 +48,9 @@
     <td class="text-nowrap">
         {% if iface.cable %}
             <a href="{{ iface.cable.get_absolute_url }}">{{ iface.cable }}</a>
+            {% if iface.cable.color %}
+            <span class="inline-color-block" style="background-color: #{{ iface.cable.color }}">&nbsp;</span>
+            {% endif %}
             <a href="{% url 'dcim:interface_trace' pk=iface.pk %}" class="btn btn-primary btn-xs" title="Trace">
                 <i class="fa fa-share-alt" aria-hidden="true"></i>
             </a>

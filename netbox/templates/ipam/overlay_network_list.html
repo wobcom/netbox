@@ -1,9 +1,9 @@
-{% extends '_base.html' %}
+{% extends 'base.html' %}
 {% load buttons %}
 
 {% block content %}
 <div class="pull-right">
-    {% if perms.ipam.add_overlay_network %}
+    {% if perms.ipam.add_overlaynetwork %}
         {% add_button 'ipam:overlay_network_add' %}
         {% import_button 'ipam:overlay_network_import' %}
     {% endif %}
@@ -16,7 +16,7 @@
 	</div>
 	<div class="col-md-3">
 		{% include 'inc/search_panel.html' %}
-		{% include 'inc/tags_panel.html' %}
+		{% include 'extras/inc/tags_panel.html' %}
 	</div>
 </div>
 {% endblock %}

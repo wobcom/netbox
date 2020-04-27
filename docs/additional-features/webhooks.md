@@ -1,57 +1,106 @@
 # Webhooks
 
-A webhook defines an HTTP request that is sent to an external application when certain types of objects are created, updated, and/or deleted in NetBox. When a webhook is triggered, a POST request is sent to its configured URL. This request will include a full representation of the object being modified for consumption by the receiver. Webhooks are configured via the admin UI under Extras > Webhooks.
+A webhook is a mechanism for conveying to some external system a change that took place in NetBox. For example, you may want to notify a monitoring system whenever a device status is changed in NetBox. This can be done by creating a webhook for the device model in NetBox. When NetBox detects a change to a device, an HTTP request containing the details of the change and who made it be sent to the specified receiver. Webhooks are configured in the admin UI under Extras > Webhooks.
 
-An optional secret key can be configured for each webhook. This will append a `X-Hook-Signature` header to the request, consisting of a HMAC (SHA-512) hex digest of the request body using the secret as the key. This digest can be used by the receiver to authenticate the request's content.
+## Configuration
 
-## Requests
+* **Name** - A unique name for the webhook. The name is not included with outbound messages.
+* **Object type(s)** - The type or types of NetBox object that will trigger the webhook.
+* **Enabled** - If unchecked, the webhook will be inactive.
+* **Events** - A webhook may trigger on any combination of create, update, and delete events. At least one event type must be selected.
+* **HTTP method** - The type of HTTP request to send. Options include GET, POST, PUT, PATCH, and DELETE.
+* **URL** - The fuly-qualified URL of the request to be sent. This may specify a destination port number if needed.
+* **HTTP content type** - The value of the request's `Content-Type` header. (Defaults to `application/json`)
+* **Additional headers** - Any additional headers to include with the request (optional). Add one header per line in the format `Name: Value`. Jinja2 templating is supported for this field (see below).
+* **Body template** - The content of the request being sent (optional). Jinja2 templating is supported for this field (see below). If blank, NetBox will populate the request body with a raw dump of the webhook context. (If the HTTP cotent type is set to `application/json`, this will be formatted as a JSON object.)
+* **Secret** - A secret string used to prove authenticity of the request (optional). This will append a `X-Hook-Signature` header to the request, consisting of a HMAC (SHA-512) hex digest of the request body using the secret as the key.
+* **SSL verification** - Uncheck this option to disable validation of the receiver's SSL certificate. (Disable with caution!)
+* **CA file path** - The file path to a particular certificate authority (CA) file to use when validating the receiver's SSL certificate (optional).
 
-The webhook POST request is structured as so (assuming `application/json` as the Content-Type):
+## Jinja2 Template Support
+
+[Jinja2 templating](https://jinja.palletsprojects.com/) is supported for the `additional_headers` and `body_template` fields. This enables the user to convey change data in the request headers as well as to craft a customized request body. Request content can be crafted to enable the direct interaction with external systems by ensuring the outgoing message is in a format the receiver expects and understands.
+
+For example, you might create a NetBox webhook to [trigger a Slack message](https://api.slack.com/messaging/webhooks) any time an IP address is created. You can accomplish this using the following configuration:
+
+* Object type: IPAM > IP address
+* HTTP method: POST
+* URL: <Slack incoming webhook URL>
+* HTTP content type: `application/json`
+* Body template: `{"text": "IP address {{ data['address'] }} was created by {{ username }}!"}`
+
+### Available Context
+
+The following data is available as context for Jinja2 templates:
+
+* `event` - The type of event which triggered the webhook: created, updated, or deleted.
+* `model` - The NetBox model which triggered the change.
+* `timestamp` - The time at which the event occurred (in [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) format).
+* `username` - The name of the user account associated with the change.
+* `request_id` - The unique request ID. This may be used to correlate multiple changes associated with a single request.
+* `data` - A serialized representation of the object _after_ the change was made. This is typically equivalent to the model's representation in NetBox's REST API.
+
+### Default Request Body
+
+If no body template is specified, the request body will be populated with a JSON object containing the context data. For example, a newly created site might appear as follows:
 
 ```no-highlight
 {
     "event": "created",
-    "signal_received_timestamp": 1508769597,
-    "model": "Site"
+    "timestamp": "2020-02-25 15:10:26.010582+00:00",
+    "model": "site",
+    "username": "jstretch",
+    "request_id": "fdbca812-3142-4783-b364-2e2bd5c16c6a",
     "data": {
+        "id": 19,
+        "name": "Site 1",
+        "slug": "site-1",
+        "status": 
+            "value": "active",
+            "label": "Active",
+            "id": 1
+        },
+        "region": null,
         ...
     }
 }
 ```
 
-`data` is the serialized representation of the model instance(s) from the event. The same serializers from the NetBox API are used. So an example of the payload for a Site delete event would be:
+## Webhook Processing
+
+When a change is detected, any resulting webhooks are placed into a Redis queue for processing. This allows the user's request to complete without needing to wait for the outgoing webhook(s) to be processed. The webhooks are then extracted from the queue by the `rqworker` process and HTTP requests are sent to their respective destinations. The current webhook queue and any failed webhooks can be inspected in the admin UI under Django RQ > Queues.
+
+A request is considered successful if the response has a 2XX status code; otherwise, the request is marked as having failed. Failed requests may be retried manually via the admin UI.
+
+## Troubleshooting
+
+To assist with verifying that the content of outgoing webhooks is rendered correctly, NetBox provides a simple HTTP listener that can be run locally to receive and display webhook requests. First, modify the target URL of the desired webhook to `http://localhost:9000/`. This will instruct NetBox to send the request to the local server on TCP port 9000. Then, start the webhook receiver service from the NetBox root directory:
 
 ```no-highlight
-{
-    "event": "deleted",
-    "signal_received_timestamp": 1508781858.544069,
-    "model": "Site",
-    "data": {
-        "asn": None,
-        "comments": "",
-        "contact_email": "",
-        "contact_name": "",
-        "contact_phone": "",
-        "count_circuits": 0,
-        "count_devices": 0,
-        "count_prefixes": 0,
-        "count_racks": 0,
-        "count_vlans": 0,
-        "custom_fields": {},
-        "facility": "",
-        "id": 54,
-        "name": "test",
-        "physical_address": "",
-        "region": None,
-        "shipping_address": "",
-        "slug": "test",
-        "tenant": None
-    }
-}
+$ python netbox/manage.py webhook_receiver
+Listening on port http://localhost:9000. Stop with CONTROL-C.
 ```
 
-A request is considered successful if the response status code is any one of a list of "good" statuses defined in the [requests library](https://github.com/requests/requests/blob/205755834d34a8a6ecf2b0b5b2e9c3e6a7f4e4b6/requests/models.py#L688), otherwise the request is marked as having failed. The user may manually retry a failed request.
+You can test the receiver itself by sending any HTTP request to it. For example:
 
-## Backend Status
+```no-highlight
+$ curl -X POST http://localhost:9000 --data '{"foo": "bar"}'
+```
 
-Django-rq includes a status page in the admin site which can be used to view the result of processed webhooks and manually retry any failed webhooks. Access it from http://netbox.local/admin/webhook-backend-status/.
+The server will print output similar to the following:
+
+```no-highlight
+[1] Tue, 07 Apr 2020 17:44:02 GMT 127.0.0.1 "POST / HTTP/1.1" 200 -
+Host: localhost:9000
+User-Agent: curl/7.58.0
+Accept: */*
+Content-Length: 14
+Content-Type: application/x-www-form-urlencoded
+
+{"foo": "bar"}
+------------
+```
+
+Note that `webhook_receiver` does not actually _do_ anything with the information received: It merely prints the request headers and body for inspection.
+
+Now, when the NetBox webhook is triggered and processed, you should see its headers and content appear in the terminal where the webhook receiver is listening. If you don't, check that the `rqworker` process is running and that webhook events are being placed into the queue (visible under the NetBox admin UI).
