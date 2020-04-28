@@ -66,7 +66,10 @@
                 <div class="panel-heading">
                     <strong>Logs</strong>
                 </div>
-                <div id="terminal_output"></div>
+                <div class="panel-body" style="padding: 0;">
+                    <div style="padding: 10px;" id="xterm-search-container"></div>
+                    <div id="terminal_output"></div>
+                </div>
             </div>
         </div>
         <div class="col-md-6">
@@ -132,11 +135,16 @@
         var term = new Terminal({
             rows: 50,
             scrollback: 1000000,
+            theme: {
+                selection: 'rgba(255, 124, 0, 0.5)',
+            }
         });
         var fit_addon = new FitAddon.FitAddon();
         var web_links_addon = new WebLinksAddon.WebLinksAddon();
+        var search_addon = new SearchAddon.SearchAddon();
         term.loadAddon(fit_addon);
         term.loadAddon(web_links_addon);
+        term.loadAddon(search_addon);
         term.open(document.getElementById('terminal_output'));
         fit_addon.fit();
         {% if provision_set.status != provision_set.RUNNING %}
@@ -152,6 +160,137 @@
             }
         };
         {% endif %}
+
+        class XtermSearch extends React.Component {
+            constructor(props) {
+                super(props);
+                this.state          = {text: '', found: undefined};
+                this.search         = this.search.bind(this);
+                this.inputChange    = this.inputChange.bind(this);
+                this.searchPrevious = this.searchPrevious.bind(this);
+            }
+
+            search(e) {
+                e.preventDefault();
+                if (this.state.text !== "") {
+                    let found = search_addon.findNext(this.state.text, {caseSensitive: false});
+                    this.setState({found: found});
+                }
+            }
+            searchPrevious() {
+                if (this.state.text !== "") {
+                    let found = search_addon.findPrevious(this.state.text, {caseSensitive: false});
+                    this.setState({found: found});
+                }
+            }
+
+            inputChange(e) {
+                this.setState({text: e.target.value, found: undefined});
+            }
+
+            render() {
+
+                let validationState = null,
+                    errorText       = '',
+                    buttons;
+
+                if (this.state.found !== undefined && !this.state.found) {
+                    validationState = 'error';
+                    errorText       = 'No matches.';
+                }
+                if (this.state.found === undefined || !this.state.found) {
+                    buttons = React.createElement(
+                        ReactBootstrap.Button,
+                        {
+                            type:      'submit',
+                            className: 'pull-right',
+                            bsStyle:   'primary',
+                        },
+                        React.createElement(
+                            ReactBootstrap.Glyphicon,
+                            {
+                                glyph: 'search',
+                            }
+                        ),
+                        ' Search'
+                    )
+                } else {
+                    buttons = React.createElement(
+                        ReactBootstrap.ButtonGroup,
+                        {
+                            className: 'pull-right',
+                        },
+                        React.createElement(
+                            ReactBootstrap.Button,
+                            {
+                                bsStyle: 'primary',
+                                type:    'submit',
+                            },
+                            React.createElement(
+                                ReactBootstrap.Glyphicon,
+                                {
+                                    glyph: 'arrow-down',
+                                }
+                            ),
+                            ' Next'
+                        ),
+                        React.createElement(
+                            ReactBootstrap.Button,
+                            {
+                                bsStyle: 'primary',
+                                onClick: this.searchPrevious,
+                            },
+                            React.createElement(
+                                ReactBootstrap.Glyphicon,
+                                {
+                                    glyph: 'arrow-up'
+                                }
+                            ),
+                            ' Previous'
+                        )
+                    )
+                }
+
+                return React.createElement(
+                    ReactBootstrap.Form,
+                    {
+                        inline: true,
+                        onSubmit:  this.search,
+                    },
+                    React.createElement(
+                        ReactBootstrap.FormGroup,
+                        {
+                            validationState: validationState,
+                        },
+                        React.createElement(
+                            ReactBootstrap.FormControl,
+                            {
+                                placeholder: 'Search',
+                                value:       this.state.text,
+                                onChange:    this.inputChange,
+                            }
+                        ),
+                    ),
+                    React.createElement(
+                        ReactBootstrap.FormGroup,
+                        null,
+                        React.createElement(
+                            'p',
+                            {
+                                className: 'form-control-static',
+                                style: {
+                                    marginLeft: '10px',
+                                }
+                            },
+                            errorText
+                        ),
+                    ),
+                    buttons,
+                )
+            }
+        }
+
+        ReactDOM.render(React.createElement(XtermSearch, null), document.getElementById('xterm-search-container'));
     })
 
     </script>
