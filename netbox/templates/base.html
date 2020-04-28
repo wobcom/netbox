@@ -105,6 +105,10 @@
         onerror="window.location='{% url 'media_failure' %}?filename=xterm.js-4.5.0/lib/xterm-addon-web-links.js'"></script>
 <script src="{% static 'xterm.js-4.5.0/lib/xterm-addon-search.js' %}"
         onerror="window.location='{% url 'media_failure' %}?filename=xterm.js-4.5.0/lib/xterm-addon-search.js'"></script>
+<script src="{% static 'react-0.14.3/build/react.min.js' %}"
+        onerror="window.location='{% url 'media_failure' %}?filename=react-0.14.3/build/react.min.js'"></script>
+<script src="{% static 'react-0.14.3/build/react-dom.min.js' %}"
+        onerror="window.location='{% url 'media_failure' %}?filename=react-0.14.3/build/react-dom.min.js'"></script>
 <script type="text/javascript">
     var netbox_api_path = "/{{ settings.BASE_PATH }}api/";
     var loading = $(".loading");
