@@ -291,14 +291,6 @@
         }
 
         ReactDOM.render(React.createElement(XtermSearch, null), document.getElementById('xterm-search-container'));
-
-        (e) => {
-            e.preventDefault();
-            var search = document.getElementById('xterm-search').value;
-            if (search !== "") {
-                console.log(search_addon.findNext(search, {caseSensitive: false}));
-            }
-        };
     })
 
     </script>
