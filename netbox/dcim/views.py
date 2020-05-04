@@ -1716,7 +1716,7 @@ class InterfaceBulkAddVLANView(PermissionRequiredMixin, BulkEditView):
             return redirect(self.get_return_url(request))
 
         if '_apply' in request.POST:
-            form = self.form(model, None, request.POST)
+            form = self.form(model=model, data=request.POST)
             if form.is_valid():
                 form.save(self, models=models)
                 return redirect(self.get_return_url(request))
