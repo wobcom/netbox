@@ -1716,9 +1716,18 @@ class InterfaceBulkAddVLANView(PermissionRequiredMixin, BulkEditView):
             return redirect(self.get_return_url(request))
 
         if '_apply' in request.POST:
-            form = self.form(model, None, request.POST)
+            form = self.form(model=model, data=request.POST)
             if form.is_valid():
                 form.save(self, models=models)
+                vlans = VLAN.objects.filter(pk__in=form.cleaned_data.get('vlans', []))
+                messages.add_message(
+                    request=request,
+                    level=messages.SUCCESS,
+                    message='Successfully added VLANs ({}) to interfaces ({})'.format(
+                        ', '.join([str(v) for v in vlans]),
+                        ', '.join([i.name for i in models]),
+                    ),
+                )
                 return redirect(self.get_return_url(request))
         else:
             return super().post(request, **kwargs)
