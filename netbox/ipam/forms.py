@@ -1461,16 +1461,11 @@ class VLANFilterForm(BootstrapMixin, TenancyFilterForm, CustomFieldFilterForm):
             null_option=True,
         )
     )
-    tenant = DynamicModelChoiceField(
-        queryset=Tenant.objects.annotate(
-            filter_count=Count('vlans')
-        ),
-        to_field_name='slug',
-    )
-    overlay_network = forms.ModelChoiceField(
+    overlay_network = forms.ModelMultipleChoiceField(
         queryset=OverlayNetwork.objects.annotate(
             filter_count=Count('vlans')
         ),
+        required=False,
         to_field_name='vxlan_prefix',
     )
     status = forms.MultipleChoiceField(
