@@ -15,7 +15,7 @@ from django.utils import timezone
 from django.db import IntegrityError
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
-from diplomacy import Diplomat
+from diplomat import Diplomat
 
 from netbox import configuration
 from utilities.views import ObjectListView, GetReturnURLMixin
