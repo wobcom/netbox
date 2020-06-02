@@ -553,6 +553,12 @@ class VLANFilterSet(BaseFilterSet, TenancyFilterSet, CustomFieldFilterSet, Creat
         to_field_name='slug',
         label='Role (slug)',
     )
+    overlay_network = django_filters.ModelMultipleChoiceFilter(
+        field_name='overlay_network__vxlan_prefix',
+        queryset=OverlayNetwork.objects.all(),
+        label='Overlay network',
+        to_field_name='vxlan_prefix',
+    )
     status = django_filters.MultipleChoiceFilter(
         choices=VLANStatusChoices,
         null_value=None
