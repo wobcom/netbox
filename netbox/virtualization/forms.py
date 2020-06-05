@@ -5,7 +5,7 @@ from taggit.forms import TagField
 from dcim.choices import InterfaceModeChoices
 from dcim.constants import INTERFACE_MTU_MAX, INTERFACE_MTU_MIN
 from dcim.forms import INTERFACE_MODE_HELP_TEXT
-from dcim.models import Device, DeviceRole, Interface, Platform, PlatformVersion, Rack, Region, Site
+from dcim.models import Device, DeviceRole, Interface, Platform, Rack, Region, Site
 from extras.forms import (
     AddRemoveTagsForm, CustomFieldBulkEditForm, CustomFieldModelCSVForm, CustomFieldModelForm, CustomFieldFilterForm,
 )
@@ -329,16 +329,6 @@ class VirtualMachineForm(BootstrapMixin, TenancyForm, CustomFieldModelForm):
         queryset=Platform.objects.all(),
         widget=APISelect(
             api_url='/api/dcim/platforms',
-            filter_for={
-                'platform_version': 'platform_id'
-            }
-        )
-    )
-    platform_version = DynamicModelChoiceField(
-        queryset=PlatformVersion.objects.all(),
-        required=False,
-        widget=APISelect(
-            display_field='name'
         )
     )
     tags = TagField(
@@ -353,7 +343,7 @@ class VirtualMachineForm(BootstrapMixin, TenancyForm, CustomFieldModelForm):
         model = VirtualMachine
         fields = [
             'name', 'status', 'cluster_group', 'cluster', 'role', 'tenant_group', 'tenant', 'platform',
-            'platform_version', 'primary_ip4', 'primary_ip6', 'vcpus', 'memory', 'disk', 'comments', 'tags',
+            'primary_ip4', 'primary_ip6', 'vcpus', 'memory', 'disk', 'comments', 'tags',
             'local_context_data',
         ]
         help_texts = {
@@ -500,13 +490,6 @@ class VirtualMachineBulkEditForm(BootstrapMixin, AddRemoveTagsForm, CustomFieldB
             filter_for={
                 'platform_version': 'platform_id'
             }
-        )
-    )
-    platform_version = DynamicModelChoiceField(
-        queryset=PlatformVersion.objects.all(),
-        required=False,
-        widget=APISelect(
-            display_field='name'
         )
     )
     vcpus = forms.IntegerField(

@@ -160,12 +160,8 @@ urlpatterns = [
     path('platforms/add/', views.PlatformCreateView.as_view(), name='platform_add'),
     path('platforms/import/', views.PlatformBulkImportView.as_view(), name='platform_import'),
     path('platforms/delete/', views.PlatformBulkDeleteView.as_view(), name='platform_bulk_delete'),
-    path('platforms/versions/add', views.PlatformVersionCreateView.as_view(), name='platform_version_add'),
-    path('platforms/<slug:slug>', views.PlatformView.as_view(), name='platform'),
     path('platforms/<slug:slug>/edit/', views.PlatformEditView.as_view(), name='platform_edit'),
     path('platforms/<slug:slug>/changelog/', ObjectChangeLogView.as_view(), name='platform_changelog', kwargs={'model': Platform}),
-    path('platform-versions/delete', views.PlatformVersionBulkDeleteView.as_view(), name='platform_version_bulk_delete'),
-    path('platform-versions/<int:pk>/delete', views.PlatformVersionDeleteView.as_view(), name='platform_version_delete'),
 
     # Devices
     path('devices/', views.DeviceListView.as_view(), name='device_list'),
