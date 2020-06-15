@@ -2,8 +2,8 @@ import logging
 import sys
 from copy import deepcopy
 
-from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import FieldDoesNotExist, ValidationError
 from django.db import transaction, IntegrityError
@@ -14,6 +14,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.template import loader
 from django.template.exceptions import TemplateDoesNotExist
 from django.urls import reverse
+from django.utils.decorators import method_decorator
 from django.utils.html import escape
 from django.utils.http import is_safe_url
 from django.utils.safestring import mark_safe
@@ -25,11 +26,11 @@ from django_tables2 import RequestConfig
 from extras.models import CustomField, CustomFieldValue, ExportTemplate
 from extras.querysets import CustomFieldQueryset
 from utilities.exceptions import AbortTransaction
-from utilities.forms import BootstrapMixin, CSVDataField
+from utilities.forms import BootstrapMixin, CSVDataField, TableConfigForm
 from utilities.utils import csv_format, prepare_cloned_fields
 from .error_handlers import handle_protectederror
 from .forms import ConfirmationForm, ImportForm
-from .paginator import EnhancedPaginator
+from .paginator import EnhancedPaginator, get_paginate_count
 
 
 class GetReturnURLMixin(object):
@@ -168,12 +169,20 @@ class ObjectListView(View):
         if isinstance(self.table, dict):
             table = {}
             for k, v in self.table.items():
-                t = v(self.table_querysets[k])
+                if request.user.is_authenticated:
+                    columns = request.user.config.get(f"tables.{v.__name__}.columns")
+                else:
+                    columns = None
+                t = v(self.table_querysets[k], columns=columns)
                 if 'pk' in t.base_columns and (permissions['change'] or permissions['delete']):
                     t.columns.show('pk')
                 table[k] = t
         else:
-            t = self.table(self.queryset)
+            if request.user.is_authenticated:
+                columns = request.user.config.get(f"tables.{self.table.__name__}.columns")
+            else:
+                columns = None
+            t = self.table(self.queryset, columns=columns)
             if 'pk' in t.base_columns and (permissions['change'] or permissions['delete']):
                 t.columns.show('pk')
             table = {'table': t}
@@ -181,7 +190,7 @@ class ObjectListView(View):
         # Apply the request context
         paginate = {
             'paginator_class': EnhancedPaginator,
-            'per_page': request.GET.get('per_page', settings.PAGINATE_COUNT)
+            'per_page': get_paginate_count(request)
         }
         for t in table.values():
             RequestConfig(request, paginate).configure(t)
@@ -190,12 +199,30 @@ class ObjectListView(View):
             'content_type': content_type,
             'permissions': permissions,
             'action_buttons': self.action_buttons,
+            'table_config_form': TableConfigForm(table=table),
             'filter_form': self.filterset_form(request.GET, label_suffix='') if self.filterset_form else None,
         }
         context.update(self.extra_context())
         context.update(table)
 
         return render(request, self.template_name, context)
+
+    @method_decorator(login_required)
+    def post(self, request):
+
+        # Update the user's table configuration
+        table = self.table(self.queryset)
+        form = TableConfigForm(table=table, data=request.POST)
+        preference_name = f"tables.{self.table.__name__}.columns"
+
+        if form.is_valid():
+            if 'set' in request.POST:
+                request.user.config.set(preference_name, form.cleaned_data['columns'], commit=True)
+            elif 'clear' in request.POST:
+                request.user.config.clear(preference_name, commit=True)
+            messages.success(request, "Your preferences have been updated.")
+
+        return redirect(request.get_full_path())
 
     def alter_queryset(self, request):
         # .all() is necessary to avoid caching queries
@@ -568,11 +595,11 @@ class BulkImportView(GetReturnURLMixin, View):
 
     def _import_form(self, *args, **kwargs):
 
-        fields = self.model_form().fields.keys()
-        required_fields = [name for name, field in self.model_form().fields.items() if field.required]
-
         class ImportForm(BootstrapMixin, Form):
-            csv = CSVDataField(fields=fields, required_fields=required_fields, widget=Textarea(attrs=self.widget_attrs))
+            csv = CSVDataField(
+                from_form=self.model_form,
+                widget=Textarea(attrs=self.widget_attrs)
+            )
 
         return ImportForm(*args, **kwargs)
 
@@ -602,8 +629,10 @@ class BulkImportView(GetReturnURLMixin, View):
             try:
                 # Iterate through CSV data and bind each row to a new model form instance.
                 with transaction.atomic():
-                    for row, data in enumerate(form.cleaned_data['csv'], start=1):
-                        obj_form = self.model_form(data)
+                    headers, records = form.cleaned_data['csv']
+                    for row, data in enumerate(records, start=1):
+                        obj_form = self.model_form(data, headers=headers)
+
                         if obj_form.is_valid():
                             obj = self._save_obj(obj_form, request)
                             new_objs.append(obj)
@@ -982,25 +1011,32 @@ class BulkComponentCreateView(GetReturnURLMixin, View):
                 new_components = []
                 data = deepcopy(form.cleaned_data)
 
-                for obj in data['pk']:
+                try:
+                    with transaction.atomic():
 
-                    names = data['name_pattern']
-                    for name in names:
-                        component_data = {
-                            self.parent_field: obj.pk,
-                            'name': name,
-                        }
-                        component_data.update(data)
-                        component_form = self.model_form(component_data)
-                        if component_form.is_valid():
-                            new_components.append(component_form.save(commit=False))
-                        else:
-                            for field, errors in component_form.errors.as_data().items():
-                                for e in errors:
-                                    form.add_error(field, '{} {}: {}'.format(obj, name, ', '.join(e)))
+                        for obj in data['pk']:
+
+                            names = data['name_pattern']
+                            for name in names:
+                                component_data = {
+                                    self.parent_field: obj.pk,
+                                    'name': name,
+                                }
+                                component_data.update(data)
+                                component_form = self.model_form(component_data)
+                                if component_form.is_valid():
+                                    instance = component_form.save()
+                                    logger.debug(f"Created {instance} on {instance.parent}")
+                                    new_components.append(instance)
+                                else:
+                                    for field, errors in component_form.errors.as_data().items():
+                                        for e in errors:
+                                            form.add_error(field, '{} {}: {}'.format(obj, name, ', '.join(e)))
+
+                except IntegrityError:
+                    pass
 
                 if not form.errors:
-                    self.model.objects.bulk_create(new_components)
                     msg = "Added {} {} to {} {}.".format(
                         len(new_components),
                         model_name,

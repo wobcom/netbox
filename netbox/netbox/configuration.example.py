@@ -108,6 +108,8 @@ EMAIL = {
     'PORT': 25,
     'USERNAME': '',
     'PASSWORD': '',
+    'USE_SSL': False,
+    'USE_TLS': False,
     'TIMEOUT': 10,  # seconds
     'FROM_EMAIL': '',
 }
@@ -123,6 +125,16 @@ EXEMPT_VIEW_PERMISSIONS = [
     # 'dcim.region',
     # 'ipam.prefix',
 ]
+
+# HTTP proxies NetBox should use when sending outbound HTTP requests (e.g. for webhooks).
+# HTTP_PROXIES = {
+#     'http': 'http://10.10.1.10:3128',
+#     'https': 'http://10.10.1.10:1080',
+# }
+
+# IP addresses recognized as internal to the system. The debugging toolbar will be available only to clients accessing
+# NetBox from an internal IP.
+INTERNAL_IPS = ('127.0.0.1', '::1')
 
 # Enable custom logging. Please see the Django documentation for detailed guidance on configuring custom logs:
 #   https://docs.djangoproject.com/en/stable/topics/logging/
@@ -178,8 +190,14 @@ PAGINATE_COUNT = 50
 # Enable installed plugins. Add the name of each plugin to the list.
 PLUGINS = []
 
-# Configure enabled plugins. This should be a dictionary of dictionaries, mapping each plugin by name to its configuration parameters.
-PLUGINS_CONFIG = {}
+# Plugins configuration settings. These settings are used by various plugins that the user may have installed.
+# Each key in the dictionary is the name of an installed plugin and its value is a dictionary of settings.
+# PLUGINS_CONFIG = {
+#     'my_plugin': {
+#         'foo': 'bar',
+#         'buzz': 'bazz'
+#     }
+# }
 
 # When determining the primary IP address for a device, IPv6 is preferred over IPv4 by default. Set this to True to
 # prefer IPv4 instead.
@@ -208,18 +226,6 @@ RELEASE_CHECK_URL = None
 # The file path where custom scripts will be stored. A trailing slash is not needed. Note that the default value of
 # this setting is derived from the installed location.
 # SCRIPTS_ROOT = '/opt/netbox/netbox/scripts'
-
-# Enable plugin support in netbox. This setting must be enabled for any installed plugins to function.
-PLUGINS_ENABLED = False
-
-# Plugins configuration settings. These settings are used by various plugins that the user may have installed.
-# Each key in the dictionary is the name of an installed plugin and its value is a dictionary of settings.
-# PLUGINS_CONFIG = {
-#     'my_plugin': {
-#         'foo': 'bar',
-#         'buzz': 'bazz'
-#     }
-# }
 
 # By default, NetBox will store session data in the database. Alternatively, a file path can be specified here to use
 # local file storage instead. (This can be useful for enabling authentication on a standby instance with read-only

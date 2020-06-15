@@ -2,13 +2,13 @@ from django import forms
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
 from mptt.forms import TreeNodeMultipleChoiceField
-from taggit.forms import TagField
+from taggit.forms import TagField as TagField_
 
 from dcim.models import DeviceRole, Platform, Region, Site
 from tenancy.models import Tenant, TenantGroup
 from utilities.forms import (
     add_blank_choice, APISelectMultiple, BootstrapMixin, BulkEditForm, BulkEditNullBooleanSelect, ColorSelect,
-    CommentField, ContentTypeSelect, DateTimePicker, DynamicModelMultipleChoiceField, JSONField, SlugField,
+    ContentTypeSelect, CSVModelForm, DateTimePicker, DynamicModelMultipleChoiceField, JSONField, SlugField,
     StaticSelect2, StaticSelect2Multiple, BOOLEAN_WITH_BLANK_CHOICES,
 )
 from virtualization.models import Cluster, ClusterGroup
@@ -89,7 +89,7 @@ class CustomFieldModelForm(forms.ModelForm):
         return obj
 
 
-class CustomFieldModelCSVForm(CustomFieldModelForm):
+class CustomFieldModelCSVForm(CSVModelForm, CustomFieldModelForm):
 
     def _append_customfield_fields(self):
 
@@ -141,6 +141,15 @@ class CustomFieldFilterForm(forms.Form):
 #
 # Tags
 #
+
+class TagField(TagField_):
+
+    def widget_attrs(self, widget):
+        # Apply the "tagfield" CSS class to trigger the special API-based selection widget for tags
+        return {
+            'class': 'tagfield'
+        }
+
 
 class TagForm(BootstrapMixin, forms.ModelForm):
     slug = SlugField()
@@ -229,7 +238,6 @@ class ConfigContextForm(BootstrapMixin, forms.ModelForm):
     )
     tags = DynamicModelMultipleChoiceField(
         queryset=Tag.objects.all(),
-        to_field_name='slug',
         required=False
     )
     data = JSONField(
@@ -424,11 +432,11 @@ class ScriptForm(BootstrapMixin, forms.Form):
 
     def __init__(self, vars, *args, commit_default=True, **kwargs):
 
-        super().__init__(*args, **kwargs)
-
         # Dynamically populate fields for variables
         for name, var in vars.items():
-            self.fields[name] = var.as_field()
+            self.base_fields[name] = var.as_field()
+
+        super().__init__(*args, **kwargs)
 
         # Toggle default commit behavior based on Meta option
         if not commit_default:

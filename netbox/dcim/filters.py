@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from extras.filters import CustomFieldFilterSet, LocalConfigContextFilterSet, CreatedUpdatedFilterSet
 from tenancy.filters import TenancyFilterSet
 from tenancy.models import Tenant
-from utilities.constants import COLOR_CHOICES
+from utilities.choices import ColorChoices
 from utilities.filters import (
     BaseFilterSet, MultiValueCharFilter, MultiValueMACAddressFilter, MultiValueNumberFilter,
     NameSlugSearchFilterSet, TagFilter, TreeNodeMultipleChoiceFilter,
@@ -301,7 +301,7 @@ class RackReservationFilterSet(BaseFilterSet, TenancyFilterSet):
 
     class Meta:
         model = RackReservation
-        fields = ['created']
+        fields = ['id', 'created']
 
     def search(self, queryset, name, value):
         if not value.strip():
@@ -369,7 +369,7 @@ class DeviceTypeFilterSet(BaseFilterSet, CustomFieldFilterSet, CreatedUpdatedFil
     class Meta:
         model = DeviceType
         fields = [
-            'model', 'slug', 'part_number', 'u_height', 'is_full_depth', 'subdevice_role',
+            'id', 'model', 'slug', 'part_number', 'u_height', 'is_full_depth', 'subdevice_role',
         ]
 
     def search(self, queryset, name, value):
@@ -1084,7 +1084,7 @@ class CableFilterSet(BaseFilterSet):
         choices=CableStatusChoices
     )
     color = django_filters.MultipleChoiceFilter(
-        choices=COLOR_CHOICES
+        choices=ColorChoices
     )
     device_id = MultiValueNumberFilter(
         method='filter_device'
@@ -1268,7 +1268,7 @@ class PowerPanelFilterSet(BaseFilterSet):
 
     class Meta:
         model = PowerPanel
-        fields = ['name']
+        fields = ['id', 'name']
 
     def search(self, queryset, name, value):
         if not value.strip():
@@ -1321,7 +1321,7 @@ class PowerFeedFilterSet(BaseFilterSet, CustomFieldFilterSet, CreatedUpdatedFilt
 
     class Meta:
         model = PowerFeed
-        fields = ['name', 'status', 'type', 'supply', 'phase', 'voltage', 'amperage', 'max_utilization']
+        fields = ['id', 'name', 'status', 'type', 'supply', 'phase', 'voltage', 'amperage', 'max_utilization']
 
     def search(self, queryset, name, value):
         if not value.strip():
