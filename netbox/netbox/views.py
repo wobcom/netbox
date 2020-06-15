@@ -14,14 +14,14 @@ from circuits.models import Circuit, Provider
 from circuits.tables import CircuitTable, ProviderTable
 from dcim.filters import (
     CableFilterSet, DeviceFilterSet, DeviceTypeFilterSet, PowerFeedFilterSet, RackFilterSet, RackGroupFilterSet, SiteFilterSet,
-    VirtualChassisFilterSet,
+    VirtualChassisFilterSet, InterfaceFilterSet,
 )
 from dcim.models import (
     Cable, ConsolePort, Device, DeviceType, Interface, PowerPanel, PowerFeed, PowerPort, Rack, RackGroup, Site, VirtualChassis
 )
 from dcim.tables import (
     CableTable, DeviceDetailTable, DeviceTypeTable, PowerFeedTable, RackTable, RackGroupTable, SiteTable,
-    VirtualChassisTable,
+    VirtualChassisTable, InterfaceDetailTable,
 )
 from extras.models import ObjectChange, ReportResult
 from ipam.filters import AggregateFilterSet, IPAddressFilterSet, PrefixFilterSet, VLANFilterSet, VRFFilterSet
@@ -95,6 +95,13 @@ SEARCH_TYPES = OrderedDict((
         'filterset': DeviceFilterSet,
         'table': DeviceDetailTable,
         'url': 'dcim:device_list',
+    }),
+    ('interface', {
+        'permission': 'dcim.view_interface',
+        'queryset': Interface.objects.prefetch_related('device'),
+        'filterset': InterfaceFilterSet,
+        'table': InterfaceDetailTable,
+        'url': 'dcim:interface_list',
     }),
     ('virtualchassis', {
         'permission': 'dcim.view_virtualchassis',
