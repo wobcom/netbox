@@ -166,44 +166,30 @@ class ObjectListView(View):
             permissions[action] = request.user.has_perm(perm_name)
 
         # Construct the table based on the user's permissions
-        if isinstance(self.table, dict):
-            table = {}
-            for k, v in self.table.items():
-                if request.user.is_authenticated:
-                    columns = request.user.config.get(f"tables.{v.__name__}.columns")
-                else:
-                    columns = None
-                t = v(self.table_querysets[k], columns=columns)
-                if 'pk' in t.base_columns and (permissions['change'] or permissions['delete']):
-                    t.columns.show('pk')
-                table[k] = t
+        if request.user.is_authenticated:
+            columns = request.user.config.get(f"tables.{self.table.__name__}.columns")
         else:
-            if request.user.is_authenticated:
-                columns = request.user.config.get(f"tables.{self.table.__name__}.columns")
-            else:
-                columns = None
-            t = self.table(self.queryset, columns=columns)
-            if 'pk' in t.base_columns and (permissions['change'] or permissions['delete']):
-                t.columns.show('pk')
-            table = {'table': t}
+            columns = None
+        table = self.table(self.queryset, columns=columns)
+        if 'pk' in table.base_columns and (permissions['change'] or permissions['delete']):
+            table.columns.show('pk')
 
         # Apply the request context
         paginate = {
             'paginator_class': EnhancedPaginator,
             'per_page': get_paginate_count(request)
         }
-        for t in table.values():
-            RequestConfig(request, paginate).configure(t)
+        RequestConfig(request, paginate).configure(table)
 
         context = {
             'content_type': content_type,
+            'table': table,
             'permissions': permissions,
             'action_buttons': self.action_buttons,
             'table_config_form': TableConfigForm(table=table),
             'filter_form': self.filterset_form(request.GET, label_suffix='') if self.filterset_form else None,
         }
         context.update(self.extra_context())
-        context.update(table)
 
         return render(request, self.template_name, context)
 
