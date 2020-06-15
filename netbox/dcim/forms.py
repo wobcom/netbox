@@ -34,7 +34,7 @@ from .models import (
     Cable, DeviceBay, DeviceBayTemplate, ConsolePort, ConsolePortTemplate, ConsoleServerPort, ConsoleServerPortTemplate,
     Device, DeviceRole, DeviceType, DeviceLicense, FrontPort,
     FrontPortTemplate, Interface, InterfaceTemplate, Manufacturer,
-    InventoryItem, Platform, PlatformVersion, PowerFeed, PowerOutlet, PowerOutletTemplate, PowerPanel, PowerPort,
+    InventoryItem, Platform, PowerFeed, PowerOutlet, PowerOutletTemplate, PowerPanel, PowerPort,
     PowerPortTemplate, Rack, RackGroup, RackReservation, RackRole, RearPort, RearPortTemplate, Region, Site,
     VirtualChassis
 )
@@ -1726,22 +1726,6 @@ class PlatformCSVForm(forms.ModelForm):
 
 
 #
-# Platform Versions
-#
-
-class PlatformVersionForm(BootstrapMixin, forms.ModelForm):
-
-    class Meta:
-        model = PlatformVersion
-        fields = [
-            'name', 'platform',
-        ]
-        widgets = {
-            'platform': forms.HiddenInput()
-        }
-
-
-#
 # Devices
 #
 
@@ -1759,22 +1743,6 @@ class DeviceForm(BootstrapMixin, TenancyForm, CustomFieldModelForm):
         required=False,
         widget=APISelect(
             display_field='display_name'
-        )
-    )
-    platform = DynamicModelChoiceField(
-        queryset=Platform.objects.all(),
-        widget=APISelect(
-            api_url='/api/dcim/platforms',
-            filter_for={
-                'platform_version': 'platform_id'
-            }
-        )
-    )
-    platform_version = DynamicModelChoiceField(
-        queryset=PlatformVersion.objects.all(),
-        required=False,
-        widget=APISelect(
-            display_field='name'
         )
     )
     position = forms.TypedChoiceField(
@@ -1845,7 +1813,7 @@ class DeviceForm(BootstrapMixin, TenancyForm, CustomFieldModelForm):
         model = Device
         fields = [
             'name', 'device_role', 'device_type', 'serial', 'asset_tag', 'site', 'rack', 'position', 'face',
-            'status', 'platform', 'platform_version', 'primary_ip4', 'primary_ip6', 'cluster_group', 'cluster',
+            'status', 'platform', 'primary_ip4', 'primary_ip6', 'cluster_group', 'cluster',
             'tenant_group', 'tenant', 'comments', 'tags', 'local_context_data', 'licenses'
         ]
         help_texts = {
@@ -2162,13 +2130,6 @@ class DeviceBulkEditForm(BootstrapMixin, AddRemoveTagsForm, CustomFieldBulkEditF
             filter_for={
                 'platform_version': 'platform_id'
             }
-        )
-    )
-    platform_version = DynamicModelChoiceField(
-        queryset=PlatformVersion.objects.all(),
-        required=False,
-        widget=APISelect(
-            display_field='name'
         )
     )
     status = forms.ChoiceField(

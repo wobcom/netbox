@@ -182,10 +182,6 @@ class VirtualMachineFilterSet(
         to_field_name='slug',
         label='Platform (slug)',
     )
-    platform_version_id = django_filters.ModelMultipleChoiceFilter(
-        queryset=Platform.objects.all(),
-        label='Platform Version (ID)',
-    )
     mac_address = MultiValueMACAddressFilter(
         field_name='interfaces__mac_address',
         label='MAC address',

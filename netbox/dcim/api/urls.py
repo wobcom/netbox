@@ -41,7 +41,6 @@ router.register('device-bay-templates', views.DeviceBayTemplateViewSet)
 # Devices
 router.register('device-roles', views.DeviceRoleViewSet)
 router.register('platforms', views.PlatformViewSet)
-router.register('platform-versions', views.PlatformVersionViewSet)
 router.register('devices', views.DeviceViewSet)
 
 # Device components

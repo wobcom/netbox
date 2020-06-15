@@ -36,7 +36,7 @@ from .constants import NONCONNECTABLE_IFACE_TYPES
 from .models import (
     Cable, ConsolePort, ConsolePortTemplate, ConsoleServerPort, ConsoleServerPortTemplate, Device, DeviceBay, DeviceLicense,
     DeviceBayTemplate, DeviceRole, DeviceType, FrontPort, FrontPortTemplate, Interface, InterfaceTemplate,
-    InventoryItem, Manufacturer, Platform, PlatformVersion, PowerFeed, PowerOutlet, PowerOutletTemplate, PowerPanel,
+    InventoryItem, Manufacturer, Platform, PowerFeed, PowerOutlet, PowerOutletTemplate, PowerPanel,
     PowerPort, PowerPortTemplate, Rack, RackGroup, RackReservation, RackRole, RearPort, RearPortTemplate, Region, Site,
     VirtualChassis,
 )
@@ -1060,31 +1060,6 @@ class PlatformListView(PermissionRequiredMixin, ObjectListView):
     table = tables.PlatformTable
 
 
-class PlatformView(PermissionRequiredMixin, View):
-    permission_required = 'dcim.view_platform'
-
-    def get(self, request, slug):
-        platform = get_object_or_404(Platform, slug=slug)
-        version_table = tables.PlatformVersionTable(
-            data=PlatformVersion.objects.filter(
-                platform=platform
-            )
-        )
-        perm_base_name = 'dcim.{}_platform'
-        permissions = {
-            p: request.user.has_perm(perm_base_name.format(p))
-            for p in ['add', 'change', 'delete']
-        }
-        if permissions['change']:
-            version_table.columns.show('pk')
-
-        return render(request, 'dcim/platform.html', {
-            'platform': platform,
-            'version_table': version_table,
-            'permissions': permissions,
-        })
-
-
 class PlatformCreateView(PermissionRequiredMixin, ObjectEditView):
     permission_required = 'dcim.add_platform'
     model = Platform
@@ -1108,28 +1083,6 @@ class PlatformBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
     queryset = Platform.objects.all()
     table = tables.PlatformTable
     default_return_url = 'dcim:platform_list'
-
-
-#
-# Platform Versions
-#
-
-class PlatformVersionCreateView(PermissionRequiredMixin, ObjectEditView):
-    permission_required = 'dcim.add_platformversion'
-    model = PlatformVersion
-    model_form = forms.PlatformVersionForm
-    default_return_url = 'dcim:platform_list'
-
-
-class PlatformVersionDeleteView(PermissionRequiredMixin, ObjectDeleteView):
-    permission_required = 'dcim.delete_platformversion'
-    model = PlatformVersion
-
-
-class PlatformVersionBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
-    permission_required = 'dcim.delete_platformversion'
-    queryset = PlatformVersion.objects.all()
-    table = tables.PlatformVersionTable
 
 
 #

@@ -9,7 +9,7 @@ from dcim.constants import *
 from dcim.models import (
     Cable, ConsolePort, ConsolePortTemplate, ConsoleServerPort, ConsoleServerPortTemplate, Device, DeviceBay,
     DeviceBayTemplate, DeviceType, DeviceRole, FrontPort, FrontPortTemplate, Interface, InterfaceTemplate,
-    Manufacturer, InventoryItem, Platform, PlatformVersion, PowerFeed, PowerOutlet, PowerOutletTemplate, PowerPanel,
+    Manufacturer, InventoryItem, Platform, PowerFeed, PowerOutlet, PowerOutletTemplate, PowerPanel,
     PowerPort, PowerPortTemplate, Rack, RackGroup, RackReservation, RackRole, RearPort, RearPortTemplate, Region, Site,
     VirtualChassis,
 )
@@ -360,16 +360,6 @@ class PlatformSerializer(ValidatedModelSerializer):
         fields = [
             'id', 'name', 'slug', 'manufacturer', 'napalm_driver', 'napalm_args', 'description', 'device_count',
             'virtualmachine_count',
-        ]
-
-
-class PlatformVersionSerializer(ValidatedModelSerializer):
-    platform = NestedPlatformSerializer(required=True, allow_null=False)
-
-    class Meta:
-        model = PlatformVersion
-        fields = [
-            'id', 'name', 'platform'
         ]
 
 
