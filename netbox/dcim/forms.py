@@ -2967,11 +2967,7 @@ class InterfaceBulkAddVLANForm(BootstrapMixin, BulkEditForm):
     vlans = forms.MultipleChoiceField(
         choices=[],
         label='VLANs',
-        widget=forms.SelectMultiple(
-            attrs={
-                'size': 20,
-            }
-        )
+        widget=StaticSelect2Multiple
     )
     tagged = forms.BooleanField(
         required=False,
