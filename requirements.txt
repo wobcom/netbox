@@ -25,7 +25,7 @@ redis==3.4.1
 svgwrite==1.4
 python-gitlab
 django-codemirror2
-diplomacy
+diplomat
 ansible
 channels
 topdesk
