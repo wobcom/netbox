@@ -348,11 +348,9 @@ TEMPLATES = [
 
 # Set up authentication backends
 AUTHENTICATION_BACKENDS = [
-    'change.backends.model.ProxyBackend',
+    'change.auth_backends.RemoteAuthProxyBackend',
+    'change.auth_backends.ModelProxyBackend',
 ]
-
-if REMOTE_AUTH_ENABLED:
-    AUTHENTICATION_BACKENDS.insert(0, REMOTE_AUTH_BACKEND)
 
 # Internationalization
 LANGUAGE_CODE = 'en-us'
@@ -449,7 +447,7 @@ if LDAP_CONFIG is not None:
         ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, ldap.OPT_X_TLS_NEVER)
 
     # Prepend LDAPBackend to the authentication backends list
-    AUTHENTICATION_BACKENDS.insert(0, 'change.backends.ldap.ProxyBackend')
+    AUTHENTICATION_BACKENDS.insert(0, 'change.auth_backends.LDAPProxyBackend')
 
     # Enable logging for django_auth_ldap
     ldap_logger = logging.getLogger('django_auth_ldap')
