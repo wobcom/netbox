@@ -3,7 +3,7 @@
 This section entails the installation and configuration of a local PostgreSQL database. If you already have a PostgreSQL database service in place, skip to [the next section](2-redis.md).
 
 !!! warning
-    NetBox requires PostgreSQL 9.4 or higher. Please note that MySQL and other relational databases are **not** supported.
+    NetBox requires PostgreSQL 9.6 or higher. Please note that MySQL and other relational databases are **not** supported.
 
 The installation instructions provided here have been tested to work on Ubuntu 18.04 and CentOS 7.5. The particular commands needed to install dependencies on other distributions may vary significantly. Unfortunately, this is outside the control of the NetBox maintainers. Please consult your distribution's documentation for assistance with any errors.
 
@@ -20,10 +20,10 @@ If a recent enough version of PostgreSQL is not available through your distribut
 
 #### CentOS
 
-CentOS 7.5 does not ship with a recent enough version of PostgreSQL, so it will need to be installed from an external repository. The instructions below show the installation of PostgreSQL 9.6.
+CentOS 7.5 does not ship with a recent enough version of PostgreSQL, so it will need to be installed from an external repository. The instructions below show the installation of PostgreSQL 9.6, however you may opt to install a more recent version.
 
 ```no-highlight
-# yum install -y https://download.postgresql.org/pub/repos/yum/9.6/redhat/rhel-7-x86_64/pgdg-centos96-9.6-3.noarch.rpm
+# yum install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
 # yum install -y postgresql96 postgresql96-server postgresql96-devel
 # /usr/pgsql-9.6/bin/postgresql96-setup initdb
 ```
@@ -51,7 +51,7 @@ At a minimum, we need to create a database for NetBox and assign it a username a
 
 ```no-highlight
 # sudo -u postgres psql
-psql (9.4.5)
+psql (10.10)
 Type "help" for help.
 
 postgres=# CREATE DATABASE netbox;

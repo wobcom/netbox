@@ -12,6 +12,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Count, F, ProtectedError, Sum
 from django.urls import reverse
+from django.utils.safestring import mark_safe
 from mptt.models import MPTTModel, TreeForeignKey
 from taggit.managers import TaggableManager
 from timezone_field import TimeZoneField
@@ -22,6 +23,7 @@ from dcim.fields import ASNField
 from dcim.elevations import RackElevationSVG
 from extras.models import ConfigContextModel, CustomFieldModel, ObjectChange, TaggedItem
 from extras.utils import extras_features
+from utilities.choices import ColorChoices
 from utilities.fields import ColorField, NaturalOrderingField
 from utilities.models import ChangeLoggedModel
 from utilities.utils import serialize_object, to_meters
@@ -179,12 +181,14 @@ class Site(ChangeLoggedModel, CustomFieldModel):
     )
     facility = models.CharField(
         max_length=50,
-        blank=True
+        blank=True,
+        help_text='Local facility ID or description'
     )
     asn = ASNField(
         blank=True,
         null=True,
-        verbose_name='ASN'
+        verbose_name='ASN',
+        help_text='32-bit autonomous system number'
     )
     time_zone = TimeZoneField(
         blank=True
@@ -205,13 +209,15 @@ class Site(ChangeLoggedModel, CustomFieldModel):
         max_digits=8,
         decimal_places=6,
         blank=True,
-        null=True
+        null=True,
+        help_text='GPS coordinate (latitude)'
     )
     longitude = models.DecimalField(
         max_digits=9,
         decimal_places=6,
         blank=True,
-        null=True
+        null=True,
+        help_text='GPS coordinate (longitude)'
     )
     contact_name = models.CharField(
         max_length=50,
@@ -374,7 +380,9 @@ class RackRole(ChangeLoggedModel):
     slug = models.SlugField(
         unique=True
     )
-    color = ColorField()
+    color = ColorField(
+        default=ColorChoices.COLOR_GREY
+    )
     description = models.CharField(
         max_length=200,
         blank=True,
@@ -418,7 +426,8 @@ class Rack(ChangeLoggedModel, CustomFieldModel):
         max_length=50,
         blank=True,
         null=True,
-        verbose_name='Facility ID'
+        verbose_name='Facility ID',
+        help_text='Locally-assigned identifier'
     )
     site = models.ForeignKey(
         to='dcim.Site',
@@ -430,7 +439,8 @@ class Rack(ChangeLoggedModel, CustomFieldModel):
         on_delete=models.SET_NULL,
         related_name='racks',
         blank=True,
-        null=True
+        null=True,
+        help_text='Assigned group'
     )
     tenant = models.ForeignKey(
         to='tenancy.Tenant',
@@ -449,7 +459,8 @@ class Rack(ChangeLoggedModel, CustomFieldModel):
         on_delete=models.PROTECT,
         related_name='racks',
         blank=True,
-        null=True
+        null=True,
+        help_text='Functional role'
     )
     serial = models.CharField(
         max_length=50,
@@ -479,7 +490,8 @@ class Rack(ChangeLoggedModel, CustomFieldModel):
     u_height = models.PositiveSmallIntegerField(
         default=RACK_U_HEIGHT_DEFAULT,
         verbose_name='Height (U)',
-        validators=[MinValueValidator(1), MaxValueValidator(100)]
+        validators=[MinValueValidator(1), MaxValueValidator(100)],
+        help_text='Height in rack units'
     )
     desc_units = models.BooleanField(
         default=False,
@@ -488,11 +500,13 @@ class Rack(ChangeLoggedModel, CustomFieldModel):
     )
     outer_width = models.PositiveSmallIntegerField(
         blank=True,
-        null=True
+        null=True,
+        help_text='Outer dimension of rack (width)'
     )
     outer_depth = models.PositiveSmallIntegerField(
         blank=True,
-        null=True
+        null=True,
+        help_text='Outer dimension of rack (depth)'
     )
     outer_unit = models.CharField(
         max_length=50,
@@ -513,7 +527,7 @@ class Rack(ChangeLoggedModel, CustomFieldModel):
     tags = TaggableManager(through=TaggedItem)
 
     csv_headers = [
-        'site', 'group_name', 'name', 'facility_id', 'tenant', 'status', 'role', 'type', 'serial', 'asset_tag', 'width',
+        'site', 'group', 'name', 'facility_id', 'tenant', 'status', 'role', 'type', 'serial', 'asset_tag', 'width',
         'u_height', 'desc_units', 'outer_width', 'outer_depth', 'outer_unit', 'comments',
     ]
     clone_fields = [
@@ -652,7 +666,8 @@ class Rack(ChangeLoggedModel, CustomFieldModel):
                 pk=exclude
             ).filter(
                 rack=self,
-                position__gt=0
+                position__gt=0,
+                device_type__u_height__gt=0
             ).filter(
                 Q(face=face) | Q(device_type__is_full_depth=True)
             )
@@ -819,7 +834,7 @@ class RackReservation(ChangeLoggedModel):
 
     def clean(self):
 
-        if self.units:
+        if hasattr(self, 'rack') and self.units:
 
             # Validate that all specified units exist in the Rack.
             invalid_units = [u for u in self.units if u not in self.rack.units]
@@ -1089,16 +1104,31 @@ class DeviceType(ChangeLoggedModel, CustomFieldModel):
         # If editing an existing DeviceType to have a larger u_height, first validate that *all* instances of it have
         # room to expand within their racks. This validation will impose a very high performance penalty when there are
         # many instances to check, but increasing the u_height of a DeviceType should be a very rare occurrence.
-        if self.pk is not None and self.u_height > self._original_u_height:
+        if self.pk and self.u_height > self._original_u_height:
             for d in Device.objects.filter(device_type=self, position__isnull=False):
                 face_required = None if self.is_full_depth else d.face
-                u_available = d.rack.get_available_units(u_height=self.u_height, rack_face=face_required,
-                                                         exclude=[d.pk])
+                u_available = d.rack.get_available_units(
+                    u_height=self.u_height,
+                    rack_face=face_required,
+                    exclude=[d.pk]
+                )
                 if d.position not in u_available:
                     raise ValidationError({
                         'u_height': "Device {} in rack {} does not have sufficient space to accommodate a height of "
                                     "{}U".format(d, d.rack, self.u_height)
                     })
+
+        # If modifying the height of an existing DeviceType to 0U, check for any instances assigned to a rack position.
+        elif self.pk and self._original_u_height > 0 and self.u_height == 0:
+            racked_instance_count = Device.objects.filter(device_type=self, position__isnull=False).count()
+            if racked_instance_count:
+                url = f"{reverse('dcim:device_list')}?manufactuer_id={self.manufacturer_id}&device_type_id={self.pk}"
+                raise ValidationError({
+                    'u_height': mark_safe(
+                        f'Unable to set 0U height: Found <a href="{url}">{racked_instance_count} instances</a> already '
+                        f'mounted within racks.'
+                    )
+                })
 
         if (
                 self.subdevice_role != SubdeviceRoleChoices.ROLE_PARENT
@@ -1163,7 +1193,9 @@ class DeviceRole(ChangeLoggedModel):
     slug = models.SlugField(
         unique=True
     )
-    color = ColorField()
+    color = ColorField(
+        default=ColorChoices.COLOR_GREY
+    )
     vm_role = models.BooleanField(
         default=True,
         verbose_name='VM Role',
@@ -1414,7 +1446,7 @@ class Device(ChangeLoggedModel, ConfigContextModel, CustomFieldModel):
     tags = TaggableManager(through=TaggedItem)
 
     csv_headers = [
-        'name', 'device_role', 'tenant', 'manufacturer', 'model_name', 'platform', 'serial', 'asset_tag', 'status',
+        'name', 'device_role', 'tenant', 'manufacturer', 'device_type', 'platform', 'serial', 'asset_tag', 'status',
         'site', 'rack_group', 'rack_name', 'position', 'face', 'comments',
     ]
     clone_fields = [
@@ -1530,24 +1562,30 @@ class Device(ChangeLoggedModel, ConfigContextModel, CustomFieldModel):
         # Validate primary IP addresses
         vc_interfaces = self.vc_interfaces.all()
         if self.primary_ip4:
+            if self.primary_ip4.family != 4:
+                raise ValidationError({
+                    'primary_ip4': f"{self.primary_ip4} is not an IPv4 address."
+                })
             if self.primary_ip4.interface in vc_interfaces:
                 pass
             elif self.primary_ip4.nat_inside is not None and self.primary_ip4.nat_inside.interface in vc_interfaces:
                 pass
             else:
                 raise ValidationError({
-                    'primary_ip4': "The specified IP address ({}) is not assigned to this device.".format(
-                        self.primary_ip4),
+                    'primary_ip4': f"The specified IP address ({self.primary_ip4}) is not assigned to this device."
                 })
         if self.primary_ip6:
+            if self.primary_ip6.family != 6:
+                raise ValidationError({
+                    'primary_ip6': f"{self.primary_ip6} is not an IPv6 address."
+                })
             if self.primary_ip6.interface in vc_interfaces:
                 pass
             elif self.primary_ip6.nat_inside is not None and self.primary_ip6.nat_inside.interface in vc_interfaces:
                 pass
             else:
                 raise ValidationError({
-                    'primary_ip6': "The specified IP address ({}) is not assigned to this device.".format(
-                        self.primary_ip6),
+                    'primary_ip6': f"The specified IP address ({self.primary_ip6}) is not assigned to this device."
                 })
 
         # A Device can only be assigned to a Cluster in the same Site (or no Site)
@@ -1716,7 +1754,7 @@ class DeviceLicense(models.Model):
 # Virtual chassis
 #
 
-@extras_features('export_templates', 'webhooks')
+@extras_features('custom_links', 'export_templates', 'webhooks')
 class VirtualChassis(ChangeLoggedModel):
     """
     A collection of Devices which operate with a shared control plane (e.g. a switch stack).
@@ -1743,7 +1781,7 @@ class VirtualChassis(ChangeLoggedModel):
         return str(self.master) if hasattr(self, 'master') else 'New Virtual Chassis'
 
     def get_absolute_url(self):
-        return self.master.get_absolute_url()
+        return reverse('dcim:virtualchassis', kwargs={'pk': self.pk})
 
     def clean(self):
 
@@ -1802,7 +1840,7 @@ class PowerPanel(ChangeLoggedModel):
         max_length=50
     )
 
-    csv_headers = ['site', 'rack_group_name', 'name']
+    csv_headers = ['site', 'rack_group', 'name']
 
     class Meta:
         ordering = ['site', 'name']
@@ -1909,7 +1947,7 @@ class PowerFeed(ChangeLoggedModel, CableTermination, CustomFieldModel):
     tags = TaggableManager(through=TaggedItem)
 
     csv_headers = [
-        'site', 'panel_name', 'rack_group', 'rack_name', 'name', 'status', 'type', 'supply', 'phase', 'voltage',
+        'site', 'power_panel', 'rack_group', 'rack', 'name', 'status', 'type', 'supply', 'phase', 'voltage',
         'amperage', 'max_utilization', 'comments',
     ]
     clone_fields = [
@@ -2097,6 +2135,20 @@ class Cable(ChangeLoggedModel):
         # A copy of the PK to be used by __str__ in case the object is deleted
         self._pk = self.pk
 
+    @classmethod
+    def from_db(cls, db, field_names, values):
+        """
+        Cache the original A and B terminations of existing Cable instances for later reference inside clean().
+        """
+        instance = super().from_db(db, field_names, values)
+
+        instance._orig_termination_a_type = instance.termination_a_type
+        instance._orig_termination_a_id = instance.termination_a_id
+        instance._orig_termination_b_type = instance.termination_b_type
+        instance._orig_termination_b_id = instance.termination_b_id
+
+        return instance
+
     def __str__(self):
         return self.label or '#{}'.format(self._pk)
 
@@ -2125,6 +2177,24 @@ class Cable(ChangeLoggedModel):
                 'termination_b': 'Invalid ID for type {}'.format(self.termination_b_type)
             })
 
+        # If editing an existing Cable instance, check that neither termination has been modified.
+        if self.pk:
+            err_msg = 'Cable termination points may not be modified. Delete and recreate the cable instead.'
+            if (
+                self.termination_a_type != self._orig_termination_a_type or
+                self.termination_a_id != self._orig_termination_a_id
+            ):
+                raise ValidationError({
+                    'termination_a': err_msg
+                })
+            if (
+                self.termination_b_type != self._orig_termination_b_type or
+                self.termination_b_id != self._orig_termination_b_id
+            ):
+                raise ValidationError({
+                    'termination_b': err_msg
+                })
+
         type_a = self.termination_a_type.model
         type_b = self.termination_b_type.model
 
@@ -2144,23 +2214,29 @@ class Cable(ChangeLoggedModel):
 
         # Check that termination types are compatible
         if type_b not in COMPATIBLE_TERMINATION_TYPES.get(type_a, []):
-            raise ValidationError("Incompatible termination types: {} and {}".format(
-                self.termination_a_type, self.termination_b_type
-            ))
+            raise ValidationError(
+                f"Incompatible termination types: {self.termination_a_type} and {self.termination_b_type}"
+            )
 
-        # A RearPort with multiple positions must be connected to a component with an equal number of positions
-        if isinstance(self.termination_a, RearPort) and isinstance(self.termination_b, RearPort):
-            if self.termination_a.positions != self.termination_b.positions:
-                raise ValidationError(
-                    "{} has {} positions and {} has {}. Both terminations must have the same number of positions.".format(
-                        self.termination_a, self.termination_a.positions,
-                        self.termination_b, self.termination_b.positions
+        # A RearPort with multiple positions must be connected to a RearPort with an equal number of positions
+        for term_a, term_b in [
+            (self.termination_a, self.termination_b),
+            (self.termination_b, self.termination_a)
+        ]:
+            if isinstance(term_a, RearPort) and term_a.positions > 1:
+                if not isinstance(term_b, RearPort):
+                    raise ValidationError(
+                        "Rear ports with multiple positions may only be connected to other rear ports"
                     )
-                )
+                elif term_a.positions != term_b.positions:
+                    raise ValidationError(
+                        f"{term_a} has {term_a.positions} position(s) but {term_b} has {term_b.positions}. "
+                        f"Both terminations must have the same number of positions."
+                    )
 
         # A termination point cannot be connected to itself
         if self.termination_a == self.termination_b:
-            raise ValidationError("Cannot connect {} to itself".format(self.termination_a_type))
+            raise ValidationError(f"Cannot connect {self.termination_a_type} to itself")
 
         # A front port cannot be connected to its corresponding rear port
         if (
@@ -2232,26 +2308,3 @@ class Cable(ChangeLoggedModel):
         if self.termination_a is None:
             return
         return COMPATIBLE_TERMINATION_TYPES[self.termination_a._meta.model_name]
-
-    def get_path_endpoints(self):
-        """
-        Traverse both ends of a cable path and return its connected endpoints. Note that one or both endpoints may be
-        None.
-        """
-        a_path = self.termination_b.trace()
-        b_path = self.termination_a.trace()
-
-        # Determine overall path status (connected or planned)
-        if self.status == CableStatusChoices.STATUS_CONNECTED:
-            path_status = True
-            for segment in a_path[1:] + b_path[1:]:
-                if segment[1] is None or segment[1].status != CableStatusChoices.STATUS_CONNECTED:
-                    path_status = False
-                    break
-        else:
-            path_status = False
-
-        a_endpoint = a_path[-1][2]
-        b_endpoint = b_path[-1][2]
-
-        return a_endpoint, b_endpoint, path_status

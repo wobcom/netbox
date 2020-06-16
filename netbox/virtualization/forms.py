@@ -1,6 +1,5 @@
 from django import forms
 from django.core.exceptions import ValidationError
-from taggit.forms import TagField
 
 from dcim.choices import InterfaceModeChoices
 from dcim.constants import INTERFACE_MTU_MAX, INTERFACE_MTU_MIN
@@ -8,14 +7,16 @@ from dcim.forms import INTERFACE_MODE_HELP_TEXT
 from dcim.models import Device, DeviceRole, Interface, Platform, Rack, Region, Site
 from extras.forms import (
     AddRemoveTagsForm, CustomFieldBulkEditForm, CustomFieldModelCSVForm, CustomFieldModelForm, CustomFieldFilterForm,
+    TagField,
 )
 from ipam.models import IPAddress, VLAN
 from tenancy.forms import TenancyFilterForm, TenancyForm
 from tenancy.models import Tenant
 from utilities.forms import (
     add_blank_choice, APISelect, APISelectMultiple, BootstrapMixin, BulkEditForm, BulkEditNullBooleanSelect,
-    CommentField, ConfirmationForm, CSVChoiceField, DynamicModelChoiceField, DynamicModelMultipleChoiceField,
-    ExpandableNameField, JSONField, SlugField, SmallTextarea, StaticSelect2, StaticSelect2Multiple, TagFilterField,
+    CommentField, ConfirmationForm, CSVChoiceField, CSVModelChoiceField, CSVModelForm, DynamicModelChoiceField,
+    DynamicModelMultipleChoiceField, ExpandableNameField, form_from_model, JSONField, SlugField, SmallTextarea,
+    StaticSelect2, StaticSelect2Multiple, TagFilterField,
 )
 from .choices import *
 from .models import Cluster, ClusterGroup, ClusterType, VirtualMachine
@@ -35,15 +36,12 @@ class ClusterTypeForm(BootstrapMixin, forms.ModelForm):
         ]
 
 
-class ClusterTypeCSVForm(forms.ModelForm):
+class ClusterTypeCSVForm(CSVModelForm):
     slug = SlugField()
 
     class Meta:
         model = ClusterType
         fields = ClusterType.csv_headers
-        help_texts = {
-            'name': 'Name of cluster type',
-        }
 
 
 #
@@ -60,15 +58,12 @@ class ClusterGroupForm(BootstrapMixin, forms.ModelForm):
         ]
 
 
-class ClusterGroupCSVForm(forms.ModelForm):
+class ClusterGroupCSVForm(CSVModelForm):
     slug = SlugField()
 
     class Meta:
         model = ClusterGroup
         fields = ClusterGroup.csv_headers
-        help_texts = {
-            'name': 'Name of cluster group',
-        }
 
 
 #
@@ -100,40 +95,28 @@ class ClusterForm(BootstrapMixin, TenancyForm, CustomFieldModelForm):
 
 
 class ClusterCSVForm(CustomFieldModelCSVForm):
-    type = forms.ModelChoiceField(
+    type = CSVModelChoiceField(
         queryset=ClusterType.objects.all(),
         to_field_name='name',
-        help_text='Name of cluster type',
-        error_messages={
-            'invalid_choice': 'Invalid cluster type name.',
-        }
+        help_text='Type of cluster'
     )
-    group = forms.ModelChoiceField(
+    group = CSVModelChoiceField(
         queryset=ClusterGroup.objects.all(),
         to_field_name='name',
         required=False,
-        help_text='Name of cluster group',
-        error_messages={
-            'invalid_choice': 'Invalid cluster group name.',
-        }
+        help_text='Assigned cluster group'
     )
-    site = forms.ModelChoiceField(
+    site = CSVModelChoiceField(
         queryset=Site.objects.all(),
         to_field_name='name',
         required=False,
-        help_text='Name of assigned site',
-        error_messages={
-            'invalid_choice': 'Invalid site name.',
-        }
+        help_text='Assigned site'
     )
-    tenant = forms.ModelChoiceField(
+    tenant = CSVModelChoiceField(
         queryset=Tenant.objects.all(),
         to_field_name='name',
         required=False,
-        help_text='Name of assigned tenant',
-        error_messages={
-            'invalid_choice': 'Invalid tenant name'
-        }
+        help_text='Assigned tenant'
     )
 
     class Meta:
@@ -409,42 +392,30 @@ class VirtualMachineCSVForm(CustomFieldModelCSVForm):
         required=False,
         help_text='Operational status of device'
     )
-    cluster = forms.ModelChoiceField(
+    cluster = CSVModelChoiceField(
         queryset=Cluster.objects.all(),
         to_field_name='name',
-        help_text='Name of parent cluster',
-        error_messages={
-            'invalid_choice': 'Invalid cluster name.',
-        }
+        help_text='Assigned cluster'
     )
-    role = forms.ModelChoiceField(
+    role = CSVModelChoiceField(
         queryset=DeviceRole.objects.filter(
             vm_role=True
         ),
         required=False,
         to_field_name='name',
-        help_text='Name of functional role',
-        error_messages={
-            'invalid_choice': 'Invalid role name.'
-        }
+        help_text='Functional role'
     )
-    tenant = forms.ModelChoiceField(
+    tenant = CSVModelChoiceField(
         queryset=Tenant.objects.all(),
         required=False,
         to_field_name='name',
-        help_text='Name of assigned tenant',
-        error_messages={
-            'invalid_choice': 'Tenant not found.'
-        }
+        help_text='Assigned tenant'
     )
-    platform = forms.ModelChoiceField(
+    platform = CSVModelChoiceField(
         queryset=Platform.objects.all(),
         required=False,
         to_field_name='name',
-        help_text='Name of assigned platform',
-        error_messages={
-            'invalid_choice': 'Invalid platform.',
-        }
+        help_text='Assigned platform'
     )
 
     class Meta:
@@ -836,24 +807,18 @@ class VirtualMachineBulkAddComponentForm(BootstrapMixin, forms.Form):
         label='Name'
     )
 
+    def clean_tags(self):
+        # Because we're feeding TagField data (on the bulk edit form) to another TagField (on the model form), we
+        # must first convert the list of tags to a string.
+        return ','.join(self.cleaned_data.get('tags'))
 
-class VirtualMachineBulkAddInterfaceForm(VirtualMachineBulkAddComponentForm):
+
+class InterfaceBulkCreateForm(
+    form_from_model(Interface, ['enabled', 'mtu', 'description', 'tags']),
+    VirtualMachineBulkAddComponentForm
+):
     type = forms.ChoiceField(
         choices=VMInterfaceTypeChoices,
         initial=VMInterfaceTypeChoices.TYPE_VIRTUAL,
         widget=forms.HiddenInput()
-    )
-    enabled = forms.BooleanField(
-        required=False,
-        initial=True
-    )
-    mtu = forms.IntegerField(
-        required=False,
-        min_value=INTERFACE_MTU_MIN,
-        max_value=INTERFACE_MTU_MAX,
-        label='MTU'
-    )
-    description = forms.CharField(
-        max_length=100,
-        required=False
     )

@@ -168,7 +168,7 @@ class ClusterAddDevicesView(PermissionRequiredMixin, View):
     def get(self, request, pk):
 
         cluster = get_object_or_404(Cluster, pk=pk)
-        form = self.form(cluster)
+        form = self.form(cluster, initial=request.GET)
 
         return render(request, self.template_name, {
             'cluster': cluster,
@@ -366,7 +366,7 @@ class VirtualMachineBulkAddInterfaceView(PermissionRequiredMixin, BulkComponentC
     permission_required = 'dcim.add_interface'
     parent_model = VirtualMachine
     parent_field = 'virtual_machine'
-    form = forms.VirtualMachineBulkAddInterfaceForm
+    form = forms.InterfaceBulkCreateForm
     model = Interface
     model_form = forms.InterfaceForm
     filterset = filters.VirtualMachineFilterSet
