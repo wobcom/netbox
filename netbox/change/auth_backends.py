@@ -33,6 +33,15 @@ def proxy_backend_factory(backend_string):
     return ProxyBackend
 
 
-ModelProxyBackend = proxy_backend_factory('utilities.auth_backends.ViewExemptModelBackend')
-LDAPProxyBackend = proxy_backend_factory('django_auth_ldap.backend.LDAPBackend')
-RemoteAuthProxyBackend = proxy_backend_factory(settings.REMOTE_AUTH_BACKEND)
+# Must be explicit class definitions, pickling fails otherwise,
+# see (https://gitlab.service.wobcom.de/infrastructure/netbox/issues/90)
+class ModelProxyBackend(proxy_backend_factory('utilities.auth_backends.ViewExemptModelBackend')):
+    pass
+
+
+class LDAPProxyBackend(proxy_backend_factory('django_auth_ldap.backend.LDAPBackend')):
+    pass
+
+
+class RemoteAuthProxyBackend(proxy_backend_factory(settings.REMOTE_AUTH_BACKEND)):
+    pass
