@@ -393,25 +393,19 @@ class VLANTest(APIViewTestCases.APIViewTestCase):
                 'vid': 4,
                 'name': 'VLAN 4',
                 'group': vlan_groups[1].pk,
-                'tenant': {
-                    'id': tenant.id
-                }
+                'tenant': tenant.id,
             },
             {
                 'vid': 5,
                 'name': 'VLAN 5',
                 'group': vlan_groups[1].pk,
-                'tenant': {
-                    'id': tenant.id
-                }
+                'tenant': tenant.id,
             },
             {
                 'vid': 6,
                 'name': 'VLAN 6',
                 'group': vlan_groups[1].pk,
-                'tenant': {
-                    'id': tenant.id
-                }
+                'tenant': tenant.id,
             },
         ]
 
