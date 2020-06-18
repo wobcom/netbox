@@ -3,7 +3,7 @@ from django_tables2.utils import Accessor
 from django.utils.safestring import mark_safe
 
 from tenancy.tables import COL_TENANT
-from utilities.tables import BaseTable, BooleanColumn, ColorColumn, TagColumn, ToggleColumn
+from utilities.tables import BaseTable, BooleanColumn, ColorColumn, ColoredLabelColumn, TagColumn, ToggleColumn
 from .models import (
     Cable, ConsolePort, ConsolePortTemplate, ConsoleServerPort, ConsoleServerPortTemplate, Device, DeviceLicense, DeviceBay,
     DeviceBayTemplate, DeviceRole, DeviceType, FrontPort, FrontPortTemplate, Interface, InterfaceTemplate,
@@ -73,15 +73,6 @@ RACKROLE_ACTIONS = """
 {% endif %}
 """
 
-RACK_ROLE = """
-{% if record.role %}
-    {% load helpers %}
-    <label class="label" style="color: {{ record.role.color|fgcolor }}; background-color: #{{ record.role.color }}">{{ value }}</label>
-{% else %}
-    &mdash;
-{% endif %}
-"""
-
 RACK_DEVICE_COUNT = """
 <a href="{% url 'dcim:device_list' %}?rack_id={{ record.pk }}">{{ value }}</a>
 """
@@ -136,11 +127,6 @@ PLATFORM_ACTIONS = """
 {% if perms.dcim.change_platform %}
     <a href="{% url 'dcim:platform_edit' slug=record.slug %}?return_url={{ request.path }}" class="btn btn-xs btn-warning"><i class="glyphicon glyphicon-pencil" aria-hidden="true"></i></a>
 {% endif %}
-"""
-
-DEVICE_ROLE = """
-{% load helpers %}
-<label class="label" style="color: {{ record.device_role.color|fgcolor }}; background-color: #{{ record.device_role.color }}">{{ value }}</label>
 """
 
 STATUS_LABEL = """
@@ -326,9 +312,7 @@ class RackTable(BaseTable):
     status = tables.TemplateColumn(
         template_code=STATUS_LABEL
     )
-    role = tables.TemplateColumn(
-        template_code=RACK_ROLE
-    )
+    role = ColoredLabelColumn()
     u_height = tables.TemplateColumn(
         template_code="{{ record.u_height }}U",
         verbose_name='Height'
@@ -807,8 +791,7 @@ class DeviceTable(BaseTable):
         viewname='dcim:rack',
         args=[Accessor('rack.pk')]
     )
-    device_role = tables.TemplateColumn(
-        template_code=DEVICE_ROLE,
+    device_role = ColoredLabelColumn(
         verbose_name='Role'
     )
     device_type = tables.LinkColumn(
