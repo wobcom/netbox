@@ -382,9 +382,9 @@ class VLANTest(APIViewTestCases.APIViewTestCase):
         VLANGroup.objects.bulk_create(vlan_groups)
 
         vlans = (
-            VLAN(name='VLAN 1', vid=1, group=vlan_groups[0]),
-            VLAN(name='VLAN 2', vid=2, group=vlan_groups[0]),
-            VLAN(name='VLAN 3', vid=3, group=vlan_groups[0]),
+            VLAN(name='VLAN 1', vid=1, group=vlan_groups[0], tenant=tenant),
+            VLAN(name='VLAN 2', vid=2, group=vlan_groups[0], tenant=tenant),
+            VLAN(name='VLAN 3', vid=3, group=vlan_groups[0], tenant=tenant),
         )
         VLAN.objects.bulk_create(vlans)
 
