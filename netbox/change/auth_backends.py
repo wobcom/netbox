@@ -10,8 +10,6 @@ def perm_available(user, perm):
     :param perm: perm to check
     :return: boolean representation of perm availability
     """
-    if not user.is_authenticated:
-        return False
     change_state = ChangeSet.change_state(user)
 
     if change_state != OWN_CHANGE \
