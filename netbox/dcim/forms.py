@@ -2047,12 +2047,7 @@ class DeviceBulkEditForm(BootstrapMixin, AddRemoveTagsForm, CustomFieldBulkEditF
     )
     platform = DynamicModelChoiceField(
         queryset=Platform.objects.all(),
-        required=False,
-        widget=APISelect(
-            filter_for={
-                'platform_version': 'platform_id'
-            }
-        )
+        required=False
     )
     status = forms.ChoiceField(
         choices=add_blank_choice(DeviceStatusChoices),
@@ -2067,7 +2062,7 @@ class DeviceBulkEditForm(BootstrapMixin, AddRemoveTagsForm, CustomFieldBulkEditF
 
     class Meta:
         nullable_fields = [
-            'tenant', 'platform', 'platform_version', 'serial',
+            'tenant', 'platform', 'serial',
         ]
 
 
