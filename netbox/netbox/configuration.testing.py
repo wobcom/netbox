@@ -9,7 +9,7 @@ DATABASE = {
     'NAME': 'netbox',
     'USER': '',
     'PASSWORD': '',
-    'HOST': 'localhost',
+    'HOST': 'postgres',
     'PORT': '',
     'CONN_MAX_AGE': 300,
 }
@@ -20,7 +20,7 @@ PLUGINS = [
 
 REDIS = {
     'tasks': {
-        'HOST': 'localhost',
+        'HOST': 'redis',
         'PORT': 6379,
         'PASSWORD': '',
         'DATABASE': 0,
@@ -28,7 +28,7 @@ REDIS = {
         'SSL': False,
     },
     'caching': {
-        'HOST': 'localhost',
+        'HOST': 'redis',
         'PORT': 6379,
         'PASSWORD': '',
         'DATABASE': 1,
