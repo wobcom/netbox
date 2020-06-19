@@ -31,7 +31,7 @@ tests:
     - docker
   script:
     - "apt update"
-    - "apt install -y libldap2-dev python3-dev"
+    - "apt install -y libldap2-dev python3-dev libsasl2-dev"
     - "pip install virtualenv"
     - "virtualenv --python=python3.6 venv"
     - "venv/bin/pip install -r requirements.txt"
