@@ -51,127 +51,127 @@ class SlackMessageTestCase(TestCase):
 
     def test__message(self):
 
-        self.assertTrue(settings.SLACK_ENABLED, "Slack is not enabled")
+        with self.settings(SLACK_ENABLED=True):
 
-        # on_create
+            # on_create
 
-        message = SlackMessage(name='Test Message', on_create=True, template='{{ object }} created')
-        message.save()
-        message.object_types.add(self.device_content_type)
+            message = SlackMessage(name='Test Message', on_create=True, template='{{ object }} created')
+            message.save()
+            message.object_types.add(self.device_content_type)
 
-        self.assertSignals(
-            message=message,
-            object_type=self.device_content_type,
-            save=True,
-            delete=False,
-        )
+            self.assertSignals(
+                message=message,
+                object_type=self.device_content_type,
+                save=True,
+                delete=False,
+            )
 
-        # on_update
+            # on_update
 
-        message.on_create = False
-        message.on_update = True
-        message.save()
+            message.on_create = False
+            message.on_update = True
+            message.save()
 
-        self.assertSignals(
-            message=message,
-            object_type=self.device_content_type,
-            save=True,
-            delete=False,
-        )
+            self.assertSignals(
+                message=message,
+                object_type=self.device_content_type,
+                save=True,
+                delete=False,
+            )
 
-        # on_delete
+            # on_delete
 
-        message.on_update = False
-        message.on_delete = True
-        message.save()
+            message.on_update = False
+            message.on_delete = True
+            message.save()
 
-        self.assertSignals(
-            message=message,
-            object_type=self.device_content_type,
-            save=False,
-            delete=True,
-        )
+            self.assertSignals(
+                message=message,
+                object_type=self.device_content_type,
+                save=False,
+                delete=True,
+            )
 
-        # on_create, on_update
+            # on_create, on_update
 
-        message.on_create = True
-        message.on_update = True
-        message.on_delete = False
-        message.save()
+            message.on_create = True
+            message.on_update = True
+            message.on_delete = False
+            message.save()
 
-        self.assertSignals(
-            message=message,
-            object_type=self.device_content_type,
-            save=True,
-            delete=False,
-        )
+            self.assertSignals(
+                message=message,
+                object_type=self.device_content_type,
+                save=True,
+                delete=False,
+            )
 
-        # on_update, on_delete
+            # on_update, on_delete
 
-        message.on_create = False
-        message.on_delete = True
-        message.save()
+            message.on_create = False
+            message.on_delete = True
+            message.save()
 
-        self.assertSignals(
-            message=message,
-            object_type=self.device_content_type,
-            save=True,
-            delete=True
-        )
+            self.assertSignals(
+                message=message,
+                object_type=self.device_content_type,
+                save=True,
+                delete=True
+            )
 
-        # on_create, on_delete
+            # on_create, on_delete
 
-        message.on_create = True
-        message.on_update = False
-        message.save()
+            message.on_create = True
+            message.on_update = False
+            message.save()
 
-        self.assertSignals(
-            message=message,
-            object_type=self.device_content_type,
-            save=True,
-            delete=True,
-        )
+            self.assertSignals(
+                message=message,
+                object_type=self.device_content_type,
+                save=True,
+                delete=True,
+            )
 
-        # on_create, on_update, on_delete
+            # on_create, on_update, on_delete
 
-        message.on_update = True
-        message.save()
+            message.on_update = True
+            message.save()
 
-        self.assertSignals(
-            message=message,
-            object_type=self.device_content_type,
-            save=True,
-            delete=True,
-        )
+            self.assertSignals(
+                message=message,
+                object_type=self.device_content_type,
+                save=True,
+                delete=True,
+            )
 
-        # remove object_type
+            # remove object_type
 
-        message.object_types.remove(self.device_content_type)
+            message.object_types.remove(self.device_content_type)
 
-        self.assertSignals(
-            message=message,
-            object_type=self.device_content_type,
-            save=False,
-            delete=False,
-        )
+            self.assertSignals(
+                message=message,
+                object_type=self.device_content_type,
+                save=False,
+                delete=False,
+            )
 
-        message.object_types.add(self.device_content_type)
+            message.object_types.add(self.device_content_type)
 
-        # change object_type and other settings
+            # change object_type and other settings
 
-        message.on_delete = False
-        message.save()
-        message.object_types.add(self.interface_content_type)
+            message.on_delete = False
+            message.save()
+            message.object_types.add(self.interface_content_type)
 
-        self.assertSignals(
-            message=message,
-            object_type=self.interface_content_type,
-            save=True,
-            delete=False,
-        )
-        self.assertSignals(
-            message=message,
-            object_type=self.device_content_type,
-            save=True,
-            delete=False,
-        )
+            self.assertSignals(
+                message=message,
+                object_type=self.interface_content_type,
+                save=True,
+                delete=False,
+            )
+            self.assertSignals(
+                message=message,
+                object_type=self.device_content_type,
+                save=True,
+                delete=False,
+            )
