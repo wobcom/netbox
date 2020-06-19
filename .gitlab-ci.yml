@@ -4,7 +4,7 @@ services:
 
 variables:
   POSTGRES_DB: netbox
-  POSTGRES_USER: netbox
+  POSTGRES_USER: root
   POSTGRES_PASSOWRD: ""
   POSTGRES_HOST_AUTH_METHOD: trust
 
