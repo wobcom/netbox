@@ -30,6 +30,7 @@ tests:
   tags:
     - docker
   script:
+    - "apt update"
     - "apt install -y libldap2-dev python3-dev"
     - "pip install virtualenv"
     - "virtualenv --python=python3.6 venv"
