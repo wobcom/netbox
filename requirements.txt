@@ -25,10 +25,10 @@ redis==3.4.1
 svgwrite==1.4
 python-gitlab
 django-codemirror2
-git+https://gitlab.service.wobcom.de/infrastructure/diplomacy.git
+diplomat
 ansible
 channels
-git+https://gitlab.com/wobcompublic/topdesk.git
+topdesk
 channels_redis
 django-auth-ldap
 slackclient
