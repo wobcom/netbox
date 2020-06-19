@@ -26,6 +26,9 @@ lint:
 
 tests:
   stage: verify
+  only:
+    - merge_requests
+    - develop
   image: python:3.6
   tags:
     - docker
