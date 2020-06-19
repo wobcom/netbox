@@ -1,15 +1,3 @@
-before_script:
-  # is only executed for the deploy stages that need to ssh
-  - 'which ssh-agent || ( apt-get update -y && apt-get install openssh-client -y)'
-  - eval $(ssh-agent -s)
-  - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add - > /dev/null
-  - ssh-add -l
-  - mkdir -p ~/.ssh
-  - ls -la ~
-  - ls -la ~/.ssh
-  - touch ~/.ssh/known_hosts
-  - echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
-  - chmod 644 ~/.ssh/known_hosts
 
 stages:
   - verify
@@ -71,31 +59,3 @@ deploy-package:
   script:
     - "sshpass -p \"${REPO_PASSWORD}\" scp netbox*.rpm ${REPO_USER}@${REPO_HOST}:${REPO_PATH}"
     - "sshpass -p \"${REPO_PASSWORD}\" ssh ${REPO_USER}@${REPO_HOST} \"/var/share/repos/scripts/rebuild.sh\""
-
-deploy-staging-ssh:
-  stage: deploy
-  only: 
-    - changes
-  script:
-    - "ssh -t $SSH_USER@$DEPLOY_SERVER_STAGING 'rm -rf /var/tmp/autodeploy'"
-    - "ssh -t $SSH_USER@$DEPLOY_SERVER_STAGING 'mkdir -p /var/tmp/autodeploy'"
-    - "echo \"BIND_HOST=$DEPLOY_SERVER_STAGING\" > .env"
-    - "scp .env $SSH_USER@$DEPLOY_SERVER_STAGING:/var/tmp/autodeploy/"
-    - "scp deploy.sh $SSH_USER@$DEPLOY_SERVER_STAGING:/var/tmp/autodeploy/deploy.sh"
-    - ssh -t "$SSH_USER@$DEPLOY_SERVER_STAGING" "cd /var/tmp/autodeploy && bash -x ./deploy.sh $DEPLOY_BRANCH_STAGING"
-  tags:
-    - ssh
-
-deploy-production-ssh:
-  stage: deploy
-  only: 
-    - changes-master
-  script:
-    - "ssh -t $SSH_USER@$DEPLOY_SERVER_PRODUCTION 'rm -rf /var/tmp/autodeploy'"
-    - "ssh -t $SSH_USER@$DEPLOY_SERVER_PRODUCTION 'mkdir -p /var/tmp/autodeploy'"
-    - "echo \"BIND_HOST=$DEPLOY_SERVER_PRODUCTION\" > .env"
-    - "scp .env $SSH_USER@$DEPLOY_SERVER_PRODUCTION:/var/tmp/autodeploy/"
-    - "scp deploy.sh $SSH_USER@$DEPLOY_SERVER_PRODUCTION:/var/tmp/autodeploy/deploy.sh"
-  tags:
-    - ssh
-
