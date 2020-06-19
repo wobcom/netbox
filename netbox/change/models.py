@@ -2,6 +2,7 @@ import pickle
 from datetime import timedelta, datetime
 from topdesk import Topdesk
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -9,7 +10,6 @@ from django.contrib.postgres.fields import JSONField
 from django.db import models
 from django.utils import timezone
 
-from netbox import configuration
 from dcim.models import Device, Interface
 from dcim.constants import *
 from virtualization.models import VirtualMachine
@@ -33,20 +33,20 @@ class ChangeInformation(models.Model):
         return self.name
 
     def topdesk_change(self):
-        if not configuration.TOPDESK_URL or self.is_emergency:
+        if not settings.TOPDESK_URL or self.is_emergency:
             return
-        t = Topdesk(configuration.TOPDESK_URL,
-                    verify=configuration.TOPDESK_SSL_VERIFICATION,
-                    app_creds=(configuration.TOPDESK_USER, configuration.TOPDESK_TOKEN))
+        t = Topdesk(settings.TOPDESK_URL,
+                    verify=settings.TOPDESK_SSL_VERIFICATION,
+                    app_creds=(settings.TOPDESK_USER, settings.TOPDESK_TOKEN))
         return t.operator_change(id_=self.topdesk_change_number)
 
     def topdesk_url(self):
-        if not configuration.TOPDESK_URL or self.is_emergency:
+        if not settings.TOPDESK_URL or self.is_emergency:
             return
 
         base_url = "{}/tas/secure/contained/newchange?action=show&unid={}"
 
-        return base_url.format(configuration.TOPDESK_URL, self.topdesk_change()['id'])
+        return base_url.format(settings.TOPDESK_URL, self.topdesk_change()['id'])
 
 
 class ChangeSetManager(models.Manager):
@@ -133,7 +133,7 @@ class ChangeSet(models.Model):
         return self.change_information.executive_summary(no_markdown=no_markdown)
 
     def in_use(self):
-        threshold = timedelta(minutes=configuration.CHANGE_SESSION_TIMEOUT)
+        threshold = timedelta(minutes=settings.CHANGE_SESSION_TIMEOUT)
         before = timezone.now() - threshold
 
         return self.updated > before
@@ -202,9 +202,9 @@ class ProvisionSet(models.Model):
 
     @property
     def timeout(self):
-        if configuration.PROVISIONING_TIMEOUT is None:
+        if settings.PROVISIONING_TIMEOUT is None:
             return None
-        return self.updated + timedelta(seconds=configuration.PROVISIONING_TIMEOUT)
+        return self.updated + timedelta(seconds=settings.PROVISIONING_TIMEOUT)
 
     @property
     def timed_out(self):
@@ -319,13 +319,13 @@ class PID:
 
     @classmethod
     def set(cls, pid):
-        with open(configuration.PID_FILE, 'w') as file:
+        with open(settings.PID_FILE, 'w') as file:
             file.write(str(pid))
 
     @classmethod
     def get(cls):
         try:
-            with open(configuration.PID_FILE, 'r') as file:
+            with open(settings.PID_FILE, 'r') as file:
                 return int(file.read())
         except FileNotFoundError:
             return None
