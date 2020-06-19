@@ -19,13 +19,6 @@ lint:
   tags:
     - docker
   script:
-    - "git config --global credential.helper store"
-    - "git config --global credential.gitlab.service.wobcom.de.useHttpPath true"
-    - "git config --global credential.gitlab.com.useHttpPath true"
-    - "echo https://${DIPLOMACY_CREDENTIALS}@gitlab.service.wobcom.de/infrastructure/diplomacy.git >> ~/.git-credentials"
-    - "echo https://${TOPDESK_CREDENTIALS}@gitlab.com/wobcompublic/topdesk/ >> ~/.git-credentials"
-
-    - "apt-get install git"
     - "pip install virtualenv"
     - "virtualenv --python=python3.6 venv"
     - "venv/bin/pip install pycodestyle"
@@ -37,13 +30,6 @@ tests:
   tags:
     - docker
   script:
-    - "git config --global credential.helper store"
-    - "git config --global credential.gitlab.service.wobcom.de.useHttpPath true"
-    - "git config --global credential.gitlab.com.useHttpPath true"
-    - "echo https://${DIPLOMACY_CREDENTIALS}@gitlab.service.wobcom.de/infrastructure/diplomacy.git >> ~/.git-credentials"
-    - "echo https://${TOPDESK_CREDENTIALS}@gitlab.com/wobcompublic/topdesk/ >> ~/.git-credentials"
-
-    - "apt-get install git"
     - "pip install virtualenv"
     - "virtualenv --python=python3.6 venv"
     - "venv/bin/pip install -r requirements.txt"
@@ -58,11 +44,6 @@ build-package:
   tags:
     - docker
   before_script:
-    - "git config --global credential.helper store"
-    - "git config --global credential.gitlab.service.wobcom.de.useHttpPath true"
-    - "git config --global credential.gitlab.com.useHttpPath true"
-    - "echo https://${DIPLOMACY_CREDENTIALS}@gitlab.service.wobcom.de/infrastructure/diplomacy.git >> ~/.git-credentials"
-    - "echo https://${TOPDESK_CREDENTIALS}@gitlab.com/wobcompublic/topdesk/ >> ~/.git-credentials"
     - "yum install -y python3-devel openldap-devel"
   script:
     - "./build_package.sh"
