@@ -52,6 +52,9 @@ class SlackMessageTestCase(TestCase):
     def test__message(self):
 
         with self.settings(SLACK_ENABLED=True):
+            from slack_integration.signals import install_message_model_receivers
+
+            install_message_model_receivers()
 
             # on_create
 
