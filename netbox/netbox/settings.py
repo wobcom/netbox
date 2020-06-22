@@ -119,6 +119,13 @@ WEBHOOKS_ENABLED = getattr(configuration, 'WEBHOOKS_ENABLED', False)
 SLACK_ENABLED = getattr(configuration, 'SLACK_ENABLED', False)
 SLACK_TOKEN = getattr(configuration, 'SLACK_TOKEN', '')
 NEED_CHANGE_FOR_WRITE = getattr(configuration, 'NEED_CHANGE_FOR_WRITE', False)
+TOPDESK_URL = getattr(configuration, 'TOPDESK_URL', None)
+TOPDESK_TOKEN = getattr(configuration, 'TOPDESK_TOKEN', None)
+TOPDESK_VERIFY_SSL = getattr(configuration, 'TOPDESK_VERIFY_SSL', True)
+PROVISIONING_STAGE_1 = getattr(configuration, 'PROVISIONING_STAGE_1', tuple())
+PROVISIONING_STAGE_2 = getattr(configuration, 'PROVISIONING_STAGE_2', tuple())
+PROVISIONING_TIMEOUT = getattr(configuration, 'PROVISIONING_TIMEOUT', None)
+PID_FILE = getattr(configuration, 'PID_FILE', os.path.join(BASE_DIR, 'provisioning.pid'))
 
 # Validate update repo URL and timeout
 if RELEASE_CHECK_URL:
@@ -649,25 +656,13 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [(configuration.REDIS['tasks']['HOST'], configuration.REDIS['tasks']['PORT'])],
+            "hosts": [(TASKS_REDIS_HOST, TASKS_REDIS_PORT)],
         },
     },
 }
 
-if not configuration.PROVISIONING_STAGE_1:
-    configuration.PROVISIONING_STAGE_1 = ()
-
-if not configuration.PROVISIONING_STAGE_2:
-    configuration.PROVISIONING_STAGE_2 = ()
-
-if not configuration.PROVISIONING_TIMEOUT:
-    configuration.PROVISIONING_TIMEOUT = None
-
-if not configuration.PID_FILE:
-    configuration.PID_FILE = os.path.join(BASE_DIR, 'provisioning.pid')
-
-if not os.path.isdir(os.path.dirname(os.path.realpath(configuration.PID_FILE))):
-    print('Path of PID_FILE does not exist! {}'.format(os.path.realpath(configuration.PID_FILE)))
+if not os.path.isdir(os.path.dirname(os.path.realpath(PID_FILE))):
+    print('Path of PID_FILE does not exist! {}'.format(os.path.realpath(PID_FILE)))
     exit(1)
 
 

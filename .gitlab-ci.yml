@@ -1,3 +1,12 @@
+services:
+  - postgres:9.6
+  - redis:latest
+
+variables:
+  POSTGRES_DB: netbox
+  POSTGRES_USER: root
+  POSTGRES_PASSOWRD: ""
+  POSTGRES_HOST_AUTH_METHOD: trust
 
 stages:
   - verify
@@ -10,17 +19,28 @@ lint:
   tags:
     - docker
   script:
-    - "git config --global credential.helper store"
-    - "git config --global credential.gitlab.service.wobcom.de.useHttpPath true"
-    - "git config --global credential.gitlab.com.useHttpPath true"
-    - "echo https://${DIPLOMACY_CREDENTIALS}@gitlab.service.wobcom.de/infrastructure/diplomacy.git >> ~/.git-credentials"
-    - "echo https://${TOPDESK_CREDENTIALS}@gitlab.com/wobcompublic/topdesk/ >> ~/.git-credentials"
-
-    - "apt-get install git"
     - "pip install virtualenv"
     - "virtualenv --python=python3.6 venv"
     - "venv/bin/pip install pycodestyle"
     - "venv/bin/pycodestyle --ignore=W504,E501 netbox/"
+
+tests:
+  stage: verify
+  only:
+    - merge_requests
+    - develop
+  image: python:3.6
+  tags:
+    - docker
+  script:
+    - "apt update"
+    - "apt install -y libldap2-dev python3-dev libsasl2-dev"
+    - "pip install virtualenv"
+    - "virtualenv --python=python3.6 venv"
+    - "venv/bin/pip install -r requirements.txt"
+    - "cp -f netbox/netbox/configuration.testing.py netbox/netbox/configuration.py"
+    - "cd netbox/"
+    - "../venv/bin/python manage.py test"
 
 build-package:
   stage: build
@@ -30,11 +50,6 @@ build-package:
   tags:
     - docker
   before_script:
-    - "git config --global credential.helper store"
-    - "git config --global credential.gitlab.service.wobcom.de.useHttpPath true"
-    - "git config --global credential.gitlab.com.useHttpPath true"
-    - "echo https://${DIPLOMACY_CREDENTIALS}@gitlab.service.wobcom.de/infrastructure/diplomacy.git >> ~/.git-credentials"
-    - "echo https://${TOPDESK_CREDENTIALS}@gitlab.com/wobcompublic/topdesk/ >> ~/.git-credentials"
     - "yum install -y python3-devel openldap-devel"
   script:
     - "./build_package.sh"

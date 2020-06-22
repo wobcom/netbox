@@ -6,6 +6,7 @@ from copy import deepcopy
 
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.http import HttpResponse
+from django.conf import settings
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import View
@@ -17,7 +18,6 @@ from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from diplomat import Diplomat
 
-from netbox import configuration
 from utilities.views import ObjectListView, GetReturnURLMixin
 from .forms import ChangeInformationForm
 from .models import ChangeInformation, ChangeSet, AlreadyExistsError, ProvisionSet, PID
@@ -224,7 +224,7 @@ class DeployView(PermissionRequiredMixin, View):
             provision_set.save()
 
         log_file_path = run_provisioning_stage(
-            prepare_provisioning_stage(configuration.PROVISIONING_STAGE_1, provision_set),
+            prepare_provisioning_stage(settings.PROVISIONING_STAGE_1, provision_set),
             provisioning_finished)
         provision_set.output_log_file = log_file_path
         provision_set.status = ProvisionSet.RUNNING
@@ -257,7 +257,7 @@ class SecondStageView(PermissionRequiredMixin, View):
             provision_set.save()
 
         log_file_path = run_provisioning_stage(
-            prepare_provisioning_stage(configuration.PROVISIONING_STAGE_2, provision_set),
+            prepare_provisioning_stage(settings.PROVISIONING_STAGE_2, provision_set),
             provisioning_finished)
 
         provision_set.status = ProvisionSet.RUNNING

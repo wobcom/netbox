@@ -2,19 +2,19 @@ from topdesk import Topdesk, NotFound
 from urllib.parse import quote
 
 from django import forms
+from django.conf import settings
 from django.core.exceptions import ValidationError
 
 from utilities.forms import BootstrapMixin
 from change.models import ChangeInformation
-from netbox import configuration
 
 
 def topdesk_number_validator(value):
-    if not configuration.TOPDESK_URL:
+    if not settings.TOPDESK_URL:
         return
-    topdesk = Topdesk(configuration.TOPDESK_URL,
-                      verify=configuration.TOPDESK_SSL_VERIFICATION,
-                      app_creds=(configuration.TOPDESK_USER, configuration.TOPDESK_TOKEN))
+    topdesk = Topdesk(settings.TOPDESK_URL,
+                      verify=settings.TOPDESK_SSL_VERIFICATION,
+                      app_creds=(settings.TOPDESK_USER, settings.TOPDESK_TOKEN))
     try:
         topdesk.operator_change(id_=quote(value))
     except NotFound:
