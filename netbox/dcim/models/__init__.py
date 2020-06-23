@@ -1237,6 +1237,7 @@ class Platform(ChangeLoggedModel):
         max_length=50,
         blank=True,
         null=True,
+        default="",
     )
     slug = models.SlugField(
         unique=True,
