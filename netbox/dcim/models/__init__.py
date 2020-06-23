@@ -1235,6 +1235,8 @@ class Platform(ChangeLoggedModel):
     )
     version = models.CharField(
         max_length=50,
+        blank=True,
+        null=True,
     )
     slug = models.SlugField(
         unique=True,
