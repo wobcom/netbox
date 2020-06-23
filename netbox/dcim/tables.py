@@ -759,11 +759,11 @@ class PlatformTable(BaseTable):
     class Meta(BaseTable.Meta):
         model = Platform
         fields = (
-            'pk', 'name', 'manufacturer', 'device_count', 'vm_count', 'slug', 'napalm_driver', 'napalm_args',
+            'pk', 'name', 'version', 'manufacturer', 'device_count', 'vm_count', 'slug', 'napalm_driver', 'napalm_args',
             'description', 'vagrant_box', 'actions',
         )
         default_columns = (
-            'pk', 'name', 'manufacturer', 'device_count', 'vm_count', 'napalm_driver', 'description', 'actions',
+            'pk', 'name', 'version', 'manufacturer', 'device_count', 'vm_count', 'napalm_driver', 'description', 'actions',
         )
 
 

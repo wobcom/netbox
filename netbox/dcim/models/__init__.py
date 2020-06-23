@@ -1232,7 +1232,9 @@ class Platform(ChangeLoggedModel):
     """
     name = models.CharField(
         max_length=100,
-        unique=True
+    )
+    version = models.CharField(
+        max_length=50,
     )
     slug = models.SlugField(
         unique=True,
@@ -1283,9 +1285,10 @@ class Platform(ChangeLoggedModel):
 
     class Meta:
         ordering = ['name']
+        unique_together = ('name', 'version')
 
     def __str__(self):
-        return self.name
+        return "{} {}".format(self.name, self.version)
 
     def get_absolute_url(self):
         return "{}?platform={}".format(reverse('dcim:device_list'), self.slug)

@@ -357,7 +357,7 @@ class PlatformSerializer(ValidatedModelSerializer):
     class Meta:
         model = Platform
         fields = [
-            'id', 'name', 'slug', 'manufacturer', 'napalm_driver', 'napalm_args', 'description', 'device_count',
+            'id', 'name', 'version', 'slug', 'manufacturer', 'napalm_driver', 'napalm_args', 'description', 'device_count',
             'virtualmachine_count',
         ]
 

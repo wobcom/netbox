@@ -41,9 +41,22 @@ $(document).ready(function() {
         s = s.toLowerCase();                        // Convert to lowercase
         return s.substring(0, num_chars);           // Trim to first num_chars chars
     }
+
+    function rawSlug(source) {
+        var raw = "";
+        source.each(function() {
+            raw = raw + " " + $(this).val()
+        });
+        return raw
+    }
+
     var slug_field = $('#id_slug');
-    if (slug_field) {
-        var slug_source = $('#id_' + slug_field.attr('slug-source'));
+    if (slug_field.length > 0) {
+        var slug_sources = slug_field.attr('slug-source').split(" ");
+        slug_sources = slug_sources.map(function(el) {
+            return "#id_" + el
+        });
+        var slug_source = $(slug_sources.join(', '));
         var slug_length = slug_field.attr('maxlength');
         if (slug_field.val()) {
             slug_field.attr('_changed', true);
@@ -53,11 +66,11 @@ $(document).ready(function() {
         });
         slug_source.on('keyup change', function() {
             if (slug_field && !slug_field.attr('_changed')) {
-                slug_field.val(slugify($(this).val(), (slug_length ? slug_length : 50)));
+                slug_field.val(slugify(rawSlug(slug_source), (slug_length ? slug_length : 50)));
             }
         });
         $('button.reslugify').click(function() {
-            slug_field.val(slugify(slug_source.val(), (slug_length ? slug_length : 50)));
+            slug_field.val(slugify(rawSlug(slug_source), (slug_length ? slug_length : 50)));
         });
     }
 
@@ -221,7 +234,15 @@ $(document).ready(function() {
                 var results = data.results;
 
                 results = results.reduce((results,record,idx) => {
-                    record.text = record[element.getAttribute('display-field')] || record.name;
+                    var display_fields = element.getAttribute('display-field');
+                    if (display_fields != null) {
+                        record.text = display_fields.split(" ").map(function (field) {
+                            return record[field] || ""
+                        }).join(" ");
+                    }
+                    if (record.text === undefined || record.text.trim() === "") {
+                        record.text = record.name
+                    }
                     record.id = record[element.getAttribute('value-field')] || record.id;
                     if(element.getAttribute('disabled-indicator') && record[element.getAttribute('disabled-indicator')]) {
                         // The disabled-indicator equated to true, so we disable this option

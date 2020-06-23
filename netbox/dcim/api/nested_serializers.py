@@ -212,7 +212,7 @@ class NestedPlatformSerializer(WritableNestedSerializer):
 
     class Meta:
         model = models.Platform
-        fields = ['id', 'url', 'name', 'slug', 'device_count', 'virtualmachine_count']
+        fields = ['id', 'url', 'name', 'version', 'slug', 'device_count', 'virtualmachine_count']
 
 
 class NestedDeviceSerializer(WritableNestedSerializer):

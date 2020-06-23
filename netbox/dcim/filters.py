@@ -493,7 +493,7 @@ class PlatformFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
 
     class Meta:
         model = Platform
-        fields = ['id', 'name', 'slug', 'napalm_driver', 'description']
+        fields = ['id', 'name', 'version', 'slug', 'napalm_driver', 'description']
 
 
 class DeviceFilterSet(

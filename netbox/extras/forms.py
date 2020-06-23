@@ -218,7 +218,10 @@ class ConfigContextForm(BootstrapMixin, forms.ModelForm):
     )
     platforms = DynamicModelMultipleChoiceField(
         queryset=Platform.objects.all(),
-        required=False
+        required=False,
+        widget=APISelectMultiple(
+            display_field="name version"
+        )
     )
     cluster_groups = DynamicModelMultipleChoiceField(
         queryset=ClusterGroup.objects.all(),
