@@ -705,7 +705,10 @@ class Interface(CableTermination, ComponentModel, CustomFieldModel):
     class Meta:
         # TODO: ordering and unique_together should include virtual_machine
         ordering = ('device', CollateAsChar('_name'))
-        unique_together = ('device', 'name')
+        unique_together = (
+            ('device', 'name'),
+            ('device', 'clag_id'),
+        )
 
     def __str__(self):
         return self.name
