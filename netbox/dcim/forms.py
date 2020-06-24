@@ -1648,13 +1648,14 @@ class PlatformForm(BootstrapMixin, forms.ModelForm):
         required=False
     )
     slug = SlugField(
-        max_length=64
+        max_length=64,
+        slug_source="name version",
     )
 
     class Meta:
         model = Platform
         fields = [
-            'name', 'slug', 'manufacturer', 'napalm_driver', 'napalm_args', 'description', 'vagrant_box', 'vagrant_box_version',
+            'name', 'version', 'slug', 'manufacturer', 'napalm_driver', 'napalm_args', 'description', 'vagrant_box', 'vagrant_box_version',
         ]
         widgets = {
             'napalm_args': SmallTextarea(),
@@ -1729,7 +1730,8 @@ class DeviceForm(BootstrapMixin, TenancyForm, CustomFieldModelForm):
         widget=APISelect(
             additional_query_params={
                 "manufacturer_id": "null"
-            }
+            },
+            display_field="name version"
         )
     )
     cluster_group = DynamicModelChoiceField(
@@ -2047,7 +2049,10 @@ class DeviceBulkEditForm(BootstrapMixin, AddRemoveTagsForm, CustomFieldBulkEditF
     )
     platform = DynamicModelChoiceField(
         queryset=Platform.objects.all(),
-        required=False
+        required=False,
+        widget=APISelect(
+            display_field="name version"
+        )
     )
     status = forms.ChoiceField(
         choices=add_blank_choice(DeviceStatusChoices),
@@ -2150,6 +2155,7 @@ class DeviceFilterForm(BootstrapMixin, LocalConfigContextFilterForm, TenancyFilt
         widget=APISelectMultiple(
             value_field="slug",
             null_option=True,
+            display_field="name version"
         )
     )
     status = forms.MultipleChoiceField(

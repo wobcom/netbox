@@ -752,7 +752,7 @@ class DeviceRoleTest(APIViewTestCases.APIViewTestCase):
 
 class PlatformTest(APIViewTestCases.APIViewTestCase):
     model = Platform
-    brief_fields = ['device_count', 'id', 'name', 'slug', 'url', 'virtualmachine_count']
+    brief_fields = ['device_count', 'id', 'name', 'slug', 'url', 'version', 'virtualmachine_count']
     create_data = [
         {
             'name': 'Platform 4',

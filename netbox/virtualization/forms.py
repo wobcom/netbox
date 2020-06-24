@@ -312,6 +312,7 @@ class VirtualMachineForm(BootstrapMixin, TenancyForm, CustomFieldModelForm):
         queryset=Platform.objects.all(),
         widget=APISelect(
             api_url='/api/dcim/platforms',
+            display_field="name version"
         )
     )
     tags = TagField(
@@ -458,9 +459,7 @@ class VirtualMachineBulkEditForm(BootstrapMixin, AddRemoveTagsForm, CustomFieldB
         required=False,
         widget=APISelect(
             api_url='/api/dcim/platforms',
-            filter_for={
-                'platform_version': 'platform_id'
-            }
+            display_field="name version"
         )
     )
     vcpus = forms.IntegerField(
@@ -563,6 +562,7 @@ class VirtualMachineFilterForm(BootstrapMixin, TenancyFilterForm, CustomFieldFil
         widget=APISelectMultiple(
             value_field="slug",
             null_option=True,
+            display_field="name version"
         )
     )
     mac_address = forms.CharField(
