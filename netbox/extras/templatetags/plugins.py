@@ -22,7 +22,10 @@ def _get_registered_content(obj, method, template_context):
         'perms': template_context['perms'],
     }
 
-    model_name = obj._meta.label_lower
+    if not isinstance(obj, str):
+        model_name = obj._meta.label_lower
+    else:
+        model_name = obj
     template_extensions = registry['plugin_template_extensions'].get(model_name, [])
     for template_extension in template_extensions:
 
@@ -49,6 +52,14 @@ def plugin_buttons(context, obj):
     Render all buttons registered by plugins
     """
     return _get_registered_content(obj, 'buttons', context)
+
+
+@register.simple_tag(takes_context=True)
+def plugin_list_buttons(context, obj):
+    """
+    Render buttons registered by plugin for list views
+    """
+    return _get_registered_content(obj, 'list_buttons', context)
 
 
 @register.simple_tag(takes_context=True)
