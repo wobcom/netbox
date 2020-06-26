@@ -6,6 +6,10 @@ echo ">> Creating virtual environment"
 python3 -m venv --copies venv
 echo ">> Installing requirements to virtual environment"
 venv/bin/pip install -r requirements.txt
+if [ ! -z "${ADDITIONAL_PIP_PACKAGES}" ]; then
+    echo ">> Installing additional plugins"
+    venv/bin/pip install ${ADDITIONAL_PIP_PACKAGES}
+fi
 echo ">> Copy temporary configuration"
 cp netbox/netbox/configuration.example.py netbox/netbox/configuration.py
 echo ">> Set temporary SECRET_KEY"
