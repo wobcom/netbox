@@ -5,7 +5,7 @@ class Command(JobBaseCommand):
 
     def handle_job(self, index, job):
         print("Job #{}:".format(index))
-        print("    Command: {}".format("".join(job['command'])))
+        print("    Command: {}".format(" ".join(job['command'])))
         environment = job.get('environment', {})
         if len(environment) > 0:
             longest_key = 0
