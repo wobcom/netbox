@@ -12,6 +12,12 @@ from change.models import ChangeInformation
 def topdesk_number_validator(value):
     if not settings.TOPDESK_URL:
         return
+
+    if not value:
+        raise ValidationError({
+            'topdesk_change_number': "Cannot leave TOPdesk change number empty unless it’s an emergency."
+        })
+
     topdesk = Topdesk(settings.TOPDESK_URL,
                       verify=settings.TOPDESK_SSL_VERIFICATION,
                       app_creds=(settings.TOPDESK_USER, settings.TOPDESK_TOKEN))
