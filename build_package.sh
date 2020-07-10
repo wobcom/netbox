@@ -32,7 +32,7 @@ fpm --input-type dir \
     --version "${VERSION}_${ITERATION}" \
     --depends postgresql96 \
     --depends postgresql96-server \
-    --depends redis \
+    --depends rh-redis5 \
     --depends python3 \
     --config-files /opt/netbox/netbox/netbox/configuration.py \
     --directories /opt/netbox \
