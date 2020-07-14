@@ -30,6 +30,8 @@ __all__ = (
     'VLANFilterSet',
     'VLANGroupFilterSet',
     'VRFFilterSet',
+    'OverlayNetworkFilterSet',
+    'OverlayNetworkGroupFilterSet',
 )
 
 
@@ -396,7 +398,7 @@ class IPAddressFilterSet(BaseFilterSet, TenancyFilterSet, CustomFieldFilterSet, 
         return queryset.exclude(interface__isnull=value)
 
 
-class OverlayNetworkGroupFilter(django_filters.FilterSet):
+class OverlayNetworkGroupFilterSet(django_filters.FilterSet):
     site_id = django_filters.ModelMultipleChoiceFilter(
         queryset=Site.objects.all(),
         label='Site (ID)',
@@ -443,7 +445,7 @@ class VLANGroupFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
         fields = ['id', 'name', 'slug', 'description']
 
 
-class OverlayNetworkFilter(BaseFilterSet, CustomFieldFilterSet, django_filters.FilterSet):
+class OverlayNetworkFilterSet(BaseFilterSet, CustomFieldFilterSet, django_filters.FilterSet):
     q = django_filters.CharFilter(
         method='search',
         label='Search',

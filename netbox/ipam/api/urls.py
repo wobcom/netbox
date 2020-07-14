@@ -37,5 +37,9 @@ router.register('vlans', views.VLANViewSet)
 # Services
 router.register('services', views.ServiceViewSet)
 
+# Overlay Networks
+router.register('overlay-networks', views.OverlayNetworkViewSet)
+router.register('overlay-network-groups', views.OverlayNetworkGroupViewSet)
+
 app_name = 'ipam-api'
 urlpatterns = router.urls

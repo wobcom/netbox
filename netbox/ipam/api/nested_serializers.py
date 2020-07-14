@@ -13,6 +13,7 @@ __all__ = [
     'NestedVLANGroupSerializer',
     'NestedVLANSerializer',
     'NestedVRFSerializer',
+    'NestedOverlayNetworkGroupSerializer',
 ]
 
 
@@ -115,3 +116,15 @@ class NestedServiceSerializer(WritableNestedSerializer):
     class Meta:
         model = models.Service
         fields = ['id', 'url', 'name', 'protocol', 'port']
+
+
+#
+# Overlay Networks
+#
+
+class NestedOverlayNetworkGroupSerializer(WritableNestedSerializer):
+    url = serializers.HyperlinkedIdentityField(view_name='ipam-api:overlaynetworkgroup-detail')
+
+    class Meta:
+        model = models.OverlayNetworkGroup
+        fields = ['id', 'url', 'name', 'slug']
