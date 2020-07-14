@@ -73,7 +73,7 @@ class VRFForm(BootstrapMixin, TenancyForm, CustomFieldModelForm):
 class VRFCSVForm(CustomFieldModelCSVForm):
     tenant = CSVModelChoiceField(
         queryset=Tenant.objects.all(),
-        required=True,
+        required=False,
         to_field_name='name',
         help_text='Assigned tenant'
     )
@@ -90,7 +90,7 @@ class VRFBulkEditForm(BootstrapMixin, AddRemoveTagsForm, CustomFieldBulkEditForm
     )
     tenant = DynamicModelChoiceField(
         queryset=Tenant.objects.all(),
-        required=True
+        required=False
     )
     enforce_unique = forms.NullBooleanField(
         required=False,
