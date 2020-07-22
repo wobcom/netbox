@@ -1,0 +1,18 @@
+{
+  "dependencies": {
+    "react": "^16.13.1",
+    "react-bootstrap": "0.33.1",
+    "react-dom": "^16.13.1",
+    "xterm": "^4.8.1",
+    "xterm-addon-fit": "^0.4.0",
+    "xterm-addon-search": "^0.7.0",
+    "xterm-addon-web-links": "^0.4.0"
+  },
+  "scripts": {
+    "watch": "parcel watch netbox/project-static/wobcom/stub.html --target browser --out-dir netbox/project-static/wobcom/dist/",
+    "build": "parcel watch netbox/project-static/wobcom/stub.html --target browser --no-content-hash --out-dir netbox/project-static/wobcom/dist/"
+  },
+  "devDependencies": {
+    "parcel-bundler": "^1.12.4"
+  }
+}
