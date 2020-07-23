@@ -65,9 +65,7 @@
                 <div class="panel-heading">
                     <strong>Logs</strong>
                 </div>
-                <div class="panel-body" style="padding: 0;">
-                    <div style="padding: 10px;" id="xterm-search-container"></div>
-                    <div id="terminal_output"></div>
+                <div class="panel-body" id="react-terminal" style="padding: 0;">
                 </div>
             </div>
         </div>
@@ -89,6 +87,22 @@
 {% block javascript %}
     <script type="application/javascript">
     document.addEventListener('DOMContentLoaded', () => {
+        ReactDOM.render(
+            React.createElement(
+                window.ReactComponents.ProvisionTerminal,
+                {
+                    provisionId: "{{ provision_set.pk }}",
+                    {% if provision_set.status != provision_set.RUNNING %}
+                        {% autoescape off %}
+                            initialContent: {{ provision_set.output_log | stringformat:'r' }}.replace(/\n/g, '\r\n'),
+                        {% endautoescape %}
+                    {% else %}
+                        initialContent: "",
+                    {% endif %}
+                }
+            ),
+            document.getElementById('react-terminal'),
+        );
         var term = new Terminal({
             rows: 50,
             disableStdin: true,
