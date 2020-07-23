@@ -1,8 +1,10 @@
 {
   "dependencies": {
+    "components": "^0.1.0",
     "react": "^16.13.1",
     "react-bootstrap": "0.33.1",
     "react-dom": "^16.13.1",
+    "react-xterm": "^2.0.4",
     "xterm": "^4.8.1",
     "xterm-addon-fit": "^0.4.0",
     "xterm-addon-search": "^0.7.0",
