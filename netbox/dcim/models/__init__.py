@@ -254,8 +254,10 @@ class Site(ChangeLoggedModel, CustomFieldModel):
     ]
 
     STATUS_CLASS_MAP = {
-        SiteStatusChoices.STATUS_ACTIVE: 'success',
         SiteStatusChoices.STATUS_PLANNED: 'info',
+        SiteStatusChoices.STATUS_STAGING: 'primary',
+        SiteStatusChoices.STATUS_ACTIVE: 'success',
+        SiteStatusChoices.STATUS_DECOMMISSIONING: 'warning',
         SiteStatusChoices.STATUS_RETIRED: 'danger',
     }
 
@@ -787,7 +789,7 @@ class Rack(ChangeLoggedModel, CustomFieldModel):
         )
 
         if power_stats:
-            allocated_draw_total = sum(x['allocated_draw_total'] for x in power_stats)
+            allocated_draw_total = sum(x['allocated_draw_total'] or 0 for x in power_stats)
             available_power_total = sum(x['available_power'] for x in power_stats)
             return int(allocated_draw_total / available_power_total * 100) or 0
         return 0

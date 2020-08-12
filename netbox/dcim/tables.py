@@ -95,6 +95,14 @@ MANUFACTURER_ACTIONS = """
 {% endif %}
 """
 
+DEVICEROLE_DEVICE_COUNT = """
+<a href="{% url 'dcim:device_list' %}?role={{ record.slug }}">{{ value|default:0 }}</a>
+"""
+
+DEVICEROLE_VM_COUNT = """
+<a href="{% url 'virtualization:virtualmachine_list' %}?role={{ record.slug }}">{{ value|default:0 }}</a>
+"""
+
 DEVICEROLE_ACTIONS = """
 <a href="{% url 'dcim:devicerole_changelog' slug=record.slug %}" class="btn btn-default btn-xs" title="Change log">
     <i class="fa fa-history"></i>
@@ -104,20 +112,12 @@ DEVICEROLE_ACTIONS = """
 {% endif %}
 """
 
-DEVICEROLE_DEVICE_COUNT = """
-<a href="{% url 'dcim:device_list' %}?role={{ record.slug }}">{{ value }}</a>
-"""
-
-DEVICEROLE_VM_COUNT = """
-<a href="{% url 'virtualization:virtualmachine_list' %}?role={{ record.slug }}">{{ value }}</a>
-"""
-
 PLATFORM_DEVICE_COUNT = """
-<a href="{% url 'dcim:device_list' %}?platform={{ record.slug }}">{{ value }}</a>
+<a href="{% url 'dcim:device_list' %}?platform={{ record.slug }}">{{ value|default:0 }}</a>
 """
 
 PLATFORM_VM_COUNT = """
-<a href="{% url 'virtualization:virtualmachine_list' %}?platform={{ record.slug }}">{{ value }}</a>
+<a href="{% url 'virtualization:virtualmachine_list' %}?platform={{ record.slug }}">{{ value|default:0 }}</a>
 """
 
 PLATFORM_ACTIONS = """
@@ -279,6 +279,7 @@ class RackGroupTable(BaseTable):
 
 class RackRoleTable(BaseTable):
     pk = ToggleColumn()
+    name = tables.Column(linkify=True)
     rack_count = tables.Column(verbose_name='Racks')
     color = tables.TemplateColumn(COLOR_LABEL)
     actions = tables.TemplateColumn(
@@ -706,20 +707,17 @@ class DeviceRoleTable(BaseTable):
     pk = ToggleColumn()
     device_count = tables.TemplateColumn(
         template_code=DEVICEROLE_DEVICE_COUNT,
-        accessor=Accessor('devices.count'),
-        orderable=False,
         verbose_name='Devices'
     )
     vm_count = tables.TemplateColumn(
         template_code=DEVICEROLE_VM_COUNT,
-        accessor=Accessor('virtual_machines.count'),
-        orderable=False,
         verbose_name='VMs'
     )
     color = tables.TemplateColumn(
         template_code=COLOR_LABEL,
         verbose_name='Label'
     )
+    vm_role = BooleanColumn()
     actions = tables.TemplateColumn(
         template_code=DEVICEROLE_ACTIONS,
         attrs={'td': {'class': 'text-right noprint'}},
@@ -740,14 +738,10 @@ class PlatformTable(BaseTable):
     pk = ToggleColumn()
     device_count = tables.TemplateColumn(
         template_code=PLATFORM_DEVICE_COUNT,
-        accessor=Accessor('devices.count'),
-        orderable=False,
         verbose_name='Devices'
     )
     vm_count = tables.TemplateColumn(
         template_code=PLATFORM_VM_COUNT,
-        accessor=Accessor('virtual_machines.count'),
-        orderable=False,
         verbose_name='VMs'
     )
     actions = tables.TemplateColumn(
@@ -973,8 +967,8 @@ class InterfaceDetailTable(DeviceComponentDetailTable):
 
     class Meta(InterfaceTable.Meta):
         order_by = ('parent', 'name')
-        fields = ('pk', 'parent', 'name', 'enabled', 'type', 'mode', 'description', 'cable')
-        sequence = ('pk', 'parent', 'name', 'enabled', 'type', 'description', 'cable')
+        fields = ('pk', 'parent', 'name', 'enabled', 'type', 'mode', 'mac_address', 'description', 'cable')
+        default_columns = ('pk', 'parent', 'name', 'enabled', 'type', 'description', 'cable')
 
 
 class FrontPortTable(BaseTable):

@@ -27,7 +27,7 @@ from extras.models import CustomField, CustomFieldValue, ExportTemplate
 from extras.querysets import CustomFieldQueryset
 from utilities.exceptions import AbortTransaction
 from utilities.forms import BootstrapMixin, CSVDataField, TableConfigForm
-from utilities.utils import csv_format, prepare_cloned_fields
+from utilities.utils import csv_format, normalize_querydict, prepare_cloned_fields
 from .error_handlers import handle_protectederror
 from .forms import ConfirmationForm, ImportForm
 from .paginator import EnhancedPaginator, get_paginate_count
@@ -250,7 +250,7 @@ class ObjectEditView(GetReturnURLMixin, View):
 
     def get(self, request, *args, **kwargs):
         # Parse initial data manually to avoid setting field values as lists
-        initial_data = {k: request.GET[k] for k in request.GET}
+        initial_data = normalize_querydict(request.GET)
         form = self.model_form(instance=self.obj, initial=initial_data)
 
         return render(request, self.template_name, {
@@ -267,9 +267,10 @@ class ObjectEditView(GetReturnURLMixin, View):
         if form.is_valid():
             logger.debug("Form validation was successful")
 
+            object_created = form.instance.pk is None
             obj = form.save()
             msg = '{} {}'.format(
-                'Created' if not form.instance.pk else 'Modified',
+                'Created' if object_created else 'Modified',
                 self.model._meta.verbose_name
             )
             logger.info(f"{msg} {obj} (PK: {obj.pk})")
@@ -721,8 +722,8 @@ class BulkEditView(GetReturnURLMixin, View):
 
                                 # ManyToManyFields
                                 elif isinstance(model_field, ManyToManyField):
-                                    getattr(obj, name).set(form.cleaned_data[name])
-
+                                    if form.cleaned_data[name].count() > 0:
+                                        getattr(obj, name).set(form.cleaned_data[name])
                                 # Normal fields
                                 elif form.cleaned_data[name] not in (None, ''):
                                     setattr(obj, name, form.cleaned_data[name])
