@@ -9,6 +9,7 @@ from django_tables2 import RequestConfig
 
 from dcim.models import Device, Interface
 from utilities.paginator import EnhancedPaginator
+from utilities.utils import get_subquery
 from utilities.views import (
     BulkCreateView, BulkDeleteView, BulkEditView, BulkImportView, ObjectDeleteView, ObjectEditView, ObjectListView,
 )
@@ -329,6 +330,8 @@ class AggregateView(PermissionRequiredMixin, View):
             prefix__net_contained_or_equal=str(aggregate.prefix)
         ).prefetch_related(
             'site', 'role'
+        ).order_by(
+            'prefix'
         ).annotate_depth(
             limit=0
         )
@@ -410,7 +413,10 @@ class AggregateBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
 
 class RoleListView(PermissionRequiredMixin, ObjectListView):
     permission_required = 'ipam.view_role'
-    queryset = Role.objects.all()
+    queryset = Role.objects.annotate(
+        prefix_count=get_subquery(Prefix, 'role'),
+        vlan_count=get_subquery(VLAN, 'role')
+    )
     table = tables.RoleTable
 
 
