@@ -129,6 +129,8 @@ PROVISIONING_STAGE_1 = getattr(configuration, 'PROVISIONING_STAGE_1', tuple())
 PROVISIONING_STAGE_2 = getattr(configuration, 'PROVISIONING_STAGE_2', tuple())
 PROVISIONING_TIMEOUT = getattr(configuration, 'PROVISIONING_TIMEOUT', None)
 PID_FILE = getattr(configuration, 'PID_FILE', os.path.join(BASE_DIR, 'provisioning.pid'))
+ODIN_WORKER_URL = getattr(configuration, 'ODIN_WORKER_URL', None)
+ODIN_ADDITIONAL_ARGS = getattr(configuration, 'ODIN_ADDITIONAL_ARGS', [])
 
 # Validate update repo URL and timeout
 if RELEASE_CHECK_URL:
@@ -712,3 +714,13 @@ for plugin_name in PLUGINS:
     CACHEOPS.update({
         "{}.{}".format(plugin_name, key): value for key, value in plugin_config.caching_config.items()
     })
+
+#
+# Odin Worker
+#
+
+if ODIN_WORKER_URL is None:
+    raise ImproperlyConfigured("ODIN_WORKER_URL configuration missing.")
+
+if not isinstance(ODIN_ADDITIONAL_ARGS, list):
+    raise ImproperlyConfigured("ODIN_ADDITIONAL_ARGS must be a list.")

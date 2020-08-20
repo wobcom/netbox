@@ -1,6 +1,7 @@
-import time
 import json
-
+import os
+import time
+from tempfile import NamedTemporaryFile
 from threading import Thread
 
 from channels.generic.websocket import WebsocketConsumer
@@ -8,49 +9,107 @@ from channels.exceptions import DenyConnection
 
 from asgiref.sync import async_to_sync
 
-from .models import ProvisionSet
+from .models import ProvisionSet, BadTransition
+
+
+EOF_LENGTH = 8
+
+
+class ProvisionWorkerConsumer(WebsocketConsumer):
+    def __init__(self, *args, **kwargs):
+        super(ProvisionWorkerConsumer, self).__init__(*args, **kwargs)
+        self.buffer_file = None
+
+    def connect(self):
+        new_state = self.scope['url_route']['kwargs']['state']
+        try:
+            provision_set = ProvisionSet.objects.get(pk=self.scope['url_route']['kwargs']['pk'])
+            provision_set.transition(new_state)
+            if provision_set.output_log_file is None:
+                self.buffer_file = NamedTemporaryFile()
+                provision_set.output_log_file = os.path.realpath(self.buffer_file.name)
+            else:
+                self.buffer_file = open(provision_set.output_log_file, 'ab')
+            provision_set.save()
+            self.accept()
+        except ProvisionSet.DoesNotExist:
+            raise DenyConnection('ProvisionSet does not exist.')
+        except BadTransition:
+            raise DenyConnection('Invalid state.')
+        except Exception as e:
+            print(e)
+            raise e
+
+    def receive(self, text_data=None, bytes_data=None):
+        if bytes_data is not None:
+            self.buffer_file.write(bytes_data)
+
+    def disconnect(self, code):
+        try:
+            provision_set = ProvisionSet.objects.get(pk=self.scope['url_route']['kwargs']['pk'])
+            provision_set.persist_output_log()
+            if code == 4201:
+                if provision_set.status == ProvisionSet.PREPARE:
+                    provision_set.transition(ProvisionSet.REVIEWING)
+                else:
+                    provision_set.transition(ProvisionSet.FINISHED)
+            else:
+                provision_set.transition(ProvisionSet.FAILED)
+            provision_set.save()
+        except (ProvisionSet.DoesNotExist, BadTransition):
+            pass
+        buffer_file_path = os.path.realpath(self.buffer_file.name)
+        self.buffer_file.write(b''.join([b'0x00' for i in range(EOF_LENGTH)]))
+        self.buffer_file.close()
+        time.sleep(0.2)
+#        if os.path.isfile(buffer_file_path):
+#            os.unlink(buffer_file_path)
 
 
 class LogfileConsumer(WebsocketConsumer):
-
     def __init__(self, *args, **kwargs):
         super(LogfileConsumer, self).__init__(*args, **kwargs)
-
-        self.provision_set = None
         self.connected = False
 
-    def connect(self):
-        self.accept()
-
-        try:
-            self.provision_set = ProvisionSet.objects.get(pk=self.scope['url_route']['kwargs']['pk'])
-        except ProvisionSet.DoesNotExist:
-            self.send('Not found')
-            raise DenyConnection('Provision set not found')
-
+    def accept(self, *args, **kwargs):
+        super(LogfileConsumer, self).accept(*args, **kwargs)
         self.connected = True
 
-        self.send(json.dumps({'scope': 'default', 'line': self.provision_set.output_log}))
-
-        if self.provision_set.output_log_file is not None:
-            Thread(target=self.send_file, args=(self.provision_set.output_log_file,)).start()
+    def connect(self):
+        try:
+            provision_set = ProvisionSet.objects.get(pk=self.scope['url_route']['kwargs']['pk'])
+            self.accept()
+            if provision_set.output_log_file is not None:
+                Thread(
+                    target=self.send_file_continuously,
+                    args=(provision_set.output_log_file,)
+                ).start()
+            else:
+                self.send(text_data='File already closed.')
+        except ProvisionSet.DoesNotExist:
+            raise DenyConnection('ProvisionSet does not exist.')
 
     def disconnect(self, code):
         self.connected = False
 
-    def send_file(self, path, scope=None):
-        file = open(path, 'r')
-
-        for line in self.read_file_continuously(file):
-            self.send(json.dumps({'scope': scope if scope else 'default', 'line': line}))
-
-    def read_file_continuously(self, file):
-        while self.connected:
-            line = file.readline()
-            if not line:
-                time.sleep(1)
-                continue
-            yield line
+    def send_file_continuously(self, path):
+        with open(path, 'rb') as buffer_file:
+            eof_counter = 0
+            while True:
+                data = buffer_file.read()
+                if not self.connected:
+                    break
+                if len(data) > 0:
+                    eof_counter_init = eof_counter
+                    for i in reversed(data):
+                        if i != 0x00:
+                            eof_counter -= eof_counter_init
+                            break
+                        eof_counter += 1
+                    self.send(bytes_data=data)
+                    if eof_counter == EOF_LENGTH:
+                        break
+                time.sleep(0.05)
 
 
 class ProvisionStatusConsumer(WebsocketConsumer):

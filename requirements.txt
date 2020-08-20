@@ -32,3 +32,4 @@ topdesk
 channels_redis
 django-auth-ldap
 slackclient
+requests~=2.24.0

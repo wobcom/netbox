@@ -20,4 +20,5 @@ urlpatterns = [
 websocket_urlpatterns = [
     path(r'change/provisions/<int:pk>/logs/ws/', consumers.LogfileConsumer),
     path(r'change/provisions/status/', consumers.ProvisionStatusConsumer),
+    path(r'change/provisions/<int:pk>/worker/<str:state>/', consumers.ProvisionWorkerConsumer)
 ]
