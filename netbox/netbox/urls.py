@@ -50,7 +50,6 @@ _patterns = [
     # Apps
     path('change/', include('change.urls')),
     path('circuits/', include('circuits.urls')),
-    path('configuration/', include('configuration.urls')),
     path('dcim/', include('dcim.urls')),
     path('extras/', include('extras.urls')),
     path('ipam/', include('ipam.urls')),

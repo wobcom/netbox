@@ -1703,11 +1703,6 @@ class Device(ChangeLoggedModel, ConfigContextModel, CustomFieldModel):
         """
         return self.virtual_chassis.master if self.virtual_chassis else None
 
-    def count_bgp_sessions(self):
-        return self.interfaces\
-            .annotate(session_count=Count('bgp_sessions'))\
-            .aggregate(res=Sum('session_count'))['res']
-
     @property
     def vc_interfaces(self):
         """

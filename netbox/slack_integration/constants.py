@@ -58,12 +58,4 @@ SLACK_MESSAGE_MODELS = [
     "circuits.circuittype",
     "circuits.circuit",
     "circuits.circuittermination",
-    "configuration.routemap",
-    "configuration.bgpcommunity",
-    "configuration.bgpcommunitylist",
-    "configuration.bgpcommunitylistmember",
-    "configuration.bgpasn_networks",
-    "configuration.bgpasn",
-    "configuration.bgpdeviceasn",
-    "configuration.bgpneighbor",
 ]
