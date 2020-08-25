@@ -36,9 +36,6 @@ class ProvisionWorkerConsumer(WebsocketConsumer):
             raise DenyConnection('ProvisionSet does not exist.')
         except BadTransition:
             raise DenyConnection('Invalid state.')
-        except Exception as e:
-            print(e)
-            raise e
 
     def receive(self, text_data=None, bytes_data=None):
         if bytes_data is not None:
@@ -56,14 +53,13 @@ class ProvisionWorkerConsumer(WebsocketConsumer):
             else:
                 provision_set.transition(ProvisionSet.FAILED)
             provision_set.save()
-        except (ProvisionSet.DoesNotExist, BadTransition):
+        except ProvisionSet.DoesNotExist:
             pass
         buffer_file_path = os.path.realpath(self.buffer_file.name)
-        self.buffer_file.write(b''.join([b'0x00' for i in range(EOF_LENGTH)]))
+        self.buffer_file.write(b'\x00' * EOF_LENGTH)
         self.buffer_file.close()
-        time.sleep(0.2)
-#        if os.path.isfile(buffer_file_path):
-#            os.unlink(buffer_file_path)
+        if os.path.isfile(buffer_file_path):
+            os.unlink(buffer_file_path)
 
 
 class LogfileConsumer(WebsocketConsumer):
