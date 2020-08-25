@@ -228,26 +228,26 @@ class ProvisionSet(models.Model):
             raise AlreadyExistsError('An unfinished provision already exists.')
 
     def transition(self, to):
-        from_ = self.status
+        from_ = self.state
         valid = self.valid_transitions[from_]
         if to not in valid:
             raise BadTransition("Bad transition request from {} to {}, valid next states: {}".format(from_, to, valid))
-        if self.status in (self.PREPARE, self.FINISHED, self.FAILED, self.ABORTED):
+        if self.state in (self.PREPARE, self.FINISHED, self.FAILED, self.ABORTED):
             async_to_sync(get_channel_layer().group_send)('provision_status', {
                 'type': 'provision_status_message',
                 'text': json.dumps({
                     'provision_set_pk': self.pk,
-                    'provision_status': str(int(self.status == self.PREPARE))
+                    'provision_status': str(int(self.state == self.PREPARE))
                 })
             })
-        self.status = to
+        self.state = to
 
     def transition_(self, to):
         self.transition(to)
         self.save()
 
     def run_prepare(self):
-        self.transition_(self.PREPARE)
+        self.transition(self.PREPARE)
         r = post(
             url=f"{settings.ODIN_WORKER_URL}/provision/{self.pk}",
             json={
@@ -286,10 +286,11 @@ class ProvisionSet(models.Model):
 
     def persist_output_log(self):
         with open(self.output_log_file, 'r') as buffer_file:
+            data = buffer_file.read()
             if self.state == self.COMMIT:
-                self.commit_log = buffer_file.read()
+                self.commit_log = data
             elif self.state == self.PREPARE:
-                self.prepare_log = buffer_file.read()
+                self.prepare_log = data
         self.output_log_file = None
 
     @property

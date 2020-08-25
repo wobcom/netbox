@@ -148,8 +148,12 @@
         term.open(document.getElementById('terminal_output'));
         fit_addon.fit();
         {% autoescape off %}
+            {% if provision_set.prepare_log %}
         term.write({{ provision_set.prepare_log | stringformat:'r' }}.replace(/\n/g, '\r\n'));
+            {% endif %}
+            {% if provision_set.commit_log %}
         term.write({{ provision_set.commit_log | stringformat:'r' }}.replace(/\n/g, '\r\n'));
+            {% endif %}
         {% endautoescape %}
         {% if provision_set.state == provision_set.PREPARE or provision_set.state == provision_set.COMMIT %}
         var websocket = new WebSocket((location.protocol.startsWith('https') ? 'wss' : 'ws') + '://' + location.host + '/change/provisions/{{ provision_set.pk }}/logs/ws/');

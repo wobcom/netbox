@@ -149,22 +149,6 @@ class TerminateView(PermissionRequiredMixin, View):
 
         provision_set.terminate()
 
-        if provision_set.status != ProvisionSet.RUNNING:
-            provision_set.changesets.update(status=ChangeSet.ACCEPTED)
-            provision_set.status = ProvisionSet.ABORTED
-            provision_set.save()
-            return redirect('change:provision_set', pk=provision_set.pk)
-
-        pid = PID.get()
-
-        if not pid:
-            return HttpResponse('Provision was not started!', status=409)
-
-        try:
-            os.kill(pid, signal.SIGABRT)
-        except ProcessLookupError:
-            return HttpResponse('Provision process was not found!', status=400)
-
         return redirect('change:provision_set', pk=provision_set.pk)
 
 
