@@ -46,7 +46,7 @@ class ProvisionWorkerConsumer(WebsocketConsumer):
             provision_set = ProvisionSet.objects.get(pk=self.scope['url_route']['kwargs']['pk'])
             provision_set.persist_output_log()
             if code == 4201:
-                if provision_set.status == ProvisionSet.PREPARE:
+                if provision_set.state == ProvisionSet.PREPARE:
                     provision_set.transition(ProvisionSet.REVIEWING)
                 else:
                     provision_set.transition(ProvisionSet.FINISHED)

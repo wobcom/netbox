@@ -213,8 +213,8 @@ class ProvisionSet(models.Model):
     )
 
     output_log_file = models.CharField(max_length=512, blank=True, null=True)
-    output_log = models.TextField(blank=True, null=True)
-    status = models.CharField(
+    prepare_log = models.TextField(blank=True, null=True)
+    state = models.CharField(
         max_length=20,
         default=NOT_STARTED,
         choices=state_labels.items()
@@ -285,11 +285,11 @@ class ProvisionSet(models.Model):
 
     def persist_output_log(self, append=False):
         with open(self.output_log_file, 'r') as buffer_file:
-            if self.output_log is None:
-                self.output_log = buffer_file.read()
+            if self.prepare_log is None:
+                self.prepare_log = buffer_file.read()
             else:
-                self.output_log += '\n'
-                self.output_log += buffer_file.read()
+                self.prepare_log += '\n'
+                self.prepare_log += buffer_file.read()
         self.output_log_file = None
 
     @property
