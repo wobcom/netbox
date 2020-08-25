@@ -147,11 +147,11 @@
         term.loadAddon(search_addon);
         term.open(document.getElementById('terminal_output'));
         fit_addon.fit();
-        {% if provision_set.state != provision_set.PREPARE and provision_set.state != provision_set.COMMIT %}
         {% autoescape off %}
         term.write({{ provision_set.prepare_log | stringformat:'r' }}.replace(/\n/g, '\r\n'));
+        term.write({{ provision_set.commit_log | stringformat:'r' }}.replace(/\n/g, '\r\n'));
         {% endautoescape %}
-        {% else %}
+        {% if provision_set.state == provision_set.PREPARE or provision_set.state == provision_set.COMMIT %}
         var websocket = new WebSocket((location.protocol.startsWith('https') ? 'wss' : 'ws') + '://' + location.host + '/change/provisions/{{ provision_set.pk }}/logs/ws/');
         websocket.onmessage = (msg) => {
             let reader = new FileReader()

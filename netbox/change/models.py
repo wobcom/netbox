@@ -214,6 +214,7 @@ class ProvisionSet(models.Model):
 
     output_log_file = models.CharField(max_length=512, blank=True, null=True)
     prepare_log = models.TextField(blank=True, null=True)
+    commit_log = models.TextField(blank=True, null=True)
     state = models.CharField(
         max_length=20,
         default=NOT_STARTED,
@@ -283,13 +284,12 @@ class ProvisionSet(models.Model):
         )
         self.save()
 
-    def persist_output_log(self, append=False):
+    def persist_output_log(self):
         with open(self.output_log_file, 'r') as buffer_file:
-            if self.prepare_log is None:
+            if self.state == self.COMMIT:
+                self.commit_log = buffer_file.read()
+            elif self.state == self.PREPARE:
                 self.prepare_log = buffer_file.read()
-            else:
-                self.prepare_log += '\n'
-                self.prepare_log += buffer_file.read()
         self.output_log_file = None
 
     @property
@@ -306,7 +306,7 @@ class ProvisionSet(models.Model):
 
     @classmethod
     def active_exists(cls):
-        return cls.objects.filter(status__in=(cls.RUNNING, cls.PREPARE, cls.COMMIT, cls.REVIEWING)).exists()
+        return cls.objects.filter(state__in=(cls.RUNNING, cls.PREPARE, cls.COMMIT, cls.REVIEWING)).exists()
 
 
 class ChangedObjectManager(models.Manager):
