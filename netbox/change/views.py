@@ -72,7 +72,7 @@ class EndChangeView(PermissionRequiredMixin, View):
             return HttpResponse("You're currently not in a change", status=409), None
 
         request.my_change.active = False
-        request.my_change.state = ChangeSet.ACCEPTED
+        request.my_change.status = ChangeSet.ACCEPTED
         request.my_change.save()
 
         return redirect('home')

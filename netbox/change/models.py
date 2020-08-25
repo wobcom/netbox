@@ -271,6 +271,9 @@ class ProvisionSet(models.Model):
         if r.status_code != 200:
             self.transition_(self.FAILED)
             raise ProvisionFailed(r.text)
+        with NamedTemporaryFile(delete=False) as file:
+            self.output_log_file = realpath(file.name)
+            self.save()
 
     def finish(self):
         self.transition(self.FINISHED)

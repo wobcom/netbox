@@ -29,7 +29,7 @@ class ProvisionWorkerConsumer(WebsocketConsumer):
                 self.buffer_file = NamedTemporaryFile(mode='wb', buffering=0, delete=False)
                 provision_set.output_log_file = os.path.realpath(self.buffer_file.name)
             else:
-                self.buffer_file = open(provision_set.output_log_file, 'ab')
+                self.buffer_file = open(provision_set.output_log_file, 'ab', buffering=0)
             provision_set.save()
             self.accept()
         except ProvisionSet.DoesNotExist:
@@ -103,7 +103,7 @@ class LogfileConsumer(WebsocketConsumer):
                             break
                         eof_counter += 1
                     self.send(bytes_data=data)
-                    if eof_counter == EOF_LENGTH:
+                    if eof_counter >= EOF_LENGTH:
                         break
                 time.sleep(0.05)
 
