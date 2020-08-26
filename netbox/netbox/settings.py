@@ -125,10 +125,7 @@ TOPDESK_URL = getattr(configuration, 'TOPDESK_URL', None)
 TOPDESK_TOKEN = getattr(configuration, 'TOPDESK_TOKEN', None)
 TOPDESK_USER = getattr(configuration, "TOPDESK_USER", None)
 TOPDESK_SSL_VERIFICATION = getattr(configuration, 'TOPDESK_SSL_VERIFICATION', True)
-PROVISIONING_STAGE_1 = getattr(configuration, 'PROVISIONING_STAGE_1', tuple())
-PROVISIONING_STAGE_2 = getattr(configuration, 'PROVISIONING_STAGE_2', tuple())
 PROVISIONING_TIMEOUT = getattr(configuration, 'PROVISIONING_TIMEOUT', None)
-PID_FILE = getattr(configuration, 'PID_FILE', os.path.join(BASE_DIR, 'provisioning.pid'))
 ODIN_WORKER_URL = getattr(configuration, 'ODIN_WORKER_URL', None)
 ODIN_ADDITIONAL_ARGS = getattr(configuration, 'ODIN_ADDITIONAL_ARGS', [])
 
@@ -665,11 +662,6 @@ CHANNEL_LAYERS = {
         },
     },
 }
-
-if not os.path.isdir(os.path.dirname(os.path.realpath(PID_FILE))):
-    print('Path of PID_FILE does not exist! {}'.format(os.path.realpath(PID_FILE)))
-    exit(1)
-
 
 #
 # Plugins
