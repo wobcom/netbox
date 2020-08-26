@@ -939,6 +939,10 @@ class IPAddressFilterForm(BootstrapMixin, TenancyFilterForm, CustomFieldFilterFo
 
 class OverlayNetworkGroupForm(BootstrapMixin, forms.ModelForm):
     slug = SlugField()
+    site = DynamicModelChoiceField(
+        queryset=Site.objects.all(),
+        required=False
+    )
 
     class Meta:
         model = OverlayNetworkGroup
@@ -1039,22 +1043,24 @@ class OverlayNetworkForm(BootstrapMixin, TenancyForm, CustomFieldModelForm):
     site = DynamicModelChoiceField(
         queryset=Site.objects.all(),
         required=False,
-        widget=forms.Select(
+        widget=APISelect(
             attrs={
                 'filter-for': 'group',
                 'nullable': 'true',
             }
         )
     )
-    tenant = forms.ModelChoiceField(
+    tenant = DynamicModelChoiceField(
         queryset=Tenant.objects.all(),
         required=True,
     )
-    group = forms.ModelChoiceField(
+    group = DynamicModelChoiceField(
         queryset=OverlayNetworkGroup.objects.all(),
         required=False,
-        label='Group',
-        widget=APISelect()
+    )
+    role = DynamicModelChoiceField(
+        queryset=Role.objects.all(),
+        required=False
     )
     tags = TagField(required=False)
 
@@ -1223,6 +1229,10 @@ class VLANForm(BootstrapMixin, TenancyForm, CustomFieldModelForm):
         queryset=Role.objects.all(),
         required=False
     )
+    tenant = DynamicModelChoiceField(
+        queryset=Tenant.objects.all(),
+        required=True,
+    )
     tags = TagField(required=False)
 
     class Meta:
@@ -1272,7 +1282,7 @@ class VLANCSVForm(CustomFieldModelCSVForm):
         to_field_name='name',
         help_text='Functional role'
     )
-    overlay_network = forms.ModelChoiceField(
+    overlay_network = CSVModelChoiceField(
         queryset=OverlayNetwork.objects.all(),
         required=False,
         to_field_name='name',
@@ -1331,7 +1341,7 @@ class VLANBulkEditForm(BootstrapMixin, AddRemoveTagsForm, CustomFieldBulkEditFor
         queryset=Role.objects.all(),
         required=False
     )
-    overlay_network = forms.ModelChoiceField(
+    overlay_network = DynamicModelChoiceField(
         queryset=OverlayNetwork.objects.all(),
         required=False
     )
@@ -1382,12 +1392,15 @@ class VLANFilterForm(BootstrapMixin, TenancyFilterForm, CustomFieldFilterForm):
             null_option=True,
         )
     )
-    overlay_network = forms.ModelMultipleChoiceField(
+    overlay_network = DynamicModelMultipleChoiceField(
         queryset=OverlayNetwork.objects.annotate(
             filter_count=Count('vlans')
         ),
         required=False,
         to_field_name='vxlan_prefix',
+        widget=APISelectMultiple(
+            null_option=True,
+        )
     )
     status = forms.MultipleChoiceField(
         choices=VLANStatusChoices,

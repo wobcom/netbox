@@ -10,7 +10,7 @@ from rest_framework.response import Response
 
 from extras.api.views import CustomFieldModelViewSet
 from ipam import filters
-from ipam.models import Aggregate, IPAddress, Prefix, RIR, Role, Service, VLAN, VLANGroup, VRF
+from ipam.models import Aggregate, IPAddress, Prefix, RIR, Role, Service, VLAN, VLANGroup, VRF, OverlayNetwork, OverlayNetworkGroup
 from utilities.api import ModelViewSet
 from utilities.constants import ADVISORY_LOCK_KEYS
 from utilities.utils import get_subquery
@@ -280,3 +280,19 @@ class ServiceViewSet(ModelViewSet):
     queryset = Service.objects.prefetch_related('device').prefetch_related('tags')
     serializer_class = serializers.ServiceSerializer
     filterset_class = filters.ServiceFilterSet
+
+
+#
+# Overlay Networks
+#
+
+class OverlayNetworkViewSet(ModelViewSet):
+    queryset = OverlayNetwork.objects.prefetch_related('site', 'group', 'tenant')
+    serializer_class = serializers.OverlayNetworkSerializer
+    filterset_class = filters.OverlayNetworkFilterSet
+
+
+class OverlayNetworkGroupViewSet(ModelViewSet):
+    queryset = OverlayNetworkGroup.objects.prefetch_related('site')
+    serializer_class = serializers.OverlayNetworkGroupSerializer
+    filterset_class = filters.OverlayNetworkGroupFilterSet

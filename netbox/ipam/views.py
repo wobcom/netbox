@@ -818,7 +818,7 @@ class IPAddressBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
 
 class OverlayNetworkGroupListView(ObjectListView):
     queryset = OverlayNetworkGroup.objects.select_related('site').annotate(overlay_network_count=Count('overlay_networks'))
-    filter = filters.OverlayNetworkGroupFilter
+    filter = filters.OverlayNetworkGroupFilterSet
     filter_form = forms.OverlayNetworkGroupFilterForm
     table = tables.OverlayNetworkGroupTable
     template_name = 'ipam/overlay_networkgroup_list.html'
@@ -845,7 +845,7 @@ class OverlayNetworkGroupBulkImportView(PermissionRequiredMixin, BulkImportView)
 class OverlayNetworkGroupBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
     permission_required = 'ipam.delete_overlaynetworkgroup'
     queryset = OverlayNetworkGroup.objects.select_related('site').annotate(overlay_network_count=Count('overlay_networks'))
-    filter = filters.OverlayNetworkGroupFilter
+    filter = filters.OverlayNetworkGroupFilterSet
     table = tables.OverlayNetworkGroupTable
     default_return_url = 'ipam:overlay_networkgroup_list'
 
@@ -965,7 +965,7 @@ class VLANGroupVLANsView(PermissionRequiredMixin, View):
 
 class OverlayNetworkListView(ObjectListView):
     queryset = OverlayNetwork.objects.select_related('site', 'group', 'tenant', 'role')
-    filterset = filters.OverlayNetworkFilter
+    filterset = filters.OverlayNetworkFilterSet
     filterset_form = forms.OverlayNetworkFilterForm
     table = tables.OverlayNetworkDetailTable
     template_name = 'ipam/overlay_network_list.html'
@@ -1034,7 +1034,7 @@ class OverlayNetworkBulkImportView(PermissionRequiredMixin, BulkImportView):
 class OverlayNetworkBulkEditView(PermissionRequiredMixin, BulkEditView):
     permission_required = 'ipam.change_overlaynetwork'
     queryset = OverlayNetwork.objects.select_related('site', 'group', 'tenant', 'role')
-    filter = filters.OverlayNetworkFilter
+    filter = filters.OverlayNetworkFilterSet
     table = tables.OverlayNetworkTable
     form = forms.OverlayNetworkBulkEditForm
     default_return_url = 'ipam:overlay_network_list'
@@ -1043,7 +1043,7 @@ class OverlayNetworkBulkEditView(PermissionRequiredMixin, BulkEditView):
 class OverlayNetworkBulkDeleteView(PermissionRequiredMixin, BulkDeleteView):
     permission_required = 'ipam.delete_overlaynetwork'
     queryset = OverlayNetwork.objects.select_related('site', 'group', 'tenant', 'role')
-    filter = filters.OverlayNetworkFilter
+    filter = filters.OverlayNetworkFilterSet
     table = tables.OverlayNetworkTable
     default_return_url = 'ipam:overlay_network_list'
 
