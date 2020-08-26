@@ -15,7 +15,6 @@ from dcim.constants import *
 from virtualization.models import VirtualMachine
 
 from dcim.constants import *
-from configuration.models import RouteMap, BGPCommunity, BGPCommunityList
 
 DEVICE_ROLE_TOPOLOGY_WHITELIST = ['leaf', 'spine', 'superspine']
 NO_CHANGE = 0
