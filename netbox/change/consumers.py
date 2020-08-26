@@ -9,6 +9,7 @@ from channels.exceptions import DenyConnection
 
 from asgiref.sync import async_to_sync
 
+from extras.signals import purge_changelog
 from .models import ProvisionSet, BadTransition
 
 
@@ -21,7 +22,13 @@ class ProvisionWorkerConsumer(WebsocketConsumer):
         self.buffer_file = None
         self.provision_set = None
 
+    def ensure_objectcache_ready(self):
+        # this has to happen since we need to ensure that the objectchange
+        # cache is initialized
+        purge_changelog.send(self)
+
     def connect(self):
+        self.ensure_objectcache_ready()
         new_state = self.scope['url_route']['kwargs']['state']
         try:
             self.provision_set = ProvisionSet.objects.get(pk=self.scope['url_route']['kwargs']['pk'])
@@ -43,6 +50,7 @@ class ProvisionWorkerConsumer(WebsocketConsumer):
             self.buffer_file.write(bytes_data)
 
     def disconnect(self, code):
+        self.ensure_objectcache_ready()
         self.provision_set.persist_output_log()
         if code == 4201:
             if self.provision_set.state == ProvisionSet.PREPARE:
