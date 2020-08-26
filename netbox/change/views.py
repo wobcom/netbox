@@ -110,6 +110,7 @@ class DeployView(PermissionRequiredMixin, View):
             return redirect('change:deploy')
 
         provision_set.save()
+        self.undeployed_changesets.update(provision_set=provision_set)
         try:
             provision_set.run_prepare()
         except ProvisionFailed as e:

@@ -19,18 +19,19 @@ class ProvisionWorkerConsumer(WebsocketConsumer):
     def __init__(self, *args, **kwargs):
         super(ProvisionWorkerConsumer, self).__init__(*args, **kwargs)
         self.buffer_file = None
+        self.provision_set = None
 
     def connect(self):
         new_state = self.scope['url_route']['kwargs']['state']
         try:
-            provision_set = ProvisionSet.objects.get(pk=self.scope['url_route']['kwargs']['pk'])
-            provision_set.transition(new_state)
-            if provision_set.output_log_file is None:
+            self.provision_set = ProvisionSet.objects.get(pk=self.scope['url_route']['kwargs']['pk'])
+            self.provision_set.transition(new_state)
+            if self.provision_set.output_log_file is None:
                 self.buffer_file = NamedTemporaryFile(mode='wb', buffering=0, delete=False)
-                provision_set.output_log_file = os.path.realpath(self.buffer_file.name)
+                self.provision_set.output_log_file = os.path.realpath(self.buffer_file.name)
             else:
-                self.buffer_file = open(provision_set.output_log_file, 'ab', buffering=0)
-            provision_set.save()
+                self.buffer_file = open(self.provision_set.output_log_file, 'ab', buffering=0)
+            self.provision_set.save()
             self.accept()
         except ProvisionSet.DoesNotExist:
             raise DenyConnection('ProvisionSet does not exist.')
@@ -42,19 +43,15 @@ class ProvisionWorkerConsumer(WebsocketConsumer):
             self.buffer_file.write(bytes_data)
 
     def disconnect(self, code):
-        try:
-            provision_set = ProvisionSet.objects.get(pk=self.scope['url_route']['kwargs']['pk'])
-            provision_set.persist_output_log()
-            if code == 4201:
-                if provision_set.state == ProvisionSet.PREPARE:
-                    provision_set.transition(ProvisionSet.REVIEWING)
-                else:
-                    provision_set.transition(ProvisionSet.FINISHED)
+        self.provision_set.persist_output_log()
+        if code == 4201:
+            if self.provision_set.state == ProvisionSet.PREPARE:
+                self.provision_set.transition(ProvisionSet.REVIEWING)
             else:
-                provision_set.transition(ProvisionSet.FAILED)
-            provision_set.save()
-        except ProvisionSet.DoesNotExist:
-            pass
+                self.provision_set.finish()
+        else:
+            self.provision_set.transition(ProvisionSet.FAILED)
+        self.provision_set.save()
         buffer_file_path = os.path.realpath(self.buffer_file.name)
         self.buffer_file.write(b'\x00' * EOF_LENGTH)
         self.buffer_file.close()

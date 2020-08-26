@@ -106,7 +106,7 @@ class ChangeSet(models.Model):
 
     provision_set = models.ForeignKey(
         to='ProvisionSet',
-        on_delete=models.PROTECT,
+        on_delete=models.SET_NULL,
         related_name='changesets',
         blank=True,
         null=True,
@@ -277,7 +277,7 @@ class ProvisionSet(models.Model):
 
     def finish(self):
         self.transition(self.FINISHED)
-        self.changesets.update(status=ChangeSet.ACCEPTED)
+        self.changesets.update(status=ChangeSet.IMPLEMENTED)
         self.save()
 
     def terminate(self):
