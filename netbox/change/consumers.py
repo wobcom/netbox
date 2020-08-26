@@ -126,8 +126,8 @@ class ProvisionStatusConsumer(WebsocketConsumer):
             'provision_status': '0'
         }
 
-        running_provision_set = ProvisionSet.objects.filter(status__in=(ProvisionSet.RUNNING,
-                                                                        ProvisionSet.REVIEWING))
+        running_provision_set = ProvisionSet.objects.filter(state__in=(ProvisionSet.RUNNING,
+                                                                       ProvisionSet.REVIEWING))
 
         if running_provision_set.exists():
             message = {
