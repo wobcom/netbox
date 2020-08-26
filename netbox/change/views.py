@@ -118,7 +118,6 @@ class ChangeFormView(GetReturnURLMixin, PermissionRequiredMixin, CreateView):
     """
     model = ChangeInformation
     form_class = ChangeInformationForm
-    success_url = '/'
     permission_required = 'change.add_changeset'
 
     def get_context_data(self, **kwargs):
@@ -130,6 +129,9 @@ class ChangeFormView(GetReturnURLMixin, PermissionRequiredMixin, CreateView):
     def post(self, request, *args, **kwargs):
         self.request = request
         return super(ChangeFormView, self).post(request, *args, **kwargs)
+
+    def get_success_url(self):
+        return self.get_return_url(self.request)
 
     def form_valid(self, form):
         result = super(ChangeFormView, self).form_valid(form)
