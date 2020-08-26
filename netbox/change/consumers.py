@@ -96,10 +96,13 @@ class LogfileConsumer(WebsocketConsumer):
                 if not self.connected:
                     break
                 if len(data) > 0:
-                    eof_counter_init = eof_counter
+                    eof_counter_old = eof_counter
+                    # Count 0x00s from the back.
+                    # In case there is another char as 0x00 in data chunk,
+                    # subtract old counter state.
                     for i in reversed(data):
                         if i != 0x00:
-                            eof_counter -= eof_counter_init
+                            eof_counter -= eof_counter_old
                             break
                         eof_counter += 1
                     self.send(bytes_data=data)
