@@ -34,7 +34,7 @@ class ProvisionWorkerConsumer(WebsocketConsumer):
             self.provision_set = ProvisionSet.objects.get(pk=self.scope['url_route']['kwargs']['pk'])
             self.provision_set.transition(new_state)
             if self.provision_set.output_log_file is None:
-                self.buffer_file = NamedTemporaryFile(mode='wb', buffering=0, delete=False)
+                self.buffer_file = NamedTemporaryFile(mode='ab', buffering=0, delete=False)
                 self.provision_set.output_log_file = os.path.realpath(self.buffer_file.name)
             else:
                 self.buffer_file = open(self.provision_set.output_log_file, 'ab', buffering=0)
