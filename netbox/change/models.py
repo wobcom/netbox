@@ -1,5 +1,6 @@
 import pickle
 import json
+import logging
 from datetime import timedelta, datetime
 from topdesk import Topdesk
 from requests import post, delete
@@ -22,6 +23,8 @@ from channels.layers import get_channel_layer
 
 from dcim.constants import *
 from configuration.models import RouteMap, BGPCommunity, BGPCommunityList
+
+logger = logging.getLogger(__name__)
 
 DEVICE_ROLE_TOPOLOGY_WHITELIST = ['leaf', 'spine', 'superspine']
 NO_CHANGE = 0
@@ -247,6 +250,17 @@ class ProvisionSet(models.Model):
         self.save()
 
     def run_prepare(self):
+        try:
+            self.__run_prepare_impl()
+        except Exception as e:
+            logger.exception(e)
+            logger.error("Marking provision set as failed")
+            self.transition(self.FAILED)
+            raise e
+        finally:
+            self.save()
+
+    def __run_prepare_impl(self):
         self.transition(self.PREPARE)
         r = post(
             url=f"{settings.ODIN_WORKER_URL}/provision/{self.pk}",
@@ -255,25 +269,44 @@ class ProvisionSet(models.Model):
                 "callbackPath": f"/change/provisions/{self.pk}/worker/{self.PREPARE}/",
             },
         )
-        if r.status_code != 200:
-            self.transition_(self.FAILED)
+
+        if (not r.ok) and (r.status_code != 422):
             raise ProvisionFailed(r.text)
+
         with NamedTemporaryFile(delete=False) as file:
             self.output_log_file = realpath(file.name)
-            self.save()
+            for chunk in r.iter_content():
+                file.write(chunk)
+            file.flush()
+            if r.status_code == 422:
+                logger.info("Odin failed with errors")
+                self.persist_prepare_log()
+                self.transition(self.FAILED)
+
 
     def run_commit(self):
-        self.transition_(self.COMMIT)
+        try:
+            self.__run_prepare_impl()
+        except Exception as e:
+            logger.exception(e)
+            logger.error("Marking provision set as failed")
+            self.transition(self.FAILED)
+            raise e
+        finally:
+            self.save()
+
+    def __run_commit_impl(self):
+        self.transition(self.COMMIT)
         r = post(
             url=f"{settings.ODIN_WORKER_URL}/provision/{self.pk}/commit",
             json=f"/change/provisions/{self.pk}/worker/{self.COMMIT}/",
         )
-        if r.status_code != 200:
-            self.transition_(self.FAILED)
+
+        if not r.ok:
             raise ProvisionFailed(r.text)
+
         with NamedTemporaryFile(delete=False) as file:
             self.output_log_file = realpath(file.name)
-            self.save()
 
     def finish(self):
         self.transition(self.FINISHED)
@@ -287,14 +320,13 @@ class ProvisionSet(models.Model):
         )
         self.save()
 
-    def persist_output_log(self):
+    def persist_prepare_log(self):
         with open(self.output_log_file, 'r') as buffer_file:
-            data = buffer_file.read()
-            if self.state == self.COMMIT:
-                self.commit_log = data
-            elif self.state == self.PREPARE:
-                self.prepare_log = data
-        self.output_log_file = None
+          self.prepare_log = buffer_file.read()
+
+    def persist_commit_log(self):
+        with open(self.output_log_file, 'r') as buffer_file:
+          self.commit_log = buffer_file.read()
 
     @property
     def timeout(self):
