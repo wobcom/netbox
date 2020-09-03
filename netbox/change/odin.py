@@ -1,4 +1,4 @@
-from requests import post
+from requests import post, delete
 from django.conf import settings
 
 
@@ -37,3 +37,9 @@ def odin_commit(pid):
 
     if not r.ok:
         raise OdinException("odin_commit: Unexpected response {}: {}".format(r.status_code, r.text))
+
+
+def odin_delete():
+    delete(
+        url=f"{settings.ODIN_WORKER_URL}/provision/{self.prov_set.pk}"
+    )

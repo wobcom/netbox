@@ -212,9 +212,7 @@ class ProvStateMachine:
         Move the state into ABORTED and send a termination request to odin.
         """
         self.transition(ProvisionSet.ABORTED)
-        delete(
-            url=f"{settings.ODIN_WORKER_URL}/provision/{self.prov_set.pk}"
-        )
+        odin_delete()
         self.save()
 
     def transition(self, to):
