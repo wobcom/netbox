@@ -149,6 +149,9 @@
         term.open(document.getElementById('terminal_output'));
         fit_addon.fit();
         {% autoescape off %}
+            {% if provision_set.odin_output %}
+        term.write({{ provision_set.odin_output | stringformat:'r' }}.replace(/\n/g, '\r\n'));
+            {% endif %}
             {% if provision_set.prepare_log %}
         term.write({{ provision_set.prepare_log | stringformat:'r' }}.replace(/\n/g, '\r\n'));
             {% endif %}

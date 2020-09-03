@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 import json
 import os
 import time
@@ -10,15 +11,26 @@ from channels.exceptions import DenyConnection
 from asgiref.sync import async_to_sync
 
 from extras.signals import purge_changelog
-from .models import ProvisionSet, BadTransition
+from .models import ProvisionSet, BadTransition, ProvStateMachine
 
 
 EOF_LENGTH = 8
 
+class OdinConsumer(WebsocketConsumer):
+    @abstractmethod
+    def state_running(self):
+        pass
 
-class ProvisionWorkerConsumer(WebsocketConsumer):
+    @abstractmethod
+    def state_finished(self):
+        pass
+
+    @abstractmethod
+    def persist_hook(self):
+        pass
+
     def __init__(self, *args, **kwargs):
-        super(ProvisionWorkerConsumer, self).__init__(*args, **kwargs)
+        super(OdinConsumer, self).__init__(*args, **kwargs)
         self.buffer_file = None
         self.provision_set = None
 
@@ -29,21 +41,23 @@ class ProvisionWorkerConsumer(WebsocketConsumer):
 
     def connect(self):
         self.ensure_objectcache_ready()
-        new_state = self.scope['url_route']['kwargs']['state']
         try:
-            self.provision_set = ProvisionSet.objects.get(pk=self.scope['url_route']['kwargs']['pk'])
-            self.provision_set.transition(new_state)
-            if self.provision_set.output_log_file is None:
-                self.buffer_file = NamedTemporaryFile(mode='ab', buffering=0, delete=False)
-                self.provision_set.output_log_file = os.path.realpath(self.buffer_file.name)
-            else:
-                self.buffer_file = open(self.provision_set.output_log_file, 'ab', buffering=0)
-            self.provision_set.save()
-            self.accept()
+            pset_id = self.scope['url_route']['kwargs']['pk']
+            self.provision_set = ProvisionSet.objects.get(pk=pset_id)
+            self.handle_connection()
         except ProvisionSet.DoesNotExist:
             raise DenyConnection('ProvisionSet does not exist.')
-        except BadTransition:
-            raise DenyConnection('Invalid state.')
+
+    def handle_connection(self):
+        with ProvStateMachine(self.provision_set) as state:
+            self.prepare_buffer()
+            s = self.state_running()
+            state.assert_state(s)
+            self.accept()
+
+    def prepare_buffer(self):
+        out = self.provision_set.output_log_file
+        self.buffer_file = open(out, 'ab', buffering=0)
 
     def receive(self, text_data=None, bytes_data=None):
         if bytes_data is not None:
@@ -51,20 +65,43 @@ class ProvisionWorkerConsumer(WebsocketConsumer):
 
     def disconnect(self, code):
         self.ensure_objectcache_ready()
-        self.provision_set.persist_output_log()
-        if code == 4201:
-            if self.provision_set.state == ProvisionSet.PREPARE:
-                self.provision_set.transition(ProvisionSet.REVIEWING)
+        with ProvStateMachine(self.provision_set) as state:
+            # By convention we consider 4201 a successful ansible execution.
+            if code == 4201:
+                state.transition(ProvisionSet.REVIEWING)
             else:
-                self.provision_set.finish()
-        else:
-            self.provision_set.transition(ProvisionSet.FAILED)
-        self.provision_set.save()
-        buffer_file_path = os.path.realpath(self.buffer_file.name)
-        self.buffer_file.write(b'\x00' * EOF_LENGTH)
+                n = self.state_finished()
+                state.transition(n)
+            self.finalize_buffer()
+
+    def finalize_buffer(self):
+        self.buffer_file.write(b'\x00')
         self.buffer_file.close()
+        self.persist_hook()
+
+        buffer_file_path = os.path.realpath(self.buffer_file.name)
         if os.path.isfile(buffer_file_path):
             os.unlink(buffer_file_path)
+
+class OdinPrepareConsumer(OdinConsumer):
+    def state_running(self):
+        return ProvisionSet.PREPARE
+
+    def state_finished(self):
+        return ProvisionSet.REVIEWING
+
+    def persist_hook(self):
+        self.provision_set.persist_prepare_log()
+
+class OdinCommitConsumer(OdinConsumer):
+    def state_running(self):
+        return ProvisionSet.COMMIT
+
+    def state_finished(self):
+        return ProvisionSet.FINISHED
+
+    def persist_uook(self):
+        self.provision_set.persist_commit_log()
 
 
 class LogfileConsumer(WebsocketConsumer):
@@ -95,24 +132,14 @@ class LogfileConsumer(WebsocketConsumer):
 
     def send_file_continuously(self, path):
         with open(path, 'rb') as buffer_file:
-            eof_counter = 0
             while True:
                 data = buffer_file.read()
                 if not self.connected:
                     break
                 if len(data) > 0:
-                    eof_counter_old = eof_counter
-                    # Count 0x00s from the back.
-                    # In case there is another char as 0x00 in data chunk,
-                    # subtract old counter state.
-                    for i in reversed(data):
-                        if i != 0x00:
-                            eof_counter -= eof_counter_old
-                            break
-                        eof_counter += 1
-                    self.send(bytes_data=data)
-                    if eof_counter >= EOF_LENGTH:
+                    if data[-1] == 0x00:
                         break
+                    self.send(bytes_data=data)
                 time.sleep(0.05)
 
 

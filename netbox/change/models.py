@@ -3,7 +3,6 @@ import json
 import logging
 from datetime import timedelta, datetime
 from topdesk import Topdesk
-from requests import post, delete
 from tempfile import NamedTemporaryFile
 from os.path import realpath
 
@@ -23,6 +22,7 @@ from channels.layers import get_channel_layer
 
 from dcim.constants import *
 from configuration.models import RouteMap, BGPCommunity, BGPCommunityList
+from .odin import *
 
 logger = logging.getLogger(__name__)
 
@@ -166,6 +166,89 @@ class AlreadyExistsError(Exception):
     pass
 
 
+class ProvStateMachine():
+    """
+    State machine helper for provision sets.
+
+    The following invariants will be guaranteed:
+
+    - We only do valid transitions.
+    - In the __exit__ block we transition into FAILED if any exception is leaked.
+    - We save the provision set in the exit block as well as every time transition_ is called
+      Keep this in mind if you maintain a reference to the same prov_set.
+    """
+    def __init__(self, prov_set):
+        self.prov_set = prov_set
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exty, exva, extr):
+        if exty or exva or extr:
+            logger.error("Exception caught during state transition block. Moving into failed state")
+            self.__unsafe_transition(ProvisionSet.FAILED)
+
+        self.save()
+
+    def finish(self):
+        """
+        Move the state into FINISHED and mark all related change sets as IMPLEMENTED.
+        """
+        self.transition(self.FINISHED)
+        self.prov_set.changesets.update(status=ChangeSet.IMPLEMENTED)
+
+    def save(self):
+        """
+        Calls .save() on the current provision set. Note: If you kept a reference to the provision set
+        and modified its fields, these will get saved as well.
+        """
+        self.prov_set.save()
+
+    def terminate(self):
+        """
+        Move the state into ABORTED and send a termination request to odin.
+        """
+        self.transition(self.ABORTED)
+        delete(
+            url=f"{settings.ODIN_WORKER_URL}/provision/{self.pk}"
+        )
+        self.save()
+
+    def transition(self, to):
+        """
+        Transition into a new provision set state. Will throw a BadTransition exception if the transition request
+        is not a valid transition in the current state.
+        """
+        from_ = self.prov_set.state
+        valid = self.prov_set.valid_transitions[from_]
+        if to not in valid:
+            raise BadTransition("Bad transition request from {} to {}, valid next states: {}".format(from_, to, valid))
+
+        self.__notify_state(to)
+        self.__unsafe_transition(to)
+
+    def assert_state(self, expected):
+        actual = self.prov_set.state
+        if (actual != expected):
+            raise UnexpectedState("Expected state {}, actual state {}".format(expected, actual))
+
+    def __unsafe_transition(self, state):
+        """
+        Forces a transition into a state without checking the validity. Users of this class should use transition instead.
+        This is an internal primitive for transition as well the __exit__ function.
+        """
+        self.prov_set.state = state
+
+    def __notify_state(self, state):
+            async_to_sync(get_channel_layer().group_send)('provision_status', {
+                'type': 'provision_status_message',
+                'text': json.dumps({
+                    'provision_set_pk': self.prov_set.pk,
+                    'provision_status': state
+                })
+            })
+
+
 class ProvisionSet(models.Model):
 
     NOT_STARTED = "not_started"
@@ -216,6 +299,7 @@ class ProvisionSet(models.Model):
     )
 
     output_log_file = models.CharField(max_length=512, blank=True, null=True)
+    odin_output = models.TextField(blank=True, null=True)
     prepare_log = models.TextField(blank=True, null=True)
     commit_log = models.TextField(blank=True, null=True)
     state = models.CharField(
@@ -230,103 +314,41 @@ class ProvisionSet(models.Model):
             print(self.active_exists())
             raise AlreadyExistsError('An unfinished provision already exists.')
 
-    def transition(self, to):
-        from_ = self.state
-        valid = self.valid_transitions[from_]
-        if to not in valid:
-            raise BadTransition("Bad transition request from {} to {}, valid next states: {}".format(from_, to, valid))
-        if self.state in (self.PREPARE, self.FINISHED, self.FAILED, self.ABORTED):
-            async_to_sync(get_channel_layer().group_send)('provision_status', {
-                'type': 'provision_status_message',
-                'text': json.dumps({
-                    'provision_set_pk': self.pk,
-                    'provision_status': str(int(self.state == self.PREPARE))
-                })
-            })
-        self.state = to
-
-    def transition_(self, to):
-        self.transition(to)
-        self.save()
-
     def run_prepare(self):
-        try:
-            self.__run_prepare_impl()
-        except Exception as e:
-            logger.exception(e)
-            logger.error("Marking provision set as failed")
-            self.transition(self.FAILED)
-            raise e
-        finally:
-            self.save()
+        with ProvStateMachine(self) as state:
+            state.transition(self.PREPARE)
+            self.__init_new_output()
+            r = odin_prepare(self.pk)
 
-    def __run_prepare_impl(self):
-        self.transition(self.PREPARE)
-        r = post(
-            url=f"{settings.ODIN_WORKER_URL}/provision/{self.pk}",
-            json={
-                "odinArgs": settings.ODIN_ADDITIONAL_ARGS,
-                "callbackPath": f"/change/provisions/{self.pk}/worker/{self.PREPARE}/",
-            },
-        )
-
-        if (not r.ok) and (r.status_code != 422):
-            raise ProvisionFailed(r.text)
-
-        with NamedTemporaryFile(delete=False) as file:
-            self.output_log_file = realpath(file.name)
-            for chunk in r.iter_content():
-                file.write(chunk)
-            file.flush()
-            if r.status_code == 422:
+            if r.has_errors:
                 logger.info("Odin failed with errors")
-                self.persist_prepare_log()
-                self.transition(self.FAILED)
+                state.transition(self.FAILED)
 
+            self.odin_output = r.output
 
     def run_commit(self):
-        try:
-            self.__run_prepare_impl()
-        except Exception as e:
-            logger.exception(e)
-            logger.error("Marking provision set as failed")
-            self.transition(self.FAILED)
-            raise e
-        finally:
-            self.save()
+        with ProvStateMachine(self) as state:
+            state.transition(self.COMMIT)
+            self.__init_new_output()
+            odin_commit(self.pk)
 
-    def __run_commit_impl(self):
-        self.transition(self.COMMIT)
-        r = post(
-            url=f"{settings.ODIN_WORKER_URL}/provision/{self.pk}/commit",
-            json=f"/change/provisions/{self.pk}/worker/{self.COMMIT}/",
-        )
 
-        if not r.ok:
-            raise ProvisionFailed(r.text)
-
+    def __init_new_output(self):
         with NamedTemporaryFile(delete=False) as file:
             self.output_log_file = realpath(file.name)
-
-    def finish(self):
-        self.transition(self.FINISHED)
-        self.changesets.update(status=ChangeSet.IMPLEMENTED)
-        self.save()
-
-    def terminate(self):
-        self.transition(self.ABORTED)
-        delete(
-            url=f"{settings.ODIN_WORKER_URL}/provision/{self.pk}"
-        )
-        self.save()
+            self.save()
 
     def persist_prepare_log(self):
         with open(self.output_log_file, 'r') as buffer_file:
-          self.prepare_log = buffer_file.read()
+          buf = buffer_file.read()[:-1]
+          self.prepare_log = buf
+          self.output_log_file = None
 
     def persist_commit_log(self):
         with open(self.output_log_file, 'r') as buffer_file:
-          self.commit_log = buffer_file.read()
+          buf = buffer_file.read()[:-1]
+          self.commit_log = buf
+          self.output_log_file = None
 
     @property
     def timeout(self):
