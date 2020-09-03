@@ -39,7 +39,7 @@ def odin_commit(pid):
         raise OdinException("odin_commit: Unexpected response {}: {}".format(r.status_code, r.text))
 
 
-def odin_delete():
+def odin_delete(pid):
     delete(
-        url=f"{settings.ODIN_WORKER_URL}/provision/{self.prov_set.pk}"
+        url=f"{settings.ODIN_WORKER_URL}/provision/{pid}"
     )
