@@ -1,8 +1,7 @@
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 import json
 import os
 import time
-from tempfile import NamedTemporaryFile
 from threading import Thread
 
 from channels.generic.websocket import WebsocketConsumer
@@ -11,10 +10,11 @@ from channels.exceptions import DenyConnection
 from asgiref.sync import async_to_sync
 
 from extras.signals import purge_changelog
-from .models import ProvisionSet, BadTransition, ProvStateMachine
+from .models import ProvisionSet, ProvStateMachine
 
 
 EOF_LENGTH = 8
+
 
 class OdinConsumer(WebsocketConsumer):
     @abstractmethod
@@ -83,6 +83,7 @@ class OdinConsumer(WebsocketConsumer):
         if os.path.isfile(buffer_file_path):
             os.unlink(buffer_file_path)
 
+
 class OdinPrepareConsumer(OdinConsumer):
     def state_running(self):
         return ProvisionSet.PREPARE
@@ -93,6 +94,7 @@ class OdinPrepareConsumer(OdinConsumer):
     def persist_hook(self):
         self.provision_set.persist_prepare_log()
 
+
 class OdinCommitConsumer(OdinConsumer):
     def state_running(self):
         return ProvisionSet.COMMIT
@@ -100,7 +102,7 @@ class OdinCommitConsumer(OdinConsumer):
     def state_finished(self):
         return ProvisionSet.FINISHED
 
-    def persist_uook(self):
+    def persist_hook(self):
         self.provision_set.persist_commit_log()
 
 

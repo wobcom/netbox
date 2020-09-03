@@ -1,12 +1,11 @@
 import pickle
 import json
 import logging
-from datetime import timedelta, datetime
+from datetime import timedelta
 from topdesk import Topdesk
 from tempfile import NamedTemporaryFile
 from os.path import realpath
 
-from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -133,7 +132,7 @@ class ChangeSet(models.Model):
         if user.is_anonymous:
             return NO_CHANGE
         try:
-            c = ChangeSet.objects.get(active=True, user=user)
+            ChangeSet.objects.get(active=True, user=user)
             return OWN_CHANGE
         except ChangeSet.DoesNotExist:
             return NO_CHANGE
@@ -166,7 +165,11 @@ class AlreadyExistsError(Exception):
     pass
 
 
-class ProvStateMachine():
+class UnexpectedState(Exception):
+    pass
+
+
+class ProvStateMachine:
     """
     State machine helper for provision sets.
 
@@ -194,7 +197,7 @@ class ProvStateMachine():
         """
         Move the state into FINISHED and mark all related change sets as IMPLEMENTED.
         """
-        self.transition(self.FINISHED)
+        self.transition(ProvisionSet.FINISHED)
         self.prov_set.changesets.update(status=ChangeSet.IMPLEMENTED)
 
     def save(self):
@@ -208,9 +211,9 @@ class ProvStateMachine():
         """
         Move the state into ABORTED and send a termination request to odin.
         """
-        self.transition(self.ABORTED)
+        self.transition(ProvisionSet.ABORTED)
         delete(
-            url=f"{settings.ODIN_WORKER_URL}/provision/{self.pk}"
+            url=f"{settings.ODIN_WORKER_URL}/provision/{self.prov_set.pk}"
         )
         self.save()
 
@@ -229,24 +232,25 @@ class ProvStateMachine():
 
     def assert_state(self, expected):
         actual = self.prov_set.state
-        if (actual != expected):
+        if actual != expected:
             raise UnexpectedState("Expected state {}, actual state {}".format(expected, actual))
 
     def __unsafe_transition(self, state):
         """
-        Forces a transition into a state without checking the validity. Users of this class should use transition instead.
+        Forces a transition into a state without checking the validity.
+        Users of this class should use transition instead.
         This is an internal primitive for transition as well the __exit__ function.
         """
         self.prov_set.state = state
 
     def __notify_state(self, state):
-            async_to_sync(get_channel_layer().group_send)('provision_status', {
-                'type': 'provision_status_message',
-                'text': json.dumps({
-                    'provision_set_pk': self.prov_set.pk,
-                    'provision_status': state
-                })
+        async_to_sync(get_channel_layer().group_send)('provision_status', {
+            'type': 'provision_status_message',
+            'text': json.dumps({
+                'provision_set_pk': self.prov_set.pk,
+                'provision_status': state
             })
+        })
 
 
 class ProvisionSet(models.Model):
@@ -332,7 +336,6 @@ class ProvisionSet(models.Model):
             self.__init_new_output()
             odin_commit(self.pk)
 
-
     def __init_new_output(self):
         with NamedTemporaryFile(delete=False) as file:
             self.output_log_file = realpath(file.name)
@@ -340,15 +343,15 @@ class ProvisionSet(models.Model):
 
     def persist_prepare_log(self):
         with open(self.output_log_file, 'r') as buffer_file:
-          buf = buffer_file.read()[:-1]
-          self.prepare_log = buf
-          self.output_log_file = None
+            buf = buffer_file.read()[:-1]
+            self.prepare_log = buf
+            self.output_log_file = None
 
     def persist_commit_log(self):
         with open(self.output_log_file, 'r') as buffer_file:
-          buf = buffer_file.read()[:-1]
-          self.commit_log = buf
-          self.output_log_file = None
+            buf = buffer_file.read()[:-1]
+            self.commit_log = buf
+            self.output_log_file = None
 
     @property
     def timeout(self):
