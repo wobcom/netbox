@@ -189,7 +189,7 @@ class ProvStateMachine:
     def __exit__(self, exty, exva, extr):
         if exty or exva or extr:
             logger.error("Exception caught during state transition block. Moving into failed state")
-            self.__unsafe_transition(ProvisionSet.FAILED)
+            self.fail()
 
         self.save()
 
@@ -207,13 +207,11 @@ class ProvStateMachine:
         """
         self.prov_set.save()
 
-    def terminate(self):
+    def fail(self):
         """
-        Move the state into ABORTED and send a termination request to odin.
+        Move the state into FAILED.
         """
-        self.transition(ProvisionSet.ABORTED)
-        odin_delete(self.prov_set.pk)
-        self.save()
+        self.__unsafe_transition(ProvisionSet.FAILED)
 
     def transition(self, to):
         """
@@ -333,6 +331,11 @@ class ProvisionSet(models.Model):
             state.transition(self.COMMIT)
             self.__init_new_output()
             odin_commit(self.pk)
+
+    def terminate(self):
+        with ProvStateMachine(self) as state:
+            odin_delete(self.pk)
+            state.fail()
 
     def __init_new_output(self):
         with NamedTemporaryFile(delete=False) as file:
