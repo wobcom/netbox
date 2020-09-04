@@ -354,6 +354,9 @@ class ProvisionSet(models.Model):
             self.commit_log = buf
             self.output_log_file = None
 
+    def is_final_state(self):
+        return len(self.valid_transitions.get(self.state, ())) == 0
+
     @classmethod
     def active_exists(cls):
         return cls.objects.filter(state__in=(cls.RUNNING, cls.PREPARE, cls.COMMIT, cls.REVIEWING)).exists()

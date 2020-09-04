@@ -20,7 +20,7 @@
                 </form>
             {% endif %}
             {% if provision_set.user == request.user or provision_set.timed_out %}
-                <button class="btn btn-danger"{% if provision_set.state != provision_set.RUNNING and provision_set.state != provision_set.REVIEWING %} disabled="" title="Not running processes cannot be terminated!"{% endif %} data-toggle="modal" data-target="#termination-modal">
+                <button class="btn btn-danger"{% if provision_set.is_final_state %} disabled="" title="Cannot be terminated!"{% endif %} data-toggle="modal" data-target="#termination-modal">
                     <i class="glyphicon glyphicon-ban-circle" aria-hidden="true"></i> Terminate
                 </button>
             {% endif %}
