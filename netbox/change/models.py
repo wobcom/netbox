@@ -354,18 +354,6 @@ class ProvisionSet(models.Model):
             self.commit_log = buf
             self.output_log_file = None
 
-    @property
-    def timeout(self):
-        if settings.PROVISIONING_TIMEOUT is None:
-            return None
-        return self.updated + timedelta(seconds=settings.PROVISIONING_TIMEOUT)
-
-    @property
-    def timed_out(self):
-        if self.timeout is None:
-            return False
-        return timezone.now() > self.timeout
-
     @classmethod
     def active_exists(cls):
         return cls.objects.filter(state__in=(cls.RUNNING, cls.PREPARE, cls.COMMIT, cls.REVIEWING)).exists()

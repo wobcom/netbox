@@ -80,48 +80,6 @@
                         <td>Author</td>
                         <td>{{ provision_set.user.username }}</td>
                     </tr>
-                    <tr>
-                        {% if provision_set.timeout %}
-                            <td>Timeout</td>
-                            <td>
-                                {% if provision_set.state == provision_set.REVIEWING %}
-                                    {% if provision_set.timed_out %}
-                                        Timed out
-                                    {% else %}
-                                        <span id="provision-timeout"></span>
-                                        <script type="application/javascript">
-                                        function leading_zero(x) {
-                                            if (x < 10) {
-                                                return "0" + x;
-                                            }
-                                            return x;
-                                        }
-                                        document.addEventListener('DOMContentLoaded', () => {
-                                            var timeout = ({{ provision_set.timeout.timestamp }} * 1000);
-                                            var time_offset = Date.now() - ({{ current_time.timestamp }} * 1000);
-                                            var time_field = document.getElementById('provision-timeout');
-                                            var time_update = setInterval(() => {
-                                                var remaining_time = timeout - (Date.now() - time_offset);
-                                                var time_string = "";
-                                                if (remaining_time > 0) {
-                                                    var remaining_date = new Date(remaining_time);
-                                                    console.log(remaining_time);
-                                                    time_string = leading_zero(remaining_date.getUTCHours()) + ":" + leading_zero(remaining_date.getUTCMinutes()) + ":" + leading_zero(remaining_date.getUTCSeconds());
-                                                } else {
-                                                    time_string = "00:00";
-                                                    clearInterval(time_update);
-                                                }
-                                                time_field.innerText = time_string;
-                                            }, 500)
-                                        })
-                                        </script>
-                                    {% endif %}
-                                {% else %}
-                                    <span class="text-muted">&mdash;</span>
-                                {% endif %}
-                            </td>
-                        {% endif %}
-                    </tr>
                 </table>
             </div>
             {% include 'panel_table.html' with table=changes_table heading='Containing changes' %}
