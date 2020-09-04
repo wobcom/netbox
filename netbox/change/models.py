@@ -344,12 +344,16 @@ class ProvisionSet(models.Model):
 
     def persist_prepare_log(self):
         with open(self.output_log_file, 'r') as buffer_file:
+            # Please have a look at consumers.py:OdinConsumer.finalize_buffer()
+            # to understand why the last byte is ignored
             buf = buffer_file.read()[:-1]
             self.prepare_log = buf
             self.output_log_file = None
 
     def persist_commit_log(self):
         with open(self.output_log_file, 'r') as buffer_file:
+            # Please have a look at consumers.py:OdinConsumer.finalize_buffer()
+            # to understand why the last byte is ignored
             buf = buffer_file.read()[:-1]
             self.commit_log = buf
             self.output_log_file = None

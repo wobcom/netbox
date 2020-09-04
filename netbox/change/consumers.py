@@ -75,6 +75,9 @@ class OdinConsumer(WebsocketConsumer):
             self.finalize_buffer()
 
     def finalize_buffer(self):
+        """
+        Write NULL-byte to indicate end of file, persist it to database and delete the file.
+        """
         self.buffer_file.write(b'\x00')
         self.buffer_file.close()
         self.persist_hook()
@@ -139,6 +142,12 @@ class LogfileConsumer(WebsocketConsumer):
                 if not self.connected:
                     break
                 if len(data) > 0:
+                    # Because producer writes the file in chunks,
+                    # buffer_file.read() will only produce the data present so far.
+                    # The EOF is not enough to know whether the producer is done.
+                    # By convention the producer will finish with
+                    # a NUL byte to communicate it will not send further data.
+                    # This code reads chunks until the magic NUL byte is detected.
                     if data[-1] == 0x00:
                         break
                     self.send(bytes_data=data)
