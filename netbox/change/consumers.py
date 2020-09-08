@@ -68,10 +68,10 @@ class OdinConsumer(WebsocketConsumer):
         with ProvStateMachine(self.provision_set) as state:
             # By convention we consider 4201 a successful ansible execution.
             if code == 4201:
-                state.transition(ProvisionSet.REVIEWING)
-            else:
                 n = self.state_finished()
                 state.transition(n)
+            else:
+                state.transition(ProvisionSet.FAILED)
             self.finalize_buffer()
 
     def finalize_buffer(self):
@@ -120,15 +120,21 @@ class LogfileConsumer(WebsocketConsumer):
 
     def connect(self):
         try:
-            provision_set = ProvisionSet.objects.get(pk=self.scope['url_route']['kwargs']['pk'])
+            pid = self.scope['url_route']['kwargs']['pk']
+            provision_set = ProvisionSet.objects.get(pk=pid)
             self.accept()
-            if provision_set.output_log_file is not None:
+
+            if provision_set.odin_output:
+                self.send(text_data=provision_set.odin_output)
+            if provision_set.prepare_log:
+                self.send(text_data=provision_set.prepare_log)
+            if provision_set.commit_log:
+                self.send(text_data=provision_set.commit_output)
+            if provision_set.output_log_file:
                 Thread(
                     target=self.send_file_continuously,
                     args=(provision_set.output_log_file,)
                 ).start()
-            else:
-                self.send(text_data='File already closed.')
         except ProvisionSet.DoesNotExist:
             raise DenyConnection('ProvisionSet does not exist.')
 

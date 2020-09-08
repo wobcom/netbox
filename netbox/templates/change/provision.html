@@ -93,40 +93,37 @@
         var term = new Terminal({
             rows: 50,
             disableStdin: true,
-            rendererType: "dom",
             scrollback: 1000000,
+            convertEol: true,
             theme: {
                 selection: 'rgba(255, 124, 0, 0.5)',
             }
         });
         var fit_addon = new FitAddon.FitAddon();
         var web_links_addon = new WebLinksAddon.WebLinksAddon();
-        term.attachCustomKeyEventHandler(function(e) { return false; });
+        term.attachCustomKeyEventHandler((_e) => false);
         term.loadAddon(fit_addon);
         term.loadAddon(web_links_addon);
         term.open(document.getElementById('terminal_output'));
         fit_addon.fit();
-        {% autoescape off %}
-            {% if provision_set.odin_output %}
-        term.write({{ provision_set.odin_output | stringformat:'r' }}.replace(/\n/g, '\r\n'));
-            {% endif %}
-            {% if provision_set.prepare_log %}
-        term.write({{ provision_set.prepare_log | stringformat:'r' }}.replace(/\n/g, '\r\n'));
-            {% endif %}
-            {% if provision_set.commit_log %}
-        term.write({{ provision_set.commit_log | stringformat:'r' }}.replace(/\n/g, '\r\n'));
-            {% endif %}
-        {% endautoescape %}
-        {% if provision_set.state == provision_set.PREPARE or provision_set.state == provision_set.COMMIT %}
-            var websocket = new WebSocket((location.protocol.startsWith('https') ? 'wss' : 'ws') + '://' + location.host + '/change/provisions/{{ provision_set.pk }}/logs/ws/');
-            websocket.onmessage = (msg) => {
+
+        var path = '/change/provisions/{{ provision_set.pk }}/logs/ws/';
+        var url = new URL(path, window.location.href);
+        url.protocol = url.protocol.replace('http', 'ws');
+
+        var sock = new WebSocket(url);
+        sock.onmessage = (ev) => {
+            const data = ev.data;
+            if (typeof data === 'string') {
+                term.write(data);
+            } else {
                 let reader = new FileReader()
                 reader.addEventListener('loadend', () => {
-                    term.write(reader.result.replace(/\n/g, '\r\n').replace(0x00, ''));
+                    term.write(reader.result)
                 })
-                reader.readAsBinaryString(msg.data)
-            };
-        {% endif %}
+                reader.readAsBinaryString(data)
+            }
+        };
     })
 
     </script>

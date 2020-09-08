@@ -12,7 +12,7 @@ from django.utils import timezone
 
 from utilities.views import ObjectListView, GetReturnURLMixin
 from .forms import ChangeInformationForm
-from .models import ChangeInformation, ChangeSet, AlreadyExistsError, ProvisionSet, ProvisionFailed
+from .models import ChangeInformation, ChangeSet, AlreadyExistsError, ProvisionSet
 from . import tables
 
 
@@ -92,12 +92,12 @@ class DeployView(PermissionRequiredMixin, View):
                                                       .order_by('id')
 
     def get(self, request):
-
         return render(request, 'change/deploy.html', context={
             'undeployed_changesets_table': tables.ProvisioningChangesTable(data=self.undeployed_changesets),
             'undeployed_changesets': self.undeployed_changesets.count(),
             'unaccepted_changesets': self.undeployed_changesets.exclude(status=ChangeSet.ACCEPTED).count(),
         })
+
 
     def post(self, request):
         try:
@@ -111,12 +111,8 @@ class DeployView(PermissionRequiredMixin, View):
 
         provision_set.save()
         self.undeployed_changesets.update(provision_set=provision_set)
-        try:
-            provision_set.run_prepare()
-        except ProvisionFailed as e:
-            provision_set.delete()
-            messages.error(request, f"Provision can not be started: {e}")
-            return redirect('change:deploy')
+        provision_set.run_prepare()
+        provision_set.save()
 
         return redirect('change:provision_set', pk=provision_set.pk)
 
@@ -125,13 +121,9 @@ class SecondStageView(PermissionRequiredMixin, View):
     permission_required = 'change.change_provisionset'
 
     def post(self, request, pk=None):
-
         provision_set = ProvisionSet.objects.get(pk=pk)
-
-        try:
-            provision_set.run_commit()
-        except ProvisionFailed as e:
-            messages.error(request, f"Provision failed: {e}")
+        provision_set.run_commit()
+        provision_set.save()
 
         return redirect('change:provision_set', pk=provision_set.pk)
 

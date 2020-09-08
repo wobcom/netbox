@@ -47,6 +47,8 @@ services:
     - postgres
     env_file: env/odin.env
     command: ["--netbox-host", "netbox", "--netbox-port", "8002", "--listen-port", "8001"]
+    volumes:
+      - ./odin-secrets:/secrets
   redis:
     image: redis:5-alpine
     volumes:
