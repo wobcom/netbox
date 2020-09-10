@@ -196,7 +196,7 @@ class BGPNeighborForm(BootstrapMixin, forms.ModelForm):
             if 'internal_neighbor_ip' not in self.cleaned_data or self.cleaned_data['internal_neighbor_ip'] is None:
                 self._errors['internal_neighbor_ip'] = self.error_class(['Must be set on Neighbor Type: Internal'])
         elif self.cleaned_data['neighbor_type'] == 'external':
-            if self.cleaned_data.get('external_neighbor', None) is '':
+            if self.cleaned_data.get('external_neighbor', None) == '':
                 self._errors['external_neighbor'] = self.error_class(['Must be set on Neighbor Type: External'])
 
     class Meta:
