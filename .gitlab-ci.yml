@@ -9,9 +9,8 @@ variables:
   POSTGRES_HOST_AUTH_METHOD: trust
 
 stages:
-  - verify
-  - build
-  - deploy
+  - test
+  - publish
 
 lint:
   stage: verify
@@ -25,10 +24,7 @@ lint:
     - "venv/bin/pycodestyle --ignore=W504,E501 netbox/"
 
 tests:
-  stage: verify
-  only:
-    - merge_requests
-    - develop
+  stage: test
   image: python:3.6
   tags:
     - docker
@@ -42,35 +38,15 @@ tests:
     - "cd netbox/"
     - "../venv/bin/python manage.py test"
 
-build-package:
-  stage: build
+publish:
+  cache: {}
+  stage: publish
+  script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker build --cache-from $CI_REGISTRY_IMAGE:latest --tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA --tag $CI_REGISTRY_IMAGE:latest .
+    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+    - docker push $CI_REGISTRY_IMAGE:latest
   only:
-    - develop
-  image: registry.gitlab.com/wobcom/fpm-docker:netbox
+    - tags
   tags:
     - docker
-  before_script:
-    - "yum install -y python3-devel openldap-devel"
-  script:
-    - "./build_package.sh"
-  artifacts:
-    paths:
-      - netbox*.rpm
-
-deploy-package:
-  stage: deploy
-  only:
-    - develop
-  image: debian:10
-  tags:
-    - docker
-  dependencies:
-    - build-package
-  before_script:
-    - "apt-get -y update"
-    - "apt-get install -y sshpass"
-    - "mkdir ~/.ssh"
-    - "echo ${REPO_HOST_KEY} >> ~/.ssh/known_hosts"
-  script:
-    - "sshpass -p \"${REPO_PASSWORD}\" scp netbox*.rpm ${REPO_USER}@${REPO_HOST}:${REPO_PATH}"
-    - "sshpass -p \"${REPO_PASSWORD}\" ssh ${REPO_USER}@${REPO_HOST} \"/var/share/repos/scripts/rebuild.sh\""
