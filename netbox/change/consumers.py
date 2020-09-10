@@ -1,6 +1,7 @@
-import time
+from abc import abstractmethod
 import json
-
+import os
+import time
 from threading import Thread
 
 from channels.generic.websocket import WebsocketConsumer
@@ -8,49 +9,155 @@ from channels.exceptions import DenyConnection
 
 from asgiref.sync import async_to_sync
 
-from .models import ProvisionSet
+from extras.signals import purge_changelog
+from .models import ProvisionSet, ProvStateMachine
+
+
+EOF_LENGTH = 8
+
+
+class OdinConsumer(WebsocketConsumer):
+    @abstractmethod
+    def state_running(self):
+        pass
+
+    @abstractmethod
+    def state_finished(self):
+        pass
+
+    @abstractmethod
+    def persist_hook(self):
+        pass
+
+    def __init__(self, *args, **kwargs):
+        super(OdinConsumer, self).__init__(*args, **kwargs)
+        self.buffer_file = None
+        self.provision_set = None
+
+    def ensure_objectcache_ready(self):
+        # this has to happen since we need to ensure that the objectchange
+        # cache is initialized
+        purge_changelog.send(self)
+
+    def connect(self):
+        self.ensure_objectcache_ready()
+        try:
+            pset_id = self.scope['url_route']['kwargs']['pk']
+            self.provision_set = ProvisionSet.objects.get(pk=pset_id)
+            self.handle_connection()
+        except ProvisionSet.DoesNotExist:
+            raise DenyConnection('ProvisionSet does not exist.')
+
+    def handle_connection(self):
+        with ProvStateMachine(self.provision_set) as state:
+            self.prepare_buffer()
+            s = self.state_running()
+            state.assert_state(s)
+            self.accept()
+
+    def prepare_buffer(self):
+        out = self.provision_set.output_log_file
+        self.buffer_file = open(out, 'ab', buffering=0)
+
+    def receive(self, text_data=None, bytes_data=None):
+        if bytes_data is not None:
+            self.buffer_file.write(bytes_data)
+
+    def disconnect(self, code):
+        self.ensure_objectcache_ready()
+        with ProvStateMachine(self.provision_set) as state:
+            # By convention we consider 4201 a successful ansible execution.
+            if code == 4201:
+                n = self.state_finished()
+                state.transition(n)
+            else:
+                state.transition(ProvisionSet.FAILED)
+            self.finalize_buffer()
+
+    def finalize_buffer(self):
+        """
+        Write NULL-byte to indicate end of file, persist it to database and delete the file.
+        """
+        self.buffer_file.write(b'\x00')
+        self.buffer_file.close()
+        self.persist_hook()
+
+        buffer_file_path = os.path.realpath(self.buffer_file.name)
+        if os.path.isfile(buffer_file_path):
+            os.unlink(buffer_file_path)
+
+
+class OdinPrepareConsumer(OdinConsumer):
+    def state_running(self):
+        return ProvisionSet.PREPARE
+
+    def state_finished(self):
+        return ProvisionSet.REVIEWING
+
+    def persist_hook(self):
+        self.provision_set.persist_prepare_log()
+
+
+class OdinCommitConsumer(OdinConsumer):
+    def state_running(self):
+        return ProvisionSet.COMMIT
+
+    def state_finished(self):
+        return ProvisionSet.FINISHED
+
+    def persist_hook(self):
+        self.provision_set.persist_commit_log()
 
 
 class LogfileConsumer(WebsocketConsumer):
-
     def __init__(self, *args, **kwargs):
         super(LogfileConsumer, self).__init__(*args, **kwargs)
-
-        self.provision_set = None
         self.connected = False
 
-    def connect(self):
-        self.accept()
-
-        try:
-            self.provision_set = ProvisionSet.objects.get(pk=self.scope['url_route']['kwargs']['pk'])
-        except ProvisionSet.DoesNotExist:
-            self.send('Not found')
-            raise DenyConnection('Provision set not found')
-
+    def accept(self, *args, **kwargs):
+        super(LogfileConsumer, self).accept(*args, **kwargs)
         self.connected = True
 
-        self.send(json.dumps({'scope': 'default', 'line': self.provision_set.output_log}))
+    def connect(self):
+        try:
+            pid = self.scope['url_route']['kwargs']['pk']
+            provision_set = ProvisionSet.objects.get(pk=pid)
+            self.accept()
 
-        if self.provision_set.output_log_file is not None:
-            Thread(target=self.send_file, args=(self.provision_set.output_log_file,)).start()
+            if provision_set.odin_output:
+                self.send(text_data=provision_set.odin_output)
+            if provision_set.prepare_log:
+                self.send(text_data=provision_set.prepare_log)
+            if provision_set.commit_log:
+                self.send(text_data=provision_set.commit_output)
+            if provision_set.output_log_file:
+                Thread(
+                    target=self.send_file_continuously,
+                    args=(provision_set.output_log_file,)
+                ).start()
+        except ProvisionSet.DoesNotExist:
+            raise DenyConnection('ProvisionSet does not exist.')
 
     def disconnect(self, code):
         self.connected = False
 
-    def send_file(self, path, scope=None):
-        file = open(path, 'r')
-
-        for line in self.read_file_continuously(file):
-            self.send(json.dumps({'scope': scope if scope else 'default', 'line': line}))
-
-    def read_file_continuously(self, file):
-        while self.connected:
-            line = file.readline()
-            if not line:
-                time.sleep(1)
-                continue
-            yield line
+    def send_file_continuously(self, path):
+        with open(path, 'rb') as buffer_file:
+            while True:
+                data = buffer_file.read()
+                if not self.connected:
+                    break
+                if len(data) > 0:
+                    # Because producer writes the file in chunks,
+                    # buffer_file.read() will only produce the data present so far.
+                    # The EOF is not enough to know whether the producer is done.
+                    # By convention the producer will finish with
+                    # a NUL byte to communicate it will not send further data.
+                    # This code reads chunks until the magic NUL byte is detected.
+                    if data[-1] == 0x00:
+                        break
+                    self.send(bytes_data=data)
+                time.sleep(0.05)
 
 
 class ProvisionStatusConsumer(WebsocketConsumer):
@@ -63,8 +170,8 @@ class ProvisionStatusConsumer(WebsocketConsumer):
             'provision_status': '0'
         }
 
-        running_provision_set = ProvisionSet.objects.filter(status__in=(ProvisionSet.RUNNING,
-                                                                        ProvisionSet.REVIEWING))
+        running_provision_set = ProvisionSet.objects.filter(state__in=(ProvisionSet.RUNNING,
+                                                                       ProvisionSet.REVIEWING))
 
         if running_provision_set.exists():
             message = {

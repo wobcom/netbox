@@ -25,10 +25,11 @@ redis==3.5.0
 svgwrite==1.4
 python-gitlab
 django-codemirror2
-diplomat
-ansible
 channels
+daphne
+asgiref
 topdesk
 channels_redis
 django-auth-ldap
 slackclient
+requests~=2.24.0

@@ -1,0 +1,10 @@
+venv/
+.venv/
+install/
+/netbox/netbox/configuration.py
+/netbox/netbox/ldap_config.py
+/netbox/reports/*
+!/netbox/reports/__init__.py
+/netbox/scripts/*
+!/netbox/scripts/__init__.py
+/netbox/static

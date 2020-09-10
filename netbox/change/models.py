@@ -1,12 +1,14 @@
 import pickle
-from datetime import timedelta, datetime
+import json
+import logging
+from datetime import timedelta
 from topdesk import Topdesk
+from tempfile import NamedTemporaryFile
+from os.path import realpath
 
-from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-from django.contrib.postgres.fields import JSONField
 from django.db import models
 from django.utils import timezone
 
@@ -14,7 +16,14 @@ from dcim.models import Device, Interface
 from dcim.constants import *
 from virtualization.models import VirtualMachine
 
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+
 from dcim.constants import *
+from configuration.models import RouteMap, BGPCommunity, BGPCommunityList
+from .odin import *
+
+logger = logging.getLogger(__name__)
 
 DEVICE_ROLE_TOPOLOGY_WHITELIST = ['leaf', 'spine', 'superspine']
 NO_CHANGE = 0
@@ -99,7 +108,7 @@ class ChangeSet(models.Model):
 
     provision_set = models.ForeignKey(
         to='ProvisionSet',
-        on_delete=models.PROTECT,
+        on_delete=models.SET_NULL,
         related_name='changesets',
         blank=True,
         null=True,
@@ -123,7 +132,7 @@ class ChangeSet(models.Model):
         if user.is_anonymous:
             return NO_CHANGE
         try:
-            c = ChangeSet.objects.get(active=True, user=user)
+            ChangeSet.objects.get(active=True, user=user)
             return OWN_CHANGE
         except ChangeSet.DoesNotExist:
             return NO_CHANGE
@@ -144,14 +153,133 @@ class ChangeSet(models.Model):
         return '#{}: {}'.format(self.id, self.change_information.name if self.change_information else '')
 
 
+class BadTransition(Exception):
+    pass
+
+
+class ProvisionFailed(Exception):
+    pass
+
+
+class AlreadyExistsError(Exception):
+    pass
+
+
+class UnexpectedState(Exception):
+    pass
+
+
+class ProvStateMachine:
+    """
+    State machine helper for provision sets.
+
+    The following invariants will be guaranteed:
+
+    - We only do valid transitions.
+    - In the __exit__ block we transition into FAILED if any exception is leaked.
+    - We save the provision set in the exit block as well as every time transition_ is called
+      Keep this in mind if you maintain a reference to the same prov_set.
+    """
+    def __init__(self, prov_set):
+        self.prov_set = prov_set
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exty, exva, extr):
+        if exty or exva or extr:
+            logger.error("Exception caught during state transition block. Moving into failed state")
+            self.fail()
+
+        self.save()
+
+    def finish(self):
+        """
+        Move the state into FINISHED and mark all related change sets as IMPLEMENTED.
+        """
+        self.transition(ProvisionSet.FINISHED)
+        self.prov_set.changesets.update(status=ChangeSet.IMPLEMENTED)
+
+    def save(self):
+        """
+        Calls .save() on the current provision set. Note: If you kept a reference to the provision set
+        and modified its fields, these will get saved as well.
+        """
+        self.prov_set.save()
+
+    def fail(self):
+        """
+        Move the state into FAILED.
+        """
+        self.__unsafe_transition(ProvisionSet.FAILED)
+
+    def transition(self, to):
+        """
+        Transition into a new provision set state. Will throw a BadTransition exception if the transition request
+        is not a valid transition in the current state.
+        """
+        from_ = self.prov_set.state
+        valid = self.prov_set.valid_transitions[from_]
+        if to not in valid:
+            raise BadTransition("Bad transition request from {} to {}, valid next states: {}".format(from_, to, valid))
+
+        self.__notify_state(to)
+        self.__unsafe_transition(to)
+
+    def assert_state(self, expected):
+        actual = self.prov_set.state
+        if actual != expected:
+            raise UnexpectedState("Expected state {}, actual state {}".format(expected, actual))
+
+    def __unsafe_transition(self, state):
+        """
+        Forces a transition into a state without checking the validity.
+        Users of this class should use transition instead.
+        This is an internal primitive for transition as well the __exit__ function.
+        """
+        self.prov_set.state = state
+
+    def __notify_state(self, state):
+        async_to_sync(get_channel_layer().group_send)('provision_status', {
+            'type': 'provision_status_message',
+            'text': json.dumps({
+                'provision_set_pk': self.prov_set.pk,
+                'provision_status': state
+            })
+        })
+
+
 class ProvisionSet(models.Model):
 
-    NOT_STARTED = 0
-    RUNNING = 1
-    FINISHED = 2
-    FAILED = 3
-    ABORTED = 4
-    REVIEWING = 5
+    NOT_STARTED = "not_started"
+    RUNNING = "running"
+    PREPARE = "prepare"
+    COMMIT = "commit"
+    FINISHED = "finished"
+    FAILED = "failed"
+    ABORTED = "aborted"
+    REVIEWING = "reviewing"
+
+    state_labels = {
+        NOT_STARTED: "Not started",
+        RUNNING: "Running",
+        PREPARE: "Prepare",
+        COMMIT: "Commit",
+        FINISHED: "Finished",
+        FAILED: "Failed",
+        ABORTED: "Aborted",
+        REVIEWING: "Reviewing",
+    }
+
+    valid_transitions = {
+        NOT_STARTED: (PREPARE, ABORTED),
+        PREPARE: (PREPARE, REVIEWING, FAILED, ABORTED),
+        REVIEWING: (COMMIT, ABORTED),
+        COMMIT: (COMMIT, FINISHED, FAILED, ABORTED),
+        ABORTED: (),
+        FAILED: (),
+        FINISHED: (),
+    }
 
     created = models.DateTimeField(
         auto_now_add=True,
@@ -171,17 +299,13 @@ class ProvisionSet(models.Model):
     )
 
     output_log_file = models.CharField(max_length=512, blank=True, null=True)
-    output_log = models.TextField(blank=True, null=True)
-    status = models.SmallIntegerField(
+    odin_output = models.TextField(blank=True, null=True)
+    prepare_log = models.TextField(blank=True, null=True)
+    commit_log = models.TextField(blank=True, null=True)
+    state = models.CharField(
+        max_length=20,
         default=NOT_STARTED,
-        choices=[
-            (NOT_STARTED, "Not Started"),
-            (RUNNING, "Running"),
-            (FINISHED, "Finished"),
-            (FAILED, "Failed"),
-            (ABORTED, "Aborted"),
-            (REVIEWING, "Reviewing"),
-        ]
+        choices=state_labels.items()
     )
 
     def __init__(self, *args, **kwargs):
@@ -190,30 +314,56 @@ class ProvisionSet(models.Model):
             print(self.active_exists())
             raise AlreadyExistsError('An unfinished provision already exists.')
 
-    def persist_output_log(self, append=False):
-        with open(self.output_log_file, 'r') as output_log_file:
-            if append:
-                self.output_log += '\n'
-                self.output_log += ''.join(output_log_file.readlines())
-            else:
-                self.output_log = ''.join(output_log_file.readlines())
-        self.output_log_file = None
+    def run_prepare(self):
+        with ProvStateMachine(self) as state:
+            state.transition(self.PREPARE)
+            self.__init_new_output()
+            r = odin_prepare(self.pk)
 
-    @property
-    def timeout(self):
-        if settings.PROVISIONING_TIMEOUT is None:
-            return None
-        return self.updated + timedelta(seconds=settings.PROVISIONING_TIMEOUT)
+            if r.has_errors:
+                logger.info("Odin failed with errors")
+                state.transition(self.FAILED)
 
-    @property
-    def timed_out(self):
-        if self.timeout is None:
-            return False
-        return timezone.now() > self.timeout
+            self.odin_output = r.output
+
+    def run_commit(self):
+        with ProvStateMachine(self) as state:
+            state.transition(self.COMMIT)
+            self.__init_new_output()
+            odin_commit(self.pk)
+
+    def terminate(self):
+        with ProvStateMachine(self) as state:
+            odin_delete(self.pk)
+            state.fail()
+
+    def __init_new_output(self):
+        with NamedTemporaryFile(delete=False) as file:
+            self.output_log_file = realpath(file.name)
+            self.save()
+
+    def persist_prepare_log(self):
+        with open(self.output_log_file, 'r') as buffer_file:
+            # Please have a look at consumers.py:OdinConsumer.finalize_buffer()
+            # to understand why the last byte is ignored
+            buf = buffer_file.read()[:-1]
+            self.prepare_log = buf
+            self.output_log_file = None
+
+    def persist_commit_log(self):
+        with open(self.output_log_file, 'r') as buffer_file:
+            # Please have a look at consumers.py:OdinConsumer.finalize_buffer()
+            # to understand why the last byte is ignored
+            buf = buffer_file.read()[:-1]
+            self.commit_log = buf
+            self.output_log_file = None
+
+    def is_final_state(self):
+        return len(self.valid_transitions.get(self.state, ())) == 0
 
     @classmethod
     def active_exists(cls):
-        return cls.objects.filter(status__in=(cls.RUNNING, cls.REVIEWING)).exists()
+        return cls.objects.filter(state__in=(cls.RUNNING, cls.PREPARE, cls.COMMIT, cls.REVIEWING)).exists()
 
 
 class ChangedObjectManager(models.Manager):
@@ -312,23 +462,3 @@ class ChangedObject(models.Model):
         return "{} #{} was {}.".format(self.changed_object_type,
                                        self.changed_object_id,
                                        'deleted' if self.deleted else 'added')
-
-
-class PID:
-
-    @classmethod
-    def set(cls, pid):
-        with open(settings.PID_FILE, 'w') as file:
-            file.write(str(pid))
-
-    @classmethod
-    def get(cls):
-        try:
-            with open(settings.PID_FILE, 'r') as file:
-                return int(file.read())
-        except FileNotFoundError:
-            return None
-
-
-class AlreadyExistsError(Exception):
-    pass
