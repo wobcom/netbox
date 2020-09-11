@@ -62,22 +62,28 @@ OBJECTCHANGE_REQUEST_ID = """
 """
 
 
-class TagTable(BaseTable):
+class BaseTagTable(BaseTable):
     pk = ToggleColumn()
     name = tables.LinkColumn(
         viewname='extras:tag',
         args=[Accessor('slug')]
     )
+    color = ColorColumn()
+
+    class Meta(BaseTable.Meta):
+        model = Tag
+        fields = ('pk', 'name', 'items', 'slug', 'color', 'description')
+
+
+class TagTable(BaseTagTable):
     actions = tables.TemplateColumn(
         template_code=TAG_ACTIONS,
         attrs={'td': {'class': 'text-right noprint'}},
         verbose_name=''
     )
-    color = ColorColumn()
 
-    class Meta(BaseTable.Meta):
-        model = Tag
-        fields = ('pk', 'name', 'items', 'slug', 'color', 'description', 'actions')
+    class Meta(BaseTagTable.Meta):
+        fields = (*BaseTagTable.Meta.fields, 'actions')
 
 
 class TaggedItemTable(BaseTable):

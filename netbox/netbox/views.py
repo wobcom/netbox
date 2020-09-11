@@ -23,7 +23,9 @@ from dcim.tables import (
     CableTable, DeviceTable, DeviceTypeTable, PowerFeedTable, RackTable, RackGroupTable, SiteTable,
     VirtualChassisTable, InterfaceDetailTable,
 )
-from extras.models import ObjectChange, ReportResult
+from extras.models import ObjectChange, ReportResult, Tag
+from extras.filters import TagFilterSet
+from extras.tables import BaseTagTable
 from ipam.filters import AggregateFilterSet, IPAddressFilterSet, PrefixFilterSet, VLANFilterSet, VRFFilterSet
 from ipam.models import Aggregate, IPAddress, Prefix, VLAN, VRF
 from ipam.tables import AggregateTable, IPAddressTable, PrefixTable, VLANTable, VRFTable
@@ -193,6 +195,16 @@ SEARCH_TYPES = OrderedDict((
         'table': TenantTable,
         'url': 'tenancy:tenant_list',
     }),
+    # Tags
+    ('tags', {
+        'permission': 'tags.view_tags',
+        'queryset': Tag.objects.annotate(
+            items=Count('extras_taggeditem_items', distinct=True)
+        ),
+        'filterset': TagFilterSet,
+        'table': BaseTagTable,
+        'url': 'extras:tag_list',
+    })
 ))
 
 
