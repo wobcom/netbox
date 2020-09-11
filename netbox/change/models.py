@@ -20,7 +20,6 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 
 from dcim.constants import *
-from configuration.models import RouteMap, BGPCommunity, BGPCommunityList
 from .odin import *
 
 logger = logging.getLogger(__name__)

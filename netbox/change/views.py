@@ -100,7 +100,6 @@ class DeployView(PermissionRequiredMixin, View):
             'unaccepted_changesets': self.undeployed_changesets.exclude(status=ChangeSet.ACCEPTED).count(),
         })
 
-
     def post(self, request):
         try:
             provision_set = ProvisionSet(user=request.user)
