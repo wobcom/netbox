@@ -377,6 +377,7 @@ X_FRAME_OPTIONS = 'SAMEORIGIN'
 # Static files (CSS, JavaScript, Images)
 STATIC_ROOT = BASE_DIR + '/static'
 STATIC_URL = '/{}static/'.format(BASE_PATH)
+STATICFILES_STORAGE = 'netbox.storage.VersionedStaticFilesStorage'
 STATICFILES_DIRS = (
     os.path.join(BASE_DIR, "project-static"),
 )
