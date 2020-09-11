@@ -13,7 +13,7 @@ stages:
   - publish
 
 lint:
-  stage: verify
+  stage: test
   image: python:3.6
   tags:
     - docker
