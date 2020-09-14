@@ -17,7 +17,7 @@ def odin_prepare(pid):
         url=f"{settings.ODIN_WORKER_URL}/provision/{pid}",
         json={
             "odinArgs": settings.ODIN_ADDITIONAL_ARGS,
-            "callbackPath": f"/change/provisions/{pid}/odin/prepare/",
+            "callbackPath": f"/ws/change/provisions/{pid}/odin/prepare/",
         },
     )
 
@@ -32,7 +32,7 @@ def odin_prepare(pid):
 def odin_commit(pid):
     r = post(
         url=f"{settings.ODIN_WORKER_URL}/provision/{pid}/commit",
-        json=f"/change/provisions/{pid}/odin/commit/",
+        json=f"/ws/change/provisions/{pid}/odin/commit/",
     )
 
     if not r.ok:

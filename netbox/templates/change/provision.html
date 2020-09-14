@@ -108,7 +108,7 @@
         term.open(document.getElementById('terminal_output'));
         fit_addon.fit();
 
-        var path = '/change/provisions/{{ provision_set.pk }}/logs/ws/';
+        var path = '/ws/change/provisions/{{ provision_set.pk }}/logs/';
         var url = new URL(path, window.location.href);
         url.protocol = url.protocol.replace('http', 'ws');
 
