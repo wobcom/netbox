@@ -1,7 +1,9 @@
 import ldap
 import os
+import json
+from functools import reduce
 
-from django_auth_ldap.config import LDAPSearch
+from django_auth_ldap.config import LDAPSearch, LDAPGroupQuery
 from importlib import import_module
 
 # Read secret from file
@@ -15,14 +17,16 @@ def read_secret(secret_name):
             return f.readline().strip()
 
 # Import and return the group type based on string name
-def import_group_type(group_type_name):
+def import_group_type(group_type_name, arg1, arg2):
     mod = import_module('django_auth_ldap.config')
-    try:
+    if arg1 and arg2:
+        return getattr(mod, group_type_name)(arg1, arg2)
+    elif arg1:
+        return getattr(mod, group_type_name)(arg1)
+    else:
         return getattr(mod, group_type_name)()
-    except:
-        return None
 
-# Server URI
+# Space separted list of server URIs
 AUTH_LDAP_SERVER_URI = os.environ.get('AUTH_LDAP_SERVER_URI', '')
 
 # The following may be needed if you are binding to Active Directory.
@@ -57,17 +61,29 @@ AUTH_LDAP_GROUP_SEARCH_BASEDN = os.environ.get('AUTH_LDAP_GROUP_SEARCH_BASEDN', 
 AUTH_LDAP_GROUP_SEARCH_CLASS = os.environ.get('AUTH_LDAP_GROUP_SEARCH_CLASS', 'group')
 AUTH_LDAP_GROUP_SEARCH = LDAPSearch(AUTH_LDAP_GROUP_SEARCH_BASEDN, ldap.SCOPE_SUBTREE,
                                     "(objectClass=" + AUTH_LDAP_GROUP_SEARCH_CLASS + ")")
-AUTH_LDAP_GROUP_TYPE = import_group_type(os.environ.get('AUTH_LDAP_GROUP_TYPE', 'GroupOfNamesType'))
 
-# Define a group required to login.
-AUTH_LDAP_REQUIRE_GROUP = os.environ.get('AUTH_LDAP_REQUIRE_GROUP_DN', '')
+# Specify the class name according to
+# https://django-auth-ldap.readthedocs.io/en/latest/reference.html#django_auth_ldap.config.LDAPGroupType
+# If the constructor requires additional arguments, use AUTH_LDAP_GROUP_TYPE_ARG_1 and _2 to specify them
+# accordingly. Keep them unset if they are not required.
+arg1 = os.environ.get('AUTH_LDAP_GROUP_TYPE_ARG_1')
+arg2 = os.environ.get('AUTH_LDAP_GROUP_TYPE_ARG_2')
+AUTH_LDAP_GROUP_TYPE = import_group_type(os.environ.get('AUTH_LDAP_GROUP_TYPE', 'GroupOfNamesType'), arg1, arg2)
+
+g = os.environ.get('AUTH_LDAP_REQUIRE_GROUP', '[]')
+l = json.loads(g)
+l_ = map(LDAPGroupQuery, l)
+AUTH_LDAP_REQUIRE_GROUP = reduce(lambda s, e: e | s, l_)
+
 
 # Define special user types using groups. Exercise great caution when assigning superuser status.
-AUTH_LDAP_USER_FLAGS_BY_GROUP = {
-    "is_active": os.environ.get('AUTH_LDAP_REQUIRE_GROUP_DN', ''),
-    "is_staff": os.environ.get('AUTH_LDAP_IS_ADMIN_DN', ''),
-    "is_superuser": os.environ.get('AUTH_LDAP_IS_SUPERUSER_DN', '')
+d = {
+    "is_active": os.environ.get('AUTH_LDAP_REQUIRE_GROUP_DN', None),
+    "is_staff": os.environ.get('AUTH_LDAP_IS_ADMIN_DN', None),
+    "is_superuser": os.environ.get('AUTH_LDAP_IS_SUPERUSER_DN', None)
 }
+
+AUTH_LDAP_USER_FLAGS_BY_GROUP = dict((a, b) for (a, b) in d.items() if b is not None)
 
 # For more granular permissions, we can map LDAP groups to Django groups.
 AUTH_LDAP_FIND_GROUP_PERMS = os.environ.get('AUTH_LDAP_FIND_GROUP_PERMS', 'True').lower() == 'true'
