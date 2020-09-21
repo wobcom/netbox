@@ -15,8 +15,6 @@ stages:
 lint:
   stage: test
   image: python:3.6
-  except:
-    - docker_ci_dev
   tags:
     - docker
   script:
@@ -28,8 +26,6 @@ lint:
 tests:
   stage: test
   image: python:3.6
-  except:
-    - docker_ci_dev
   tags:
     - docker
   script:
@@ -43,13 +39,9 @@ tests:
     - "../venv/bin/python manage.py test"
 
 build:
-  image: docker:latest
   stage: build
-  services:
-    - name: docker:dind
-      alias: docker
   tags:
-    - docker
+    - docker-build
   only:
     - tags
   script:
@@ -58,3 +50,4 @@ build:
     - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
     - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
     - docker push $CI_REGISTRY_IMAGE:latest
+    - docker logout
