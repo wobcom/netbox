@@ -11,19 +11,15 @@
     </div>
     <div class="pull-right noprint">
         {% if perms.change.change_provisionset and provision_set.state != provision_set.FINISHED %}
-            {% if provision_set.user == request.user %}
-                <form action="{% url 'change:second_stage' pk=provision_set.pk %}" method="post" style="display: inline-block">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-warning"{% if provision_set.state != provision_set.REVIEWING %} disabled="" title="First stage did not complete successfully"{% endif %}>
-                        <i class="glyphicon glyphicon-play" aria-hidden="true"></i> Run 2nd stage
-                    </button>
-                </form>
-            {% endif %}
-            {% if provision_set.user == request.user or provision_set.timed_out %}
-                <button class="btn btn-danger"{% if provision_set.is_final_state %} disabled="" title="Cannot be terminated!"{% endif %} data-toggle="modal" data-target="#termination-modal">
-                    <i class="glyphicon glyphicon-ban-circle" aria-hidden="true"></i> Terminate
+            <form action="{% url 'change:second_stage' pk=provision_set.pk %}" method="post" style="display: inline-block">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-warning"{% if provision_set.state != provision_set.REVIEWING %} disabled="" title="First stage did not complete successfully"{% endif %}>
+                    <i class="glyphicon glyphicon-play" aria-hidden="true"></i> Commit
                 </button>
-            {% endif %}
+            </form>
+            <button class="btn btn-danger"{% if provision_set.is_final_state %} disabled="" title="Cannot be terminated!"{% endif %} data-toggle="modal" data-target="#termination-modal">
+                <i class="glyphicon glyphicon-ban-circle" aria-hidden="true"></i> Terminate
+            </button>
         {% endif %}
     </div>
     <h1>
