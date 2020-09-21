@@ -74,7 +74,10 @@ class PluginConfig(AppConfig):
     def validate(cls, user_config):
 
         # Enforce version constraints
-        current_version = version.parse(settings.VERSION[:settings.VERSION.index('_')])
+        if '_' in settings.VERSION:
+            current_version = version.parse(settings.VERSION[:settings.VERSION.index('_')])
+        else:
+            current_version = version.parse(settings.VERSION)
         if cls.min_version is not None:
             min_version = version.parse(cls.min_version)
             if current_version < min_version:
