@@ -1,7 +1,7 @@
 version: '3.4'
 services:
   netbox: &netbox
-    image: gitlab.service.wobcom.de:5050/infrastructure/netbox:test
+    image: gitlab.service.wobcom.de:5050/infrastructure/netbox:latest
     depends_on:
     - postgres
     - redis
