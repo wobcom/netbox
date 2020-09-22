@@ -1,6 +1,7 @@
 import collections
 import inspect
 from packaging import version
+import re
 
 from django.apps import AppConfig
 from django.conf import settings
@@ -74,8 +75,9 @@ class PluginConfig(AppConfig):
     def validate(cls, user_config):
 
         # Enforce version constraints
-        if '_' in settings.VERSION:
-            current_version = version.parse(settings.VERSION[:settings.VERSION.index('_')])
+        match = re.search(r'^wc_(.*)_.*', settings.VERSION)
+        if match:
+            current_version = match.group(1)
         else:
             current_version = version.parse(settings.VERSION)
         if cls.min_version is not None:
