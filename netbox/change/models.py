@@ -192,13 +192,6 @@ class ProvStateMachine:
 
         self.save()
 
-    def finish(self):
-        """
-        Move the state into FINISHED and mark all related change sets as IMPLEMENTED.
-        """
-        self.transition(ProvisionSet.FINISHED)
-        self.prov_set.changesets.update(status=ChangeSet.IMPLEMENTED)
-
     def save(self):
         """
         Calls .save() on the current provision set. Note: If you kept a reference to the provision set

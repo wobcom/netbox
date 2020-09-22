@@ -3,6 +3,7 @@ import json
 import os
 import time
 from threading import Thread
+from django.db import transaction
 
 from channels.generic.websocket import WebsocketConsumer
 from channels.exceptions import DenyConnection
@@ -32,7 +33,7 @@ class OdinConsumer(WebsocketConsumer):
     def __init__(self, *args, **kwargs):
         super(OdinConsumer, self).__init__(*args, **kwargs)
         self.buffer_file = None
-        self.provision_set = None
+        self.pset_id = None
 
     def ensure_objectcache_ready(self):
         # this has to happen since we need to ensure that the objectchange
@@ -40,23 +41,24 @@ class OdinConsumer(WebsocketConsumer):
         purge_changelog.send(self)
 
     def connect(self):
-        self.ensure_objectcache_ready()
-        try:
-            pset_id = self.scope['url_route']['kwargs']['pk']
-            self.provision_set = ProvisionSet.objects.get(pk=pset_id)
-            self.handle_connection()
-        except ProvisionSet.DoesNotExist:
-            raise DenyConnection('ProvisionSet does not exist.')
+        with transaction.atomic():
+            self.ensure_objectcache_ready()
+            try:
+                self.pset_id = self.scope['url_route']['kwargs']['pk']
+                self.handle_connection()
+            except ProvisionSet.DoesNotExist:
+                raise DenyConnection('ProvisionSet does not exist.')
 
     def handle_connection(self):
-        with ProvStateMachine(self.provision_set) as state:
-            self.prepare_buffer()
+        pset = ProvisionSet.objects.get(pk=self.pset_id)
+        with ProvStateMachine(pset) as state:
+            self.prepare_buffer(pset)
             s = self.state_running()
             state.assert_state(s)
             self.accept()
 
-    def prepare_buffer(self):
-        out = self.provision_set.output_log_file
+    def prepare_buffer(self, pset):
+        pset.output_log_file
         self.buffer_file = open(out, 'ab', buffering=0)
 
     def receive(self, text_data=None, bytes_data=None):
@@ -64,15 +66,17 @@ class OdinConsumer(WebsocketConsumer):
             self.buffer_file.write(bytes_data)
 
     def disconnect(self, code):
-        self.ensure_objectcache_ready()
-        with ProvStateMachine(self.provision_set) as state:
-            # By convention we consider 4201 a successful ansible execution.
-            if code == 4201:
-                n = self.state_finished()
-                state.transition(n)
-            else:
-                state.transition(ProvisionSet.FAILED)
-            self.finalize_buffer()
+        with transaction.atomic():
+            self.ensure_objectcache_ready()
+            pset = ProvisionSet.objects.get(pk=self.pset_id)
+            with ProvStateMachine(pset) as state:
+                # By convention we consider 4201 a successful ansible execution.
+                if code == 4201:
+                    n = self.state_finished()
+                    state.transition(n)
+                else:
+                    state.transition(ProvisionSet.FAILED)
+                self.finalize_buffer()
 
     def finalize_buffer(self):
         """
