@@ -20,6 +20,6 @@ urlpatterns = [
 websocket_urlpatterns = [
     path(r'ws/change/provisions/<int:pk>/logs/', consumers.LogfileConsumer),
     path(r'ws/change/provisions/status/', consumers.ProvisionStatusConsumer),
-    path(r'ws/change/provisions/<int:pk>/odin/prepare/', consumers.OdinPrepareConsumer),
+    path(r'ws/change/provisions/<int:pk>/odin/diff/', consumers.OdinDiffConsumer),
     path(r'ws/change/provisions/<int:pk>/odin/commit/', consumers.OdinCommitConsumer)
 ]

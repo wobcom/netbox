@@ -115,8 +115,9 @@ class DeployView(PermissionRequiredMixin, View):
 
         provision_set.save()
         self.undeployed_changesets.update(provision_set=provision_set)
-        provision_set.run_prepare()
-        provision_set.save()
+
+        provision_set.run_odin()
+        provision_set.run_ansible_diff()
 
         return redirect('change:provision_set', pk=provision_set.pk)
 
@@ -127,8 +128,7 @@ class SecondStageView(PermissionRequiredMixin, View):
     @transaction.atomic
     def post(self, request, pk=None):
         provision_set = ProvisionSet.objects.get(pk=pk)
-        provision_set.run_commit()
-        provision_set.save()
+        provision_set.run_ansible_commit()
 
         return redirect('change:provision_set', pk=provision_set.pk)
 

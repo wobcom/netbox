@@ -183,66 +183,15 @@ class ProvStateMachine:
         self.prov_set = prov_set
 
     def __enter__(self):
-        return self
+        pass
 
     def __exit__(self, exty, exva, extr):
         if exty or exva or extr:
             logger.error("Exception caught during state transition block. Moving into failed state")
-            self.fail()
-
-        self.save()
-
-    def save(self):
-        """
-        Calls .save() on the current provision set. Note: If you kept a reference to the provision set
-        and modified its fields, these will get saved as well.
-        """
-        self.prov_set.save()
-
-    def fail(self):
-        """
-        Move the state into FAILED.
-        """
-        self.__unsafe_transition(ProvisionSet.FAILED)
-
-    def transition(self, to):
-        """
-        Transition into a new provision set state. Will throw a BadTransition exception if the transition request
-        is not a valid transition in the current state.
-        """
-        from_ = self.prov_set.state
-        valid = self.prov_set.valid_transitions[from_]
-        if to not in valid:
-            raise BadTransition("Bad transition request from {} to {}, valid next states: {}".format(from_, to, valid))
-
-        self.__notify_state(to)
-        self.__unsafe_transition(to)
-
-    def assert_state(self, expected):
-        actual = self.prov_set.state
-        if actual != expected:
-            raise UnexpectedState("Expected state {}, actual state {}".format(expected, actual))
-
-    def __unsafe_transition(self, state):
-        """
-        Forces a transition into a state without checking the validity.
-        Users of this class should use transition instead.
-        This is an internal primitive for transition as well the __exit__ function.
-        """
-        self.prov_set.state = state
-
-    def __notify_state(self, state):
-        async_to_sync(get_channel_layer().group_send)('provision_status', {
-            'type': 'provision_status_message',
-            'text': json.dumps({
-                'provision_set_pk': self.prov_set.pk,
-                'provision_status': state
-            })
-        })
+            self.prov_set.fail()
 
 
 class ProvisionSet(models.Model):
-
     NOT_STARTED = "not_started"
     RUNNING = "running"
     PREPARE = "prepare"
@@ -264,7 +213,7 @@ class ProvisionSet(models.Model):
     }
 
     valid_transitions = {
-        NOT_STARTED: (PREPARE, ABORTED),
+        NOT_STARTED: (PREPARE, ABORTED, FAILED),
         PREPARE: (PREPARE, REVIEWING, FAILED, ABORTED),
         REVIEWING: (COMMIT, ABORTED),
         COMMIT: (COMMIT, FINISHED, FAILED, ABORTED),
@@ -306,33 +255,101 @@ class ProvisionSet(models.Model):
             print(self.active_exists())
             raise AlreadyExistsError('An unfinished provision already exists.')
 
-    def run_prepare(self):
-        with ProvStateMachine(self) as state:
-            state.transition(self.PREPARE)
-            self.__init_new_output()
+    def __unsafe_transition(self, state):
+        """
+        Forces a transition into a state without checking the validity.
+        Users of this class should use transition instead.
+        This is an internal primitive for transition as well the __exit__ function.
+        """
+        self.state = state
+        self.__save_state()
+        self.__notify_state()
+
+    def __notify_state(self):
+        async_to_sync(get_channel_layer().group_send)('provision_status', {
+            'type': 'provision_status_message',
+            'text': json.dumps({
+                'provision_set_pk': self.pk,
+                'provision_status': self.state,
+            })
+        })
+        
+    def transition(self, to):
+        """
+        Transition into a new provision set state. Will throw a BadTransition exception if the transition request
+        is not a valid transition in the current state.
+        """
+        from_ = self.state
+        valid = self.valid_transitions[from_]
+        if to not in valid:
+            raise BadTransition("Bad transition request from {} to {}, valid next states: {}".format(from_, to, valid))
+
+        self.__unsafe_transition(to)
+
+    def __save_state(self):
+        """
+        Saves the state of the provision set to the database.
+        Will not save other fields.
+        """
+        self.save(update_fields=['state'])
+
+    def fail(self):
+        """
+        Move the state into FAILED.
+        """
+        self.__unsafe_transition(ProvisionSet.FAILED)
+
+    def abort(self):
+        """
+        Move the state into ABORTED.
+        """
+        self.__unsafe_transition(ProvisionSet.ABORTED)
+
+    def assert_state(self, expected):
+        actual = self.state
+        if actual != expected:
+            raise UnexpectedState("Expected state {}, actual state {}".format(expected, actual))
+
+    def run_odin(self):
+        self.assert_state(self.NOT_STARTED)
+        with ProvStateMachine(self):
+            self.transition(self.PREPARE)
             r = odin_prepare(self.pk)
 
             if r.has_errors:
                 logger.info("Odin failed with errors")
-                state.transition(self.FAILED)
+                self.fail()
 
             self.odin_output = r.output
+            self.save(update_fields=['odin_output'])
 
-    def run_commit(self):
-        with ProvStateMachine(self) as state:
-            state.transition(self.COMMIT)
-            self.__init_new_output()
-            odin_commit(self.pk)
+    def run_ansible_diff(self):
+        print("RUNNING ANSIBLE DIFF")
+        print("RUNNING ANSIBLE DIFF")
+        print("RUNNING ANSIBLE DIFF")
+        print("RUNNING ANSIBLE DIFF")
+        print("RUNNING ANSIBLE DIFF")
+        print("RUNNING ANSIBLE DIFF")
+        self.assert_state(self.PREPARE)
+        self.__init_new_output()
+
+        odin_diff(self.pk)
+
+    def run_ansible_commit(self):
+        self.assert_state(self.REVIEWING)
+        self.transition(self.COMMIT)
+        self.__init_new_output()
+
+        odin_commit(self.pk)
 
     def terminate(self):
-        with ProvStateMachine(self) as state:
-            odin_delete(self.pk)
-            state.fail()
+        self.abort()
+        odin_delete(self.pk)
 
     def __init_new_output(self):
         with NamedTemporaryFile(delete=False) as file:
             self.output_log_file = realpath(file.name)
-            self.save()
+            self.save(update_fields=['output_log_file'])
 
     def persist_prepare_log(self):
         with open(self.output_log_file, 'r') as buffer_file:
@@ -341,6 +358,7 @@ class ProvisionSet(models.Model):
             buf = buffer_file.read()[:-1]
             self.prepare_log = buf
             self.output_log_file = None
+            self.save(update_fields=['output_log_file', 'prepare_log'])
 
     def persist_commit_log(self):
         with open(self.output_log_file, 'r') as buffer_file:
@@ -349,6 +367,7 @@ class ProvisionSet(models.Model):
             buf = buffer_file.read()[:-1]
             self.commit_log = buf
             self.output_log_file = None
+            self.save(update_fields=['output_log_file', 'commit_log'])
 
     def is_final_state(self):
         return len(self.valid_transitions.get(self.state, ())) == 0
