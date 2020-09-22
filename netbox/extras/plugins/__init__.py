@@ -77,7 +77,7 @@ class PluginConfig(AppConfig):
         # Enforce version constraints
         match = re.search(r'^wc_(.*)_.*', settings.VERSION)
         if match:
-            current_version = match.group(1)
+            current_version = version.parse(match.group(1))
         else:
             current_version = version.parse(settings.VERSION)
         if cls.min_version is not None:
