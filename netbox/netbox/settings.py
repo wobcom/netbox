@@ -11,12 +11,14 @@ from django.contrib.messages import constants as messages
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.validators import URLValidator
 
+from .version import VERSION as _VERSION
+
 
 #
 # Environment setup
 #
 
-VERSION = 'wc_2.8.9_0.0.5'
+VERSION = _VERSION
 
 # Hostname
 HOSTNAME = platform.node()

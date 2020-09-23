@@ -49,18 +49,8 @@ check_version:
     - docker
   only:
     - tags
-  before_script:
-    - "git config --global credential.helper store"
-    - "echo https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.service.wobcom.de >> ~/.git-credentials"
-    - "cat ~/.git-credentials"
   script:
-    - "apt update"
-    - "apt install -y libldap2-dev python3-dev libsasl2-dev"
-    - "pip install virtualenv"
-    - "virtualenv --python=python3.6 venv"
-    - "venv/bin/pip install -r requirements.txt"
-    - "cp -f netbox/netbox/configuration.testing.py netbox/netbox/configuration.py"
-    - "venv/bin/python netbox/manage.py shell < check_version.py"
+    - "python check_version.py"
 
 build:
   stage: build
