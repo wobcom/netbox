@@ -42,15 +42,27 @@ tests:
     - "cd netbox/"
     - "../venv/bin/python manage.py test"
 
+check_version:
+  stage: test
+  image: python:3.6
+  tags:
+    - docker
+  only:
+    - tags
+  script:
+    - "python netbox/manage.py shell < check_version.py"
+
 build:
   stage: build
   tags:
     - docker-build
   only:
     - tags
+  dependencies:
+    - check_version
   script:
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-    - docker build --cache-from $CI_REGISTRY_IMAGE:latest --tag $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME --tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA --tag $CI_REGISTRY_IMAGE:latest .
+    - docker build --cache-from $CI_REGISTRY_IMAGE:latest --build-arg CI_JOB_TOKEN --tag $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME --tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA --tag $CI_REGISTRY_IMAGE:latest .
     - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
     - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
     - docker push $CI_REGISTRY_IMAGE:latest

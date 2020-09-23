@@ -20,6 +20,10 @@ WORKDIR /install
 
 RUN pip install --prefix="/install" --no-warn-script-location daphne
 
+RUN git config --global credential.helper store && \
+    echo https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.service.wobcom.de >> ~/.git-credentials && \
+    cat ~/.git-credentials
+
 COPY ./requirements.txt /
 RUN pip install --prefix="/install" --no-warn-script-location -r /requirements.txt
 
