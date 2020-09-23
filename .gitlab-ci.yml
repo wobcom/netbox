@@ -31,7 +31,7 @@ tests:
   before_script:
     - "git config --global credential.helper store"
     - "git config --global credential.gitlab.service.wobcom.de.useHttpPath true"
-    - "echo https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.service.wobcom.de >> ~/.git-credentials"
+    - "echo https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.service.wobcom.de/infrastructure/topdesk-export >> ~/.git-credentials"
     - "cat ~/.git-credentials"
   script:
     - "apt update"
