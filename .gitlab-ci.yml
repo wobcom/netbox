@@ -28,6 +28,10 @@ tests:
   image: python:3.6
   tags:
     - docker
+  before_script:
+    - "git config --global credential.helper store"
+    - "git config --global credential.gitlab.service.wobcom.de.useHttpPath true"
+    - "echo https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.service.wobcom.de >> ~/.git-credentials"
   script:
     - "apt update"
     - "apt install -y libldap2-dev python3-dev libsasl2-dev"
@@ -44,6 +48,10 @@ build:
     - docker-build
   only:
     - tags
+  before_script:
+    - "git config --global credential.helper store"
+    - "git config --global credential.gitlab.service.wobcom.de.useHttpPath true"
+    - "echo https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.service.wobcom.de >> ~/.git-credentials"
   script:
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
     - docker build --cache-from $CI_REGISTRY_IMAGE:latest --tag $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME --tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA --tag $CI_REGISTRY_IMAGE:latest .
