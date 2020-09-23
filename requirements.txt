@@ -33,3 +33,4 @@ channels_redis
 django-auth-ldap
 slackclient
 requests~=2.24.0
+git+https://gitlab.service.wobcom.de/infrastructure/topdesk-export
