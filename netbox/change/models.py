@@ -273,7 +273,7 @@ class ProvisionSet(models.Model):
                 'provision_status': self.state,
             })
         })
-        
+
     def transition(self, to):
         """
         Transition into a new provision set state. Will throw a BadTransition exception if the transition request

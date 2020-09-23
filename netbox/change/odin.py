@@ -27,6 +27,7 @@ def odin_prepare(pid):
     else:
         raise OdinException("odin_prepare: Unexpected response {}: {}".format(r.status_code, r.text))
 
+
 def odin_diff(pid):
     r = post(
         url=f"{settings.ODIN_WORKER_URL}/provision/{pid}/diff",
@@ -35,6 +36,7 @@ def odin_diff(pid):
 
     if not r.ok:
         raise OdinException("odin_diff: Unexpected response {}: {}".format(r.status_code, r.text))
+
 
 def odin_commit(pid):
     r = post(
