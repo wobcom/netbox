@@ -5,6 +5,7 @@ RUN apk add --no-cache \
       build-base \
       ca-certificates \
       cyrus-sasl-dev \
+      git \
       graphviz \
       jpeg-dev \
       libevent-dev \
