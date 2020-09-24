@@ -1,5 +1,7 @@
 FROM python:alpine as builder
 
+ARG CI_JOB_TOKEN
+
 RUN apk add --no-cache \
       bash \
       build-base \
