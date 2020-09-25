@@ -161,7 +161,9 @@ class ProvisionFailed(Exception):
 
 
 class AlreadyExistsError(Exception):
-    pass
+    def __init__(self, *args, active=None):
+        super(AlreadyExistsError, self).__init__(*args)
+        self.active = active
 
 
 class UnexpectedState(Exception):
@@ -251,9 +253,9 @@ class ProvisionSet(models.Model):
 
     def __init__(self, *args, **kwargs):
         super(ProvisionSet, self).__init__(*args, **kwargs)
-        if self.active_exists() and not self.pk:
-            print(self.active_exists())
-            raise AlreadyExistsError('An unfinished provision already exists.')
+        active = self.active_exists()
+        if active and not self.pk:
+            raise AlreadyExistsError('An unfinished provision already exists.', active=active[0])
 
     def __unsafe_transition(self, state):
         """
@@ -374,7 +376,9 @@ class ProvisionSet(models.Model):
 
     @classmethod
     def active_exists(cls):
-        return cls.objects.filter(state__in=(cls.RUNNING, cls.PREPARE, cls.COMMIT, cls.REVIEWING)).exists()
+        return cls.objects.filter(
+            state__in=(cls.RUNNING, cls.PREPARE, cls.COMMIT, cls.REVIEWING)
+        ).values_list('pk', flat=True)
 
 
 class ChangedObjectManager(models.Manager):

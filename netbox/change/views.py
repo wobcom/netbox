@@ -4,11 +4,12 @@ import signal
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.http import HttpResponse
 from django.contrib import messages
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import get_object_or_404, redirect, render, reverse
 from django.views.generic import View
 from django.views.generic.edit import CreateView
 from django.views.decorators.cache import never_cache
 from django.utils import timezone
+from django.utils.safestring import mark_safe
 from django.db import transaction
 
 from utilities.views import ObjectListView, GetReturnURLMixin
@@ -106,10 +107,14 @@ class DeployView(PermissionRequiredMixin, View):
     def post(self, request):
         try:
             provision_set = ProvisionSet(user=request.user)
-        except AlreadyExistsError:
+        except AlreadyExistsError as e:
+            url = reverse('change:provision_set', kwargs={'pk': e.active})
             messages.error(
                 request,
-                'Provisioning can not be started, another provisioning is already running.'
+                mark_safe(
+                    'Provisioning can not be started, another provisioning is already running. '
+                    f'<a href="{url}">Provision #{e.active}</a>'
+                )
             )
             return redirect('change:deploy')
 
