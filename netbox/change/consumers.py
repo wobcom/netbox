@@ -129,7 +129,7 @@ class LogfileConsumer(WebsocketConsumer):
             if provision_set.prepare_log:
                 self.send(text_data=provision_set.prepare_log)
             if provision_set.commit_log:
-                self.send(text_data=provision_set.commit_output)
+                self.send(text_data=provision_set.commit_log)
             if provision_set.output_log_file:
                 Thread(
                     target=self.send_file_continuously,
