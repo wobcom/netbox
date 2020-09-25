@@ -326,12 +326,6 @@ class ProvisionSet(models.Model):
             self.save(update_fields=['odin_output'])
 
     def run_ansible_diff(self):
-        print("RUNNING ANSIBLE DIFF")
-        print("RUNNING ANSIBLE DIFF")
-        print("RUNNING ANSIBLE DIFF")
-        print("RUNNING ANSIBLE DIFF")
-        print("RUNNING ANSIBLE DIFF")
-        print("RUNNING ANSIBLE DIFF")
         self.assert_state(self.PREPARE)
         self.__init_new_output()
 

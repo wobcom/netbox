@@ -10,7 +10,6 @@ from django.views.generic.edit import CreateView
 from django.views.decorators.cache import never_cache
 from django.utils import timezone
 from django.utils.safestring import mark_safe
-from django.db import transaction
 
 from utilities.views import ObjectListView, GetReturnURLMixin
 from .forms import ChangeInformationForm
@@ -64,7 +63,6 @@ class EndChangeView(PermissionRequiredMixin, View):
             'changeset': request.my_change
         })
 
-    @transaction.atomic
     def post(self, request):
         """
         This view is triggered when the operator clicks on "Recreate Merge
@@ -103,7 +101,6 @@ class DeployView(PermissionRequiredMixin, View):
             'unaccepted_changesets': self.undeployed_changesets.exclude(status=ChangeSet.ACCEPTED).count(),
         })
 
-    @transaction.atomic
     def post(self, request):
         try:
             provision_set = ProvisionSet(user=request.user)
@@ -130,7 +127,6 @@ class DeployView(PermissionRequiredMixin, View):
 class SecondStageView(PermissionRequiredMixin, View):
     permission_required = 'change.change_provisionset'
 
-    @transaction.atomic
     def post(self, request, pk=None):
         provision_set = ProvisionSet.objects.get(pk=pk)
         provision_set.run_ansible_commit()
@@ -144,7 +140,6 @@ class TerminateView(PermissionRequiredMixin, View):
     """
     permission_required = 'change.deploy_changeset'
 
-    @transaction.atomic
     def post(self, request, pk=None):
         """
         This view terminates the provision set.

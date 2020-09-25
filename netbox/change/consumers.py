@@ -3,7 +3,6 @@ import json
 import os
 import time
 from threading import Thread
-from django.db import transaction
 
 from channels.generic.websocket import WebsocketConsumer
 from channels.exceptions import DenyConnection
