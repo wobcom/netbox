@@ -1,0 +1,13 @@
+[Unit]
+Description=NetBox
+After=docker.target network-online.target
+Wants=docker.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/netbox
+ExecStart=/bin/docker-compose up
+ExecStop=/bin/docker-compose down
+
+[Install]
+WantedBy=multi-user.target
