@@ -266,6 +266,8 @@ class ProvisionSet(models.Model):
         self.state = state
         self.__save_state()
         self.__notify_state()
+        if self.state == self.FINISHED:
+            self.changesets.update(status=ChangeSet.IMPLEMENTED)
 
     def __notify_state(self):
         async_to_sync(get_channel_layer().group_send)('provision_status', {
