@@ -219,6 +219,8 @@ SHORT_DATETIME_FORMAT = os.environ.get('SHORT_DATETIME_FORMAT', 'Y-m-d H:i')
 # Plugins
 PLUGINS = list(filter(None, [a.strip() for a in os.environ.get('PLUGINS', '').split(',')]))
 
+PLUGINS_CONFIG = json.loads(os.environ.get('PLUGINS_CONFIG', '{}'))
+
 # Slack configuration
 SLACK_ENABLED = os.environ.get('TIME_ZONE', 'True').lower() == 'true'
 SLACK_TOKEN = os.environ.get('TIME_ZONE', '')
