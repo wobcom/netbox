@@ -72,8 +72,9 @@ AUTH_LDAP_GROUP_TYPE = import_group_type(os.environ.get('AUTH_LDAP_GROUP_TYPE', 
 
 g = os.environ.get('AUTH_LDAP_REQUIRE_GROUP', '[]')
 l = json.loads(g)
-l_ = map(LDAPGroupQuery, l)
-AUTH_LDAP_REQUIRE_GROUP = reduce(lambda s, e: e | s, l_)
+if len(l) > 0:
+    l_ = map(LDAPGroupQuery, l)
+    AUTH_LDAP_REQUIRE_GROUP = reduce(lambda s, e: e | s, l_)
 
 
 # Define special user types using groups. Exercise great caution when assigning superuser status.
