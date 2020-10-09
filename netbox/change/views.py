@@ -1,11 +1,11 @@
-import os
-import signal
+from cacheops.invalidation import invalidate_all
 
+from django.db.models import Q
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.http import HttpResponse
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render, reverse
-from django.views.generic import View
+from django.views.generic import View, TemplateView
 from django.views.generic.edit import CreateView
 from django.views.decorators.cache import never_cache
 from django.utils import timezone
@@ -14,6 +14,7 @@ from django.utils.safestring import mark_safe
 from utilities.views import ObjectListView, GetReturnURLMixin
 from .forms import ChangeInformationForm
 from .models import ChangeInformation, ChangeSet, AlreadyExistsError, ProvisionSet
+from .odin import odin_rollback
 from . import tables
 
 
@@ -187,3 +188,42 @@ class ProvisionSetView(PermissionRequiredMixin, View):
             'changes_table': changes_table,
             'current_time': timezone.now(),
         })
+
+
+class RollbackView(GetReturnURLMixin, PermissionRequiredMixin, TemplateView):
+    template_name = 'change/rollback_confirmation.html'
+    default_return_url = 'change:provisions'
+
+    def __init__(self, *args, **kwargs):
+        super(RollbackView, self).__init__(*args, **kwargs)
+        self.provision_set = None
+
+    def dispatch(self, request, *args, pk=None, **kwargs):
+        self.provision_set = get_object_or_404(ProvisionSet, pk=pk)
+        return super(RollbackView, self).dispatch(request, *args, pk=pk, **kwargs)
+
+    def get_permission_required(self):
+        if self.provision_set.state != ProvisionSet.FINISHED:
+            return []
+        if self.provision_set.last_rollbackable():
+            return (
+                'rollback_last_provisionset',
+                'rollback_any_provisionset',
+            )
+        return 'rollback_any_provisionset',
+
+    def get_context_data(self, **kwargs):
+        context = super(RollbackView, self).get_context_data(**kwargs)
+        context['provision_set'] = self.provision_set
+        newer_provision_sets = ProvisionSet.objects.filter(created__gt=self.provision_set.created)
+        context['reverted_changes'] = ChangeSet.objects.filter(
+            Q(status=ChangeSet.ACCEPTED) |
+            Q(status=ChangeSet.IMPLEMENTED, provision_set__in=newer_provision_sets)
+        )
+        context['return_url'] = self.get_return_url(self.request)
+        return context
+
+    def post(self, request, pk=None):
+        odin_rollback(pk)
+        invalidate_all()
+        return redirect(to=self.get_return_url(request))

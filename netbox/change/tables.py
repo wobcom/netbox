@@ -14,6 +14,15 @@ PROVISION_CREATED = '<span title="{{ record.created }}">{{ record.created | time
 
 PROVISION_CHANGE_COUNT = '<span>{{ record.changesets.count }}</span>'
 
+PROVISION_ACTIONS = '''
+{% load change %}
+{% if record|can_rollback:request.user %}
+    <a href="{% url 'change:rollback' record.pk %}" class="btn btn-warning btn-xs" title="Rollback to state of this provisioning.">
+        <i class="fa fa-undo"></i>
+    </a>
+{% endif %}
+'''
+
 CHANGE_STATUS = '{{ record.get_status_display }}'
 
 CHANGE_NAME = '{{ record.change_information.name }}'
@@ -47,6 +56,15 @@ class ProvisionTable(BaseTable):
     changes = tables.TemplateColumn(template_code=PROVISION_CHANGE_COUNT, orderable=False)
     updated = tables.TemplateColumn(template_code=PROVISION_UPDATED)
     created = tables.TemplateColumn(template_code=PROVISION_CREATED)
+    actions = tables.TemplateColumn(
+        template_code=PROVISION_ACTIONS,
+        attrs={
+            'cell': {
+                'style': 'text-align: right;',
+            },
+        },
+        orderable=False,
+    )
 
     class Meta(BaseTable.Meta):
         model = ProvisionSet

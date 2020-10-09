@@ -1,0 +1,20 @@
+{% extends 'utilities/confirmation_form.html' %}
+
+{% block title %}
+    Rollback network state
+{% endblock %}
+
+{% block message %}
+    Do you want to rollback the state of the whole network to
+    the point of <strong>Provision #{{ provision_set.pk }}</strong>?
+
+    <h5>Changes that will be reverted:</h5>
+    <ul>
+    {% for c in reverted_changes %}
+        <li>{{ c }}</li>
+    {% empty %}
+        <li>No changes will be reverted.</li>
+    {% endfor %}
+    </ul>
+    <br>
+{% endblock %}

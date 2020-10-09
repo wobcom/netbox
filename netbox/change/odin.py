@@ -48,6 +48,13 @@ def odin_commit(pid):
         raise OdinException("odin_commit: Unexpected response {}: {}".format(r.status_code, r.text))
 
 
+def odin_rollback(pid):
+    r = post(url=f"{settings.ODIN_WORKER_URL}/provision/{pid}/rollback")
+
+    if not r.ok:
+        raise OdinException("odin_rollback: Unexpected response {}: {}".format(r.status_code, r.text))
+
+
 def odin_delete(pid):
     delete(
         url=f"{settings.ODIN_WORKER_URL}/provision/{pid}"
