@@ -76,6 +76,10 @@ class ProvisionTable(BaseTable):
             'updated',
             'created',
         )
+        row_attrs = {
+            "class": lambda record: "danger" if record.reverted else "",
+            "title": "Reverted by rollback",
+        }
 
 
 class ProvisioningChangesTable(BaseTable):

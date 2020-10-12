@@ -93,6 +93,7 @@ class DeployView(PermissionRequiredMixin, View):
         super(DeployView, self).__init__(*args, **kwargs)
         self.undeployed_changesets = ChangeSet.objects.exclude(status=ChangeSet.IMPLEMENTED)\
                                                       .exclude(status=ChangeSet.IN_REVIEW)\
+                                                      .exclude(reverted=True) \
                                                       .order_by('id')
 
     def get(self, request):
@@ -224,6 +225,13 @@ class RollbackView(GetReturnURLMixin, PermissionRequiredMixin, TemplateView):
         return context
 
     def post(self, request, pk=None):
+        provision_set = get_object_or_404(ProvisionSet, pk=pk)
         odin_rollback(pk)
         invalidate_all()
+        # mark newer stuff as reverted
+        for ps in ProvisionSet.objects.filter(created__gt=provision_set.created):
+            ps.reverted = True
+            ps.save()
+            ps.changesets.update(reverted=True)
+        ChangeSet.objects.filter(provision_set=None, status=ChangeSet.ACCEPTED).update(reverted=True)
         return redirect(to=self.get_return_url(request))

@@ -113,6 +113,8 @@ class ChangeSet(models.Model):
         null=True,
     )
 
+    reverted = models.BooleanField(default=False)
+
     def __init__(self, *args, **kwargs):
         super(ChangeSet, self).__init__(*args, **kwargs)
 
@@ -251,6 +253,7 @@ class ProvisionSet(models.Model):
         default=NOT_STARTED,
         choices=state_labels.items()
     )
+    reverted = models.BooleanField(default=False)
 
     def __init__(self, *args, **kwargs):
         super(ProvisionSet, self).__init__(*args, **kwargs)
@@ -265,6 +268,8 @@ class ProvisionSet(models.Model):
         ]
 
     def can_rollback(self, user):
+        if self.reverted:
+            return False
         if self.state != self.FINISHED:
             return False
         if user.has_perm('change.rollback_any_provisionset'):
@@ -275,6 +280,8 @@ class ProvisionSet(models.Model):
             and self.last_rollbackable()
 
     def last_rollbackable(self):
+        if self.reverted:
+            return False
         return ProvisionSet.objects.filter(created__gt=self.created, state=self.FINISHED).count() <= 1
 
     def __unsafe_transition(self, state):
