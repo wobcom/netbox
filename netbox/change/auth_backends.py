@@ -19,6 +19,7 @@ def perm_available(user, perm):
     is_rollback = perm_split[-1].startswith('rollback')
 
     return inside_change \
+        or not settings.NEED_CHANGE_FOR_WRITE \
         or is_view \
         or (is_change and not is_rollback)
 
