@@ -17,7 +17,7 @@ PROVISION_CHANGE_COUNT = '<span>{{ record.changesets.count }}</span>'
 PROVISION_ACTIONS = '''
 {% load change %}
 {% if record|can_rollback:request.user %}
-    <a href="{% url 'change:rollback' record.pk %}" class="btn btn-warning btn-xs" title="Rollback to state of this provisioning.">
+    <a href="{% url 'change:rollback' record.pk %}" class="btn btn-danger btn-xs" title="Rollback to state of this provisioning.">
         <i class="fa fa-undo"></i>
     </a>
 {% endif %}

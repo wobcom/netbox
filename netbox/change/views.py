@@ -203,23 +203,28 @@ class RollbackView(GetReturnURLMixin, PermissionRequiredMixin, TemplateView):
         self.provision_set = get_object_or_404(ProvisionSet, pk=pk)
         return super(RollbackView, self).dispatch(request, *args, pk=pk, **kwargs)
 
-    def get_permission_required(self):
+    def has_permission(self):
         if self.provision_set.state != ProvisionSet.FINISHED:
-            return []
+            return ()
         if self.provision_set.last_rollbackable():
-            return (
-                'rollback_last_provisionset',
-                'rollback_any_provisionset',
-            )
-        return 'rollback_any_provisionset',
+            return any((
+                self.request.user.has_perm('change.rollback_last_provisionset'),
+                self.request.user.has_perm('change.rollback_any_provisionset'),
+            ))
+        return self.request.user.has_perm('change.rollback_any_provisionset')
 
     def get_context_data(self, **kwargs):
         context = super(RollbackView, self).get_context_data(**kwargs)
         context['provision_set'] = self.provision_set
         newer_provision_sets = ProvisionSet.objects.filter(created__gt=self.provision_set.created)
-        context['reverted_changes'] = ChangeSet.objects.filter(
-            Q(status=ChangeSet.ACCEPTED) |
-            Q(status=ChangeSet.IMPLEMENTED, provision_set__in=newer_provision_sets)
+        context['reverted_changes_table'] = tables.ProvisioningChangesTable(
+            data=ChangeSet.objects.filter(
+                (
+                    Q(status=ChangeSet.ACCEPTED) |
+                    Q(status=ChangeSet.IMPLEMENTED, provision_set__in=newer_provision_sets)
+                ) &
+                ~Q(reverted=True)
+            )
         )
         context['return_url'] = self.get_return_url(self.request)
         return context

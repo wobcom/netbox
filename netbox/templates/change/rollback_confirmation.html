@@ -6,15 +6,9 @@
 
 {% block message %}
     Do you want to rollback the state of the whole network to
-    the point of <strong>Provision #{{ provision_set.pk }}</strong>?
+    the point of <strong>Provision #{{ provision_set.pk }} ({{ provision_set.updated | timesince }} ago)</strong>?
 
-    <h5>Changes that will be reverted:</h5>
-    <ul>
-    {% for c in reverted_changes %}
-        <li>{{ c }}</li>
-    {% empty %}
-        <li>No changes will be reverted.</li>
-    {% endfor %}
-    </ul>
+    <h4>Changes that will be reverted:</h4>
+    {% include 'inc/table.html' with table=reverted_changes_table %}
     <br>
 {% endblock %}
