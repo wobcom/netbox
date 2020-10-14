@@ -12,16 +12,19 @@ def perm_available(user, perm):
     """
     change_state = ChangeSet.change_state(user)
 
-    if change_state != OWN_CHANGE \
-            and settings.NEED_CHANGE_FOR_WRITE \
-            and not perm.split('.')[-1].startswith('view')\
-            and not perm.split('.')[0] == 'change':
-        return False
-    return True
+    inside_change = change_state == OWN_CHANGE
+    perm_split = perm.split('.')
+    is_view = perm_split[-1].startswith('view')
+    is_change = perm_split[0] == 'change'
+    is_rollback = perm_split[-1].startswith('rollback')
+
+    return inside_change \
+        or not settings.NEED_CHANGE_FOR_WRITE \
+        or is_view \
+        or (is_change and not is_rollback)
 
 
 def proxy_backend_factory(backend_string):
-
     class ProxyBackend(import_string(backend_string)):
         def has_perm(self, user_obj, perm, obj=None):
             if perm_available(user_obj, perm):

@@ -58,7 +58,7 @@ class ChangeInformation(models.Model):
 
 class ChangeSetManager(models.Manager):
     def get_queryset(self):
-        return super(ChangeSetManager, self).get_queryset()\
+        return super(ChangeSetManager, self).get_queryset() \
             .select_related('change_information', 'user')
 
 
@@ -112,6 +112,8 @@ class ChangeSet(models.Model):
         blank=True,
         null=True,
     )
+
+    reverted = models.BooleanField(default=False)
 
     def __init__(self, *args, **kwargs):
         super(ChangeSet, self).__init__(*args, **kwargs)
@@ -181,6 +183,7 @@ class ProvStateMachine:
     - We save the provision set in the exit block as well as every time transition_ is called
       Keep this in mind if you maintain a reference to the same prov_set.
     """
+
     def __init__(self, prov_set):
         self.prov_set = prov_set
 
@@ -250,12 +253,36 @@ class ProvisionSet(models.Model):
         default=NOT_STARTED,
         choices=state_labels.items()
     )
+    reverted = models.BooleanField(default=False)
 
     def __init__(self, *args, **kwargs):
         super(ProvisionSet, self).__init__(*args, **kwargs)
         active = self.active_exists()
         if active and not self.pk:
             raise AlreadyExistsError('An unfinished provision already exists.', active=active[0])
+
+    class Meta:
+        permissions = [
+            ('rollback_last_provisionset', 'Can rollback the last ProvisionSet.'),
+            ('rollback_any_provisionset', 'Can rollback all ProvisionSets.'),
+        ]
+
+    def can_rollback(self, user):
+        if self.reverted:
+            return False
+        if self.state != self.FINISHED:
+            return False
+        if user.has_perm('change.rollback_any_provisionset'):
+            return True
+        # users with rollback_last_provisionset permission can only
+        # rollback to the last two provisionsets
+        return user.has_perm('change.rollback_last_provisionset') \
+            and self.last_rollbackable()
+
+    def last_rollbackable(self):
+        if self.reverted:
+            return False
+        return ProvisionSet.objects.filter(created__gt=self.created, state=self.FINISHED).count() <= 1
 
     def __unsafe_transition(self, state):
         """
@@ -379,8 +406,8 @@ class ProvisionSet(models.Model):
 
 class ChangedObjectManager(models.Manager):
     def get_queryset(self):
-        return super(ChangedObjectManager, self).get_queryset()\
-            .select_related('changed_object_type', 'user')\
+        return super(ChangedObjectManager, self).get_queryset() \
+            .select_related('changed_object_type', 'user') \
             .prefetch_related('changed_object')
 
 

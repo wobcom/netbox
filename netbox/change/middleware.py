@@ -35,6 +35,7 @@ class FieldChangeMiddleware(object):
         if request.user.has_perm('change.add_provisionset'):
             request.undeployed_changeset_count = ChangeSet.objects.exclude(status=ChangeSet.IMPLEMENTED) \
                 .exclude(status=ChangeSet.IN_REVIEW) \
+                .exclude(reverted=True) \
                 .count()
 
         # Set request attributes

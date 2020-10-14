@@ -26,6 +26,9 @@
         {% block title %}Provisioning #{{ provision_set.pk }}{% endblock %}
         <small>
             {% include 'change/inc/provision_set_label.html' %}
+            {% if provision_set.reverted %}
+                <span class="label label-danger" style="margin-left: 0.5em">Reverted</span>
+            {% endif %}
         </small>
     </h1>
     <p>
