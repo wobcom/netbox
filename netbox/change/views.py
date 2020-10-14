@@ -40,6 +40,9 @@ class ChangeFormView(GetReturnURLMixin, PermissionRequiredMixin, CreateView):
         return self.get_return_url(self.request)
 
     def form_valid(self, form):
+        if ChangeSet.objects.filter(active=True, user=self.request.user).exists():
+            raise HttpResponse("An active change for you already exists.", status=409)
+
         result = super(ChangeFormView, self).form_valid(form)
 
         c = ChangeSet(user=self.request.user, active=True)
