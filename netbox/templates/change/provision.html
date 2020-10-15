@@ -92,52 +92,10 @@
                 window.ReactComponents.ProvisionTerminal,
                 {
                     provisionId: "{{ provision_set.pk }}",
-                    {% if provision_set.status != provision_set.RUNNING %}
-                        {% autoescape off %}
-                            initialContent: {{ provision_set.output_log | stringformat:'r' }}.replace(/\n/g, '\r\n'),
-                        {% endautoescape %}
-                    {% else %}
-                        initialContent: "",
-                    {% endif %}
                 }
             ),
             document.getElementById('react-terminal'),
         );
-        var term = new Terminal({
-            rows: 50,
-            disableStdin: true,
-            scrollback: 1000000,
-            rendererType: "dom",
-            convertEol: true,
-            theme: {
-                selection: 'rgba(255, 124, 0, 0.5)',
-            }
-        });
-        var fit_addon = new FitAddon.FitAddon();
-        var web_links_addon = new WebLinksAddon.WebLinksAddon();
-        term.attachCustomKeyEventHandler((_e) => false);
-        term.loadAddon(fit_addon);
-        term.loadAddon(web_links_addon);
-        term.open(document.getElementById('terminal_output'));
-        fit_addon.fit();
-
-        var path = '/ws/change/provisions/{{ provision_set.pk }}/logs/';
-        var url = new URL(path, window.location.href);
-        url.protocol = url.protocol.replace('http', 'ws');
-
-        var sock = new WebSocket(url);
-        sock.onmessage = (ev) => {
-            const data = ev.data;
-            if (typeof data === 'string') {
-                term.write(data);
-            } else {
-                let reader = new FileReader()
-                reader.addEventListener('loadend', () => {
-                    term.write(reader.result)
-                })
-                reader.readAsBinaryString(data)
-            }
-        };
     })
 
     </script>
