@@ -14,7 +14,7 @@
   },
   "scripts": {
     "watch": "parcel watch netbox/project-static/wobcom/stub.html --target browser --out-dir netbox/project-static/wobcom/dist/",
-    "build": "parcel watch netbox/project-static/wobcom/stub.html --target browser --no-content-hash --out-dir netbox/project-static/wobcom/dist/"
+    "build": "parcel build netbox/project-static/wobcom/stub.html --target browser --no-content-hash --out-dir netbox/project-static/wobcom/dist/"
   },
   "devDependencies": {
     "parcel-bundler": "^1.12.4"
