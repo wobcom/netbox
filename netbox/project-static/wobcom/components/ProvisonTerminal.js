@@ -2,7 +2,6 @@ import * as React from "react";
 import {Terminal} from "xterm";
 import {FitAddon} from "xterm-addon-fit";
 import {WebLinksAddon} from "xterm-addon-web-links";
-
 import PropTypes from "prop-types";
 
 export class ProvisionTerminal extends React.Component {
