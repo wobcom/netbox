@@ -1,6 +1,7 @@
 import * as React from "react";
 import {connect} from "react-redux";
 import {Dropdown, Glyphicon, MenuItem} from "react-bootstrap";
+import PropTypes from "prop-types";
 
 class MenuAlert extends React.Component {
     render() {
@@ -46,6 +47,16 @@ class MenuAlert extends React.Component {
             )
         }
         return (<li/>)
+    }
+}
+
+MenuAlert.propTypes = {
+    status: {
+        provisioning: {
+            pk: PropTypes.number,
+            link: PropTypes.string,
+        },
+        usersInChange: PropTypes.arrayOf(PropTypes.string),
     }
 }
 

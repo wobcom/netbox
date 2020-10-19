@@ -2,6 +2,7 @@ import * as React from "react";
 import {connect} from "react-redux";
 import * as L from "partial.lenses";
 import {Button, Glyphicon, Modal} from "react-bootstrap";
+import PropTypes from "prop-types"
 
 
 class ProvisionTerminateButton extends React.Component {
@@ -44,6 +45,11 @@ class ProvisionTerminateButton extends React.Component {
             </span>
         )
     }
+}
+
+ProvisionTerminateButton.propTypes = {
+    show: PropTypes.bool,
+    form: PropTypes.string,
 }
 
 export default connect(

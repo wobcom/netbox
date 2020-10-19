@@ -1,7 +1,7 @@
 import * as React from "react";
 import {Label} from "react-bootstrap";
 import {connect} from "react-redux";
-import * as L from "partial.lenses"
+import PropTypes from "prop-types";
 
 class ProvisionSetStatus extends React.Component {
 
@@ -19,8 +19,8 @@ class ProvisionSetStatus extends React.Component {
     }
 
     render() {
-        if (this.props.status.hasOwnProperty("id") &&
-            this.props.status.hasOwnProperty("str")) {
+        if ("id" in this.props.status &&
+            "string" in this.props.status) {
             return (
                 <Label bsStyle={this.styleLookup(this.props.status.id)}>
                     {this.props.status.str}
@@ -28,6 +28,13 @@ class ProvisionSetStatus extends React.Component {
             )
         }
         return null
+    }
+}
+
+ProvisionSetStatus.propTypes = {
+    status: {
+        id: PropTypes.string,
+        str: PropTypes.string,
     }
 }
 

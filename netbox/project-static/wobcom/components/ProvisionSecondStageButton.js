@@ -2,6 +2,7 @@ import * as React from "react";
 import {connect} from "react-redux";
 import * as L from "partial.lenses";
 import {Button, Glyphicon} from "react-bootstrap";
+import PropTypes from "prop-types";
 
 
 class ProvisionSecondStageButton extends React.Component {
@@ -13,6 +14,10 @@ class ProvisionSecondStageButton extends React.Component {
             </Button>
         )
     }
+}
+
+ProvisionSecondStageButton.propTypes = {
+    show: PropTypes.bool,
 }
 
 export default connect(

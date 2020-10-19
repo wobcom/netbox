@@ -3,6 +3,8 @@ import {Terminal} from "xterm";
 import {FitAddon} from "xterm-addon-fit";
 import {WebLinksAddon} from "xterm-addon-web-links";
 
+import PropTypes from "prop-types";
+
 export class ProvisionTerminal extends React.Component {
     constructor(props) {
         super(props);
@@ -57,4 +59,8 @@ export class ProvisionTerminal extends React.Component {
             <div ref={this.termRef}/>
         )
     }
+}
+
+ProvisionTerminal.propTypes = {
+    provisionId: PropTypes.number,
 }
