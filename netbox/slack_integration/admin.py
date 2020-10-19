@@ -2,12 +2,13 @@ from django.contrib import admin
 from django.contrib.admin.widgets import FilteredSelectMultiple
 from django import forms
 
+from codemirror2.widgets import AdminCodeMirrorEditor
+
 from netbox.admin import admin_site
 
 from extras.admin import order_content_types
 
 from .models import SlackChannel, SlackMessage
-from .widgets import TemplateTextareaWidget
 
 
 class SlackChannelForm(forms.ModelForm):
@@ -37,12 +38,19 @@ class SlackMessageForm(forms.ModelForm):
                 verbose_name='Object types',
                 is_stacked=False,
             ),
-            'template': TemplateTextareaWidget()
+            'template': AdminCodeMirrorEditor(
+                modes=['django'],
+                options={
+                    'mode': 'django',
+                    'lineNumbers': True,
+                    'matchBrackets': True,
+                    'autoCloseBrackets': True,
+                },
+            )
         }
 
     def __init__(self, *args, **kwargs):
         super(SlackMessageForm, self).__init__(*args, **kwargs)
-
         if 'object_types' in self.fields:
             order_content_types(self.fields['object_types'])
 

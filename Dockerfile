@@ -31,6 +31,20 @@ COPY ./requirements.txt /
 RUN pip install --prefix="/install" --no-warn-script-location -r /requirements.txt
 
 ###
+# JavaScript builder
+###
+
+FROM node:alpine as js_builder
+
+COPY . /opt/netbox
+
+WORKDIR /opt/netbox
+
+RUN yarn install
+
+RUN yarn build
+
+###
 # Main stage
 ###
 
@@ -53,6 +67,10 @@ WORKDIR /opt
 COPY --from=builder /install /usr/local
 
 COPY netbox/ /opt/netbox
+
+RUN rm -rf /opt/netbox/project-static/wobcom/*
+
+COPY --from=js_builder /opt/netbox/netbox/project-static/wobcom/dist /opt/netbox/project-static/wobcom/dist
 
 COPY docker/entrypoint.sh /opt/netbox/docker-entrypoint.sh
 COPY docker/nginx.conf /etc/netbox-nginx/nginx.conf

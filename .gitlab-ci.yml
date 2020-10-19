@@ -23,6 +23,15 @@ lint:
     - "venv/bin/pip install pycodestyle"
     - "venv/bin/pycodestyle --ignore=W504,E501 netbox/"
 
+eslint:
+  stage: test
+  image: node:alpine
+  tags:
+    - docker
+  script:
+    - "yarn install"
+    - "yarn run eslint --ignore-pattern netbox/project-static/wobcom/dist netbox/project-static/wobcom/wobcom.js netbox/project-static/wobcom"
+
 tests:
   stage: test
   image: python:3.6

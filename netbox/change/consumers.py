@@ -6,11 +6,14 @@ from threading import Thread
 
 from channels.generic.websocket import WebsocketConsumer
 from channels.exceptions import DenyConnection
-
 from asgiref.sync import async_to_sync
 
+from django.shortcuts import reverse
+from django.db.models.signals import post_save
+
 from extras.signals import purge_changelog
-from .models import ProvisionSet, ProvStateMachine
+from .models import ProvisionSet, ProvStateMachine, ChangeSet
+from .signals import provision_status_message, users_in_change_message
 
 
 EOF_LENGTH = 8
@@ -160,31 +163,73 @@ class LogfileConsumer(WebsocketConsumer):
                 time.sleep(0.05)
 
 
-class ProvisionStatusConsumer(WebsocketConsumer):
+class GlobalProvisionStatusConsumer(WebsocketConsumer):
 
     def connect(self):
         self.accept()
-
-        message = {
-            'provisioning_set_pk': None,
-            'provision_status': '0'
-        }
-
-        running_provision_set = ProvisionSet.objects.filter(state__in=(ProvisionSet.RUNNING,
-                                                                       ProvisionSet.REVIEWING))
-
-        if running_provision_set.exists():
-            message = {
-                'provisioning_set_pk': running_provision_set.first().pk,
-                'provision_status': '1',
-            }
-
-        self.send(json.dumps(message))
-
         async_to_sync(self.channel_layer.group_add)("provision_status", self.channel_name)
+        self.provision_status()
 
     def disconnect(self, code):
         async_to_sync(self.channel_layer.group_discard)("provision_status", self.channel_name)
 
-    def provision_status_message(self, event):
-        self.send(event['text'])
+    def provision_status(self):
+        running_provision_set = ProvisionSet.objects.filter(state__in=(ProvisionSet.RUNNING,
+                                                                       ProvisionSet.PREPARE,
+                                                                       ProvisionSet.COMMIT,
+                                                                       ProvisionSet.REVIEWING))
+        if running_provision_set.exists():
+            provision_set = running_provision_set.first()
+            message = {
+                'status': True,
+                'link': reverse('change:provision_set', kwargs={'pk': provision_set.pk}),
+            }
+        else:
+            message = {
+                'status': False,
+                'link': None,
+            }
+
+        self.send(json.dumps(message))
+
+
+class ProvisionStatusConsumer(WebsocketConsumer):
+    def __init__(self, *args, **kwargs):
+        super(ProvisionStatusConsumer, self).__init__(*args, **kwargs)
+
+        self.provision_set_pk = None
+
+    def connect(self):
+
+        try:
+            provision_set = ProvisionSet.objects.get(pk=self.scope['url_route']['kwargs']['pk'])
+            self.provision_set_pk = provision_set.pk
+        except ProvisionSet.DoesNotExist:
+            self.send('Not found')
+            raise DenyConnection('Provision set not found')
+
+        self.accept()
+
+        async_to_sync(self.channel_layer.group_add)("provision_status", self.channel_name)
+
+        self.send(text_data=json.dumps(provision_status_message(provision_set)))
+
+    def disconnect(self, code):
+        async_to_sync(self.channel_layer.group_discard)("provision_status", self.channel_name)
+
+    def provision_status(self, event):
+        if event["provision_set_pk"] == self.provision_set_pk:
+            self.send(text_data=json.dumps(event["message"]))
+
+
+class UsersInChangeConsumer(WebsocketConsumer):
+    def connect(self):
+        self.accept()
+        async_to_sync(self.channel_layer.group_add)("provision_status", self.channel_name)
+        self.send(text_data=json.dumps(users_in_change_message()))
+
+    def disconnect(self, code):
+        async_to_sync(self.channel_layer.group_discard)("provision_status", self.channel_name)
+
+    def users_list(self, event):
+        self.send(text_data=json.dumps(event["message"]))
