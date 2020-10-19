@@ -61,5 +61,5 @@ export class ProvisionTerminal extends React.Component {
 }
 
 ProvisionTerminal.propTypes = {
-    provisionId: PropTypes.number,
+    provisionId: PropTypes.string,
 }

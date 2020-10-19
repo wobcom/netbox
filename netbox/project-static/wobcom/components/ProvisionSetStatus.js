@@ -20,7 +20,7 @@ class ProvisionSetStatus extends React.Component {
 
     render() {
         if ("id" in this.props.status &&
-            "string" in this.props.status) {
+            "str" in this.props.status) {
             return (
                 <Label bsStyle={this.styleLookup(this.props.status.id)}>
                     {this.props.status.str}
@@ -32,10 +32,10 @@ class ProvisionSetStatus extends React.Component {
 }
 
 ProvisionSetStatus.propTypes = {
-    status: {
+    status: PropTypes.shape({
         id: PropTypes.string,
         str: PropTypes.string,
-    }
+    }),
 }
 
 export default connect(
