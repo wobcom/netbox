@@ -589,20 +589,7 @@
                             </div>
                         </form>
                     </li>
-                    <li style="background: #f0ad4e;" class="dropdown" id="alert-dropdown">
-                        <a href="#" style="color: white;" class="dropdown-toggle" data-toggle="dropdown"><i class="glyphicon glyphicon-warning-sign"></i></a>
-                        <div class="dropdown-menu">
-                            <p id="provision-alert"><i class="glyphicon glyphicon-cog" style="animation: spin 2s linear infinite"></i> Deployment in progress.</p>
-                            {% if request.foreign_changes %}
-                                <b>These people are currently making a change:</b>
-                                <ul>
-                                {% for changeset in request.foreign_changes %}
-                                    <li>{{ changeset.user.username }}</li>
-                                {% endfor %}
-                                </ul>
-                            {% endif %}
-                        </div>
-                    </li>
+                    <span id="menu-alert"></span>
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown" title="{{ request.user }}" role="button" aria-haspopup="true" aria-expanded="false">
                             <i class="fa fa-user"></i>

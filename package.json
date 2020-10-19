@@ -1,13 +1,15 @@
 {
   "dependencies": {
     "components": "^0.1.0",
+    "partial.lenses": "^14.17.0",
     "react": "^16.13.1",
     "react-bootstrap": "0.33.1",
     "react-dom": "^16.13.1",
+    "react-redux": "^7.2.0",
     "react-xterm": "^2.0.4",
+    "redux": "^4.0.5",
     "xterm": "^4.8.1",
     "xterm-addon-fit": "^0.4.0",
-    "xterm-addon-search": "^0.7.0",
     "xterm-addon-web-links": "^0.4.0"
   },
   "scripts": {
