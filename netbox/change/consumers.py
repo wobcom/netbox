@@ -225,11 +225,11 @@ class ProvisionStatusConsumer(WebsocketConsumer):
 class UsersInChangeConsumer(WebsocketConsumer):
     def connect(self):
         self.accept()
-        async_to_sync(self.channel_layer.group_add)("provision_status", self.channel_name)
+        async_to_sync(self.channel_layer.group_add)("users_in_change", self.channel_name)
         self.send(text_data=json.dumps(users_in_change_message()))
 
     def disconnect(self, code):
-        async_to_sync(self.channel_layer.group_discard)("provision_status", self.channel_name)
+        async_to_sync(self.channel_layer.group_discard)("users_in_change", self.channel_name)
 
     def users_list(self, event):
         self.send(text_data=json.dumps(event["message"]))
