@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "components": "^0.1.0",
+    "jquery": "^3.5.1",
     "partial.lenses": "^14.17.0",
     "prop-types": "^15.7.2",
     "react": "^16.8.3",

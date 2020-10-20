@@ -2,9 +2,10 @@ import * as React from "react";
 import {connect} from "react-redux";
 import {Dropdown, Glyphicon, MenuItem} from "react-bootstrap";
 import PropTypes from "prop-types";
+import $ from "jquery"
 
 class MenuAlert extends React.Component {
-    componentDidUpdate(prevProps, prevState, snapshot) {
+    componentDidUpdate() {
         // Prevent Safari rendering issue
         $(".navbar-right").hide().show(0)
     }
