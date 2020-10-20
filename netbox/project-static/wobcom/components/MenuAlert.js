@@ -4,6 +4,11 @@ import {Dropdown, Glyphicon, MenuItem} from "react-bootstrap";
 import PropTypes from "prop-types";
 
 class MenuAlert extends React.Component {
+    componentDidUpdate(prevProps, prevState, snapshot) {
+        // Prevent Safari rendering issue
+        $(".navbar-right").hide().show(0)
+    }
+
     render() {
         // provision status
         let provisioning = null
@@ -18,13 +23,13 @@ class MenuAlert extends React.Component {
         // users in change
         let usersInChange = null
         if (this.props.status.usersInChange.length > 0) {
-            let users = []
-            this.props.status.usersInChange.forEach((username) => {
-                users.push(<li>{username}</li>)
+            let users = this.props.status.usersInChange.map((username, i) => {
+                return <li key={i}>{username}</li>
             })
-            usersInChange = []
-            usersInChange.push(<b>These people are currently making a change:</b>)
-            usersInChange.push(<ul>{users}</ul>)
+            usersInChange = [
+                <b key={1}>These people are currently making a change:</b>,
+                <ul key={2}>{users}</ul>,
+            ]
         }
 
         if (provisioning !== null || usersInChange !== null) {
