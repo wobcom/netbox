@@ -53,7 +53,7 @@ class MenuAlert extends React.Component {
 MenuAlert.propTypes = {
     status: PropTypes.shape({
         provisioning: PropTypes.shape({
-            pk: PropTypes.number,
+            status: PropTypes.bool,
             link: PropTypes.string,
         }),
         usersInChange: PropTypes.arrayOf(PropTypes.string),
