@@ -292,18 +292,8 @@ class ProvisionSet(models.Model):
         """
         self.state = state
         self.__save_state()
-        self.__notify_state()
         if self.state == self.FINISHED:
             self.changesets.update(status=ChangeSet.IMPLEMENTED)
-
-    def __notify_state(self):
-        async_to_sync(get_channel_layer().group_send)('provision_status', {
-            'type': 'provision_status_message',
-            'text': json.dumps({
-                'provision_set_pk': self.pk,
-                'provision_status': self.state,
-            })
-        })
 
     def transition(self, to):
         """
