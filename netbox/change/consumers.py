@@ -168,12 +168,12 @@ class GlobalProvisionStatusConsumer(WebsocketConsumer):
     def connect(self):
         self.accept()
         async_to_sync(self.channel_layer.group_add)("provision_status", self.channel_name)
-        self.provision_status()
+        self.send_provision_status()
 
     def disconnect(self, code):
         async_to_sync(self.channel_layer.group_discard)("provision_status", self.channel_name)
 
-    def provision_status(self):
+    def send_provision_status(self):
         running_provision_set = ProvisionSet.objects.filter(state__in=(ProvisionSet.RUNNING,
                                                                        ProvisionSet.PREPARE,
                                                                        ProvisionSet.COMMIT,
@@ -192,6 +192,9 @@ class GlobalProvisionStatusConsumer(WebsocketConsumer):
 
         self.send(json.dumps(message))
 
+    def provision_status(self, event):
+        self.send_provision_status()
+
 
 class ProvisionStatusConsumer(WebsocketConsumer):
     def __init__(self, *args, **kwargs):
@@ -205,7 +208,6 @@ class ProvisionStatusConsumer(WebsocketConsumer):
             provision_set = ProvisionSet.objects.get(pk=self.scope['url_route']['kwargs']['pk'])
             self.provision_set_pk = provision_set.pk
         except ProvisionSet.DoesNotExist:
-            self.send('Not found')
             raise DenyConnection('Provision set not found')
 
         self.accept()
