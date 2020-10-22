@@ -11,9 +11,11 @@ variables:
 stages:
   - validate
   - build
+  - push_unstable
   - test
   - push
   - lint
+  - cleanup
 
 check_version:
   stage: validate
@@ -29,13 +31,25 @@ build:
   stage: build
   tags:
     - docker-build
-  only:
-    - tags
   dependencies:
     - check_version
   script:
+    - docker build --cache-from $CI_REGISTRY_IMAGE:latest --build-arg CI_JOB_TOKEN --tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA  .
+    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+    - docker push $CI_REGISTRY_IMAGE:latest_$CI_COMMIT_REF_NAME
+    - docker logout $CI_REGISTRY
+
+push_unstable:
+  stage: push_unstable
+  tags:
+    - docker-build
+  only:
+    - tags
+  dependencies:
+    - build
+  script:
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-    - docker build --cache-from $CI_REGISTRY_IMAGE:latest --build-arg CI_JOB_TOKEN --tag $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME --tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA --tag $CI_REGISTRY_IMAGE:latest --tag $CI_REGISTRY_IMAGE:latest_unstable .
+    - docker tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA $CI_REGISTRY_IMAGE:latest_unstable
     - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
     - docker push $CI_REGISTRY_IMAGE:latest_unstable
     - docker logout $CI_REGISTRY
@@ -45,6 +59,8 @@ tests:
   image: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
   tags:
     - docker
+  dependencies:
+    - build
   script:
     - python /opt/netbox/manage.py test
 
@@ -58,10 +74,11 @@ push_prod_tags:
       - tests
     script:
       - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+      - docker tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
+      - docker tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA $CI_REGISTRY_IMAGE:latest
       - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
       - docker push $CI_REGISTRY_IMAGE:latest
       - docker logout $CI_REGISTRY
-      - docker image rm --force $CI_REGISTRY_IMAGE
 
 lint:
   stage: lint
@@ -82,3 +99,12 @@ eslint:
   script:
     - "yarn install"
     - "yarn run eslint --ignore-pattern netbox/project-static/wobcom/dist netbox/project-static/wobcom/wobcom.js netbox/project-static/wobcom"
+
+cleanup:
+  stage: cleanup
+  tags:
+    - docker-build
+  dependencies:
+    - build
+  script:
+    - "docker image ls $CI_REGISTRY_IMAGE --quiet | xargs -I {} docker image rm -f {}"
