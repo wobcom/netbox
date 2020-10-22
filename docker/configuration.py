@@ -222,8 +222,8 @@ PLUGINS = list(filter(None, [a.strip() for a in os.environ.get('PLUGINS', '').sp
 PLUGINS_CONFIG = json.loads(os.environ.get('PLUGINS_CONFIG', '{}'))
 
 # Slack configuration
-SLACK_ENABLED = os.environ.get('TIME_ZONE', 'True').lower() == 'true'
-SLACK_TOKEN = os.environ.get('TIME_ZONE', '')
+SLACK_ENABLED = os.environ.get('SLACK_ENABLED', 'True').lower() == 'true'
+SLACK_TOKEN = os.environ.get('SLACK_TOKEN', '')
 
 NEED_CHANGE_FOR_WRITE = os.environ.get('NEED_CHANGE_FOR_WRITE', 'True').lower() == 'true'
 
