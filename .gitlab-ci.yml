@@ -35,9 +35,6 @@ build:
     - check_version
   script:
     - docker build --cache-from $CI_REGISTRY_IMAGE:latest --build-arg CI_JOB_TOKEN --tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA  .
-    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
-    - docker push $CI_REGISTRY_IMAGE:latest_$CI_COMMIT_REF_NAME
-    - docker logout $CI_REGISTRY
 
 push_unstable:
   stage: push_unstable
