@@ -228,7 +228,10 @@ SLACK_TOKEN = os.environ.get('SLACK_TOKEN', '')
 NEED_CHANGE_FOR_WRITE = os.environ.get('NEED_CHANGE_FOR_WRITE', 'True').lower() == 'true'
 
 # Deployment integration
-TOPDESK_URL = os.environ.get('TOPDESK_URL', '')
+TOPDESK_URL = os.environ.get('TOPDESK_URL', None)
+TOPDESK_TOKEN = os.environ.get('TOPDESK_TOKEN', None)
+TOPDESK_USER = os.environ.get('TOPDESK_USER', None)
+TOPDESK_SSL_VERIFICATION = os.environ.get('TOPDESK_SSL_VERIFICATION', 'True').lower() == 'true'
 
 ODIN_EXTRA_ARGS = json.loads(os.environ.get('ODIN_EXTRA_ARGS', "[]"))
 ODIN_WORKER_URL = os.environ.get('ODIN_WORKER_URL', '')
