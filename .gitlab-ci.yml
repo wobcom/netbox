@@ -25,7 +25,7 @@ lint:
 
 eslint:
   stage: test
-  image: node:alpine
+  image: node:latest
   tags:
     - docker
   script:
