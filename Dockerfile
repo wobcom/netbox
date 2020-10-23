@@ -34,7 +34,7 @@ RUN pip install --prefix="/install" --no-warn-script-location -r /requirements.t
 # JavaScript builder
 ###
 
-FROM node:alpine as js_builder
+FROM node:latest as js_builder
 
 COPY . /opt/netbox
 
