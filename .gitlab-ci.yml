@@ -55,7 +55,9 @@ push_unstable:
 
 tests:
   stage: test
-  image: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+  image:
+    name: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+    entrypoint: ["/bin/bash"]
   tags:
     - docker
   dependencies:
