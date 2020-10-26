@@ -92,7 +92,7 @@ lint:
 
 eslint:
   stage: lint
-  image: node:alpine
+  image: node:latest
   tags:
     - docker
   script:
