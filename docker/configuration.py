@@ -54,26 +54,26 @@ SECRET_KEY = os.environ.get('SECRET_KEY', read_secret('secret_key'))
 REDIS = {
     'tasks': {
         'HOST': os.environ.get('REDIS_HOST', 'localhost'),
-        'PORT': int(os.environ.get('REDIS_PORT', 6379)),
+        'PORT': int(os.environ.get('REDIS_PORT', '6379')),
         'PASSWORD': os.environ.get('REDIS_PASSWORD', read_secret('redis_password')),
-        'DATABASE': int(os.environ.get('REDIS_DATABASE', 0)),
-        'DEFAULT_TIMEOUT': int(os.environ.get('REDIS_TIMEOUT', 300)),
+        'DATABASE': int(os.environ.get('REDIS_DATABASE', '0')),
+        'DEFAULT_TIMEOUT': int(os.environ.get('REDIS_TIMEOUT', '300')),
         'SSL': os.environ.get('REDIS_SSL', 'False').lower() == 'true',
     },
     'webhooks': { # legacy setting, can be removed after Netbox seizes support for it
         'HOST': os.environ.get('REDIS_HOST', 'localhost'),
-        'PORT': int(os.environ.get('REDIS_PORT', 6379)),
+        'PORT': int(os.environ.get('REDIS_PORT', '6379')),
         'PASSWORD': os.environ.get('REDIS_PASSWORD', read_secret('redis_password')),
-        'DATABASE': int(os.environ.get('REDIS_DATABASE', 0)),
-        'DEFAULT_TIMEOUT': int(os.environ.get('REDIS_TIMEOUT', 300)),
+        'DATABASE': int(os.environ.get('REDIS_DATABASE', '0')),
+        'DEFAULT_TIMEOUT': int(os.environ.get('REDIS_TIMEOUT', '300')),
         'SSL': os.environ.get('REDIS_SSL', 'False').lower() == 'true',
     },
     'caching': {
         'HOST': os.environ.get('REDIS_CACHE_HOST', os.environ.get('REDIS_HOST', 'localhost')),
-        'PORT': int(os.environ.get('REDIS_CACHE_PORT', os.environ.get('REDIS_PORT', 6379))),
+        'PORT': int(os.environ.get('REDIS_CACHE_PORT', os.environ.get('REDIS_PORT', '6379'))),
         'PASSWORD': os.environ.get('REDIS_CACHE_PASSWORD', os.environ.get('REDIS_PASSWORD', read_secret('redis_cache_password'))),
-        'DATABASE': int(os.environ.get('REDIS_CACHE_DATABASE', 1)),
-        'DEFAULT_TIMEOUT': int(os.environ.get('REDIS_CACHE_TIMEOUT', os.environ.get('REDIS_TIMEOUT', 300))),
+        'DATABASE': int(os.environ.get('REDIS_CACHE_DATABASE', '1')),
+        'DEFAULT_TIMEOUT': int(os.environ.get('REDIS_CACHE_TIMEOUT', os.environ.get('REDIS_TIMEOUT', '300'))),
         'SSL': os.environ.get('REDIS_CACHE_SSL', os.environ.get('REDIS_SSL', 'False')).lower() == 'true',
     },
 }
@@ -103,10 +103,10 @@ BANNER_LOGIN = os.environ.get('BANNER_LOGIN', '')
 BASE_PATH = os.environ.get('BASE_PATH', '')
 
 # Cache timeout in seconds. Set to 0 to dissable caching. Defaults to 900 (15 minutes)
-CACHE_TIMEOUT = int(os.environ.get('CACHE_TIMEOUT', 900))
+CACHE_TIMEOUT = int(os.environ.get('CACHE_TIMEOUT', '900'))
 
 # Maximum number of days to retain logged changes. Set to 0 to retain changes indefinitely. (Default: 90)
-CHANGELOG_RETENTION = int(os.environ.get('CHANGELOG_RETENTION', 90))
+CHANGELOG_RETENTION = int(os.environ.get('CHANGELOG_RETENTION', '90'))
 
 # API Cross-Origin Resource Sharing (CORS) settings. If CORS_ORIGIN_ALLOW_ALL is set to True, all origins will be
 # allowed. Otherwise, define a list of allowed origins using either CORS_ORIGIN_WHITELIST or
@@ -123,10 +123,10 @@ DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 # Email settings
 EMAIL = {
     'SERVER': os.environ.get('EMAIL_SERVER', 'localhost'),
-    'PORT': int(os.environ.get('EMAIL_PORT', 25)),
+    'PORT': int(os.environ.get('EMAIL_PORT', '25')),
     'USERNAME': os.environ.get('EMAIL_USERNAME', ''),
     'PASSWORD': os.environ.get('EMAIL_PASSWORD', read_secret('email_password')),
-    'TIMEOUT': int(os.environ.get('EMAIL_TIMEOUT', 10)),  # seconds
+    'TIMEOUT': int(os.environ.get('EMAIL_TIMEOUT', '10')),  # seconds
     'FROM_EMAIL': os.environ.get('EMAIL_FROM', ''),
     'USE_SSL': os.environ.get('EMAIL_USE_SSL', 'False').lower() == 'true',
     'USE_TLS': os.environ.get('EMAIL_USE_TLS', 'False').lower() == 'true',
@@ -161,7 +161,7 @@ MAINTENANCE_MODE = os.environ.get('MAINTENANCE_MODE', 'False').lower() == 'true'
 # An API consumer can request an arbitrary number of objects =by appending the "limit" parameter to the URL (e.g.
 # "?limit=1000"). This setting defines the maximum limit. Setting it to 0 or None will allow an API consumer to request
 # all objects by specifying "?limit=0".
-MAX_PAGE_SIZE = int(os.environ.get('MAX_PAGE_SIZE', 1000))
+MAX_PAGE_SIZE = int(os.environ.get('MAX_PAGE_SIZE', '1000'))
 
 # The file path where uploaded media such as image attachments are stored. A trailing slash is not needed. Note that
 # the default value of this setting is derived from the installed location.
@@ -175,14 +175,14 @@ NAPALM_USERNAME = os.environ.get('NAPALM_USERNAME', '')
 NAPALM_PASSWORD = os.environ.get('NAPALM_PASSWORD', read_secret('napalm_password'))
 
 # NAPALM timeout (in seconds). (Default: 30)
-NAPALM_TIMEOUT = int(os.environ.get('NAPALM_TIMEOUT', 30))
+NAPALM_TIMEOUT = int(os.environ.get('NAPALM_TIMEOUT', '30'))
 
 # NAPALM optional arguments (see http://napalm.readthedocs.io/en/latest/support/#optional-arguments). Arguments must
 # be provided as a dictionary.
 NAPALM_ARGS = {}
 
 # Determine how many objects to display per page within a list. (Default: 50)
-PAGINATE_COUNT = int(os.environ.get('PAGINATE_COUNT', 50))
+PAGINATE_COUNT = int(os.environ.get('PAGINATE_COUNT', '50'))
 
 # When determining the primary IP address for a device, IPv6 is preferred over IPv4 by default. Set this to True to
 # prefer IPv4 instead.
