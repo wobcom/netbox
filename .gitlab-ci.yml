@@ -34,7 +34,10 @@ build:
   dependencies:
     - check_version
   script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
     - docker build --cache-from $CI_REGISTRY_IMAGE:latest --build-arg CI_JOB_TOKEN --tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA  .
+    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+    - docker logout $CI_REGISTRY
 
 push_unstable:
   stage: push_unstable
@@ -47,7 +50,6 @@ push_unstable:
   script:
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
     - docker tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA $CI_REGISTRY_IMAGE:latest_unstable
-    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
     - docker push $CI_REGISTRY_IMAGE:latest_unstable
     - docker logout $CI_REGISTRY
 
