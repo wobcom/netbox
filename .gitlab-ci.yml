@@ -65,6 +65,7 @@ tests:
     DB_USER: root
     DB_HOST: postgres
     REDIS_HOST: redis
+    REDIS_PORT: 6379
   script:
     - python /opt/netbox/manage.py test
 
