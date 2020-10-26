@@ -60,6 +60,11 @@ tests:
     - docker
   dependencies:
     - build
+  variables:
+    DB_NAME: netbox
+    DB_USER: root
+    DB_HOST: postgres
+    REDIS_HOST: redis
   script:
     - python /opt/netbox/manage.py test
 
