@@ -98,3 +98,7 @@ AUTH_LDAP_USER_ATTR_MAP = {
     "last_name": os.environ.get('AUTH_LDAP_ATTR_LASTNAME', 'sn'),
     "email": os.environ.get('AUTH_LDAP_ATTR_MAIL', 'mail')
 }
+
+# If True, LDAPBackend will be able furnish permissions for any Django user,
+# regardless of which backend authenticated it.
+AUTH_LDAP_AUTHORIZE_ALL_USERS = os.environ.get('AUTH_LDAP_AUTHORIZE_ALL_USERS', 'False').lower() == 'true'
