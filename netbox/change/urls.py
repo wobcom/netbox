@@ -19,10 +19,10 @@ urlpatterns = [
 ]
 
 websocket_urlpatterns = [
-    path(r'ws/change/active_users/', consumers.UsersInChangeConsumer),
-    path(r'ws/change/provisions/status/', consumers.GlobalProvisionStatusConsumer),
-    path(r'ws/change/provisions/<int:pk>/logs/', consumers.LogfileConsumer),
-    path(r'ws/change/provisions/<int:pk>/odin/diff/', consumers.OdinDiffConsumer),
-    path(r'ws/change/provisions/<int:pk>/odin/commit/', consumers.OdinCommitConsumer),
-    path(r'ws/change/provisions/<int:pk>/status/', consumers.ProvisionStatusConsumer),
+    path(r'ws/change/active_users/', consumers.UsersInChangeConsumer.as_asgi()),
+    path(r'ws/change/provisions/status/', consumers.GlobalProvisionStatusConsumer.as_asgi()),
+    path(r'ws/change/provisions/<int:pk>/logs/', consumers.LogfileConsumer.as_asgi()),
+    path(r'ws/change/provisions/<int:pk>/odin/diff/', consumers.OdinDiffConsumer.as_asgi()),
+    path(r'ws/change/provisions/<int:pk>/odin/commit/', consumers.OdinCommitConsumer.as_asgi()),
+    path(r'ws/change/provisions/<int:pk>/status/', consumers.ProvisionStatusConsumer.as_asgi()),
 ]
