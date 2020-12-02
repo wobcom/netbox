@@ -28,7 +28,7 @@ django-codemirror2==0.2
 channels==2.4.0
 daphne==2.5.0
 asgiref==3.3.0
-topdesk>=0.0.6
+topdesk>=0.0.7
 channels_redis==3.1.0
 django-auth-ldap==2.2.0
 slackclient
