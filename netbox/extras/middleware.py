@@ -119,6 +119,8 @@ class ObjectChangeMiddleware(object):
                 objectchange = instance.to_objectchange(action)
                 objectchange.user = request.user
                 objectchange.request_id = request.id
+                if request.my_change:
+                    objectchange.change_set = request.my_change
                 objectchange.save()
 
             # Enqueue webhooks

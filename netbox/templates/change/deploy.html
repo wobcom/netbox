@@ -4,7 +4,6 @@
     <div class="row">
         <div class="col-md-6 col-md-offset-3">
             <div class="row">
-                <h3>Deploy Changes</h3>
                 <div class="pull-right">
                     {% if undeployed_changesets %}
                         <form method="post" action="{% url 'change:deploy' %}">
@@ -13,12 +12,13 @@
                         </form>
                     {% endif %}
                 </div>
+                <h3>Deploy Changes</h3>
             </div>
-            <h4>Changes List</h4>
             {% if unaccepted_changesets > 0 %}
                 <div class="alert alert-danger" role="alert"><b>Warning:</b> There are changes currently in progress.</div>
             {% endif %}
-            {% include 'inc/table.html' with table=undeployed_changesets_table %}
+            {% include 'panel_table.html' with table=undeployed_changesets_table heading="Changes List" %}
+            {% include 'change/inc/changelog_panel.html' %}
         </div>
     </div>
 {% endblock %}

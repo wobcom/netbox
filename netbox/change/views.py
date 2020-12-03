@@ -1,4 +1,5 @@
 from cacheops.invalidation import invalidate_all
+from functools import reduce
 
 from django.db.models import Q
 from django.contrib.auth.mixins import PermissionRequiredMixin
@@ -104,6 +105,10 @@ class DeployView(PermissionRequiredMixin, View):
             'undeployed_changesets_table': tables.ProvisioningChangesTable(data=self.undeployed_changesets),
             'undeployed_changesets': self.undeployed_changesets.count(),
             'unaccepted_changesets': self.undeployed_changesets.exclude(status=ChangeSet.ACCEPTED).count(),
+            'changelog': reduce(
+                lambda x, y: x | y,
+                [c.object_changes.all() for c in self.undeployed_changesets.all()]
+            ).distinct()
         })
 
     def post(self, request):
@@ -190,6 +195,10 @@ class ProvisionSetView(PermissionRequiredMixin, View):
         return render(request, 'change/provision.html', context={
             'provision_set': provision_set,
             'changes_table': changes_table,
+            'changelog': reduce(
+                lambda x, y: x | y,
+                [c.object_changes.all() for c in provision_set.changesets.all()]
+            ).distinct(),
             'current_time': timezone.now(),
         })
 
