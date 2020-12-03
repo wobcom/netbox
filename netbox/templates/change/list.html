@@ -19,6 +19,8 @@
     {% if changeset != None %}
       <h3>Changeset {{ changeset.pk }} ({{ changeset.change_information.name }})</h3>
       <a href="{{ changeset.topdesk_url }}">Topdesk Ticket</a>
+      <br><br>
+      {% include 'change/inc/changelog_panel.html' with changelog=changeset.object_changes.all%}
       <div class="pull-right">
         <form method="post">
              {% csrf_token %}

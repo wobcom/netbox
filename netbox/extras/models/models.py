@@ -669,10 +669,17 @@ class ObjectChange(models.Model):
     object_data = JSONField(
         editable=False
     )
+    change_set = models.ForeignKey(
+        to='change.ChangeSet',
+        on_delete=models.PROTECT,
+        related_name='object_changes',
+        blank=True,
+        null=True,
+    )
 
     csv_headers = [
         'time', 'user', 'user_name', 'request_id', 'action', 'changed_object_type', 'changed_object_id',
-        'related_object_type', 'related_object_id', 'object_repr', 'object_data',
+        'related_object_type', 'related_object_id', 'object_repr', 'object_data', 'change_set',
     ]
 
     class Meta:
