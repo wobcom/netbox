@@ -12,6 +12,7 @@ from django.views.decorators.cache import never_cache
 from django.utils import timezone
 from django.utils.safestring import mark_safe
 
+from extras.models import ObjectChange
 from utilities.views import ObjectListView, GetReturnURLMixin
 from .forms import ChangeInformationForm
 from .models import ChangeInformation, ChangeSet, AlreadyExistsError, ProvisionSet
@@ -107,7 +108,8 @@ class DeployView(PermissionRequiredMixin, View):
             'unaccepted_changesets': self.undeployed_changesets.exclude(status=ChangeSet.ACCEPTED).count(),
             'changelog': reduce(
                 lambda x, y: x | y,
-                [c.object_changes.all() for c in self.undeployed_changesets.all()]
+                [c.object_changes.all() for c in self.undeployed_changesets.all()],
+                ObjectChange.objects.none(),
             ).distinct()
         })
 
@@ -197,7 +199,8 @@ class ProvisionSetView(PermissionRequiredMixin, View):
             'changes_table': changes_table,
             'changelog': reduce(
                 lambda x, y: x | y,
-                [c.object_changes.all() for c in provision_set.changesets.all()]
+                [c.object_changes.all() for c in provision_set.changesets.all()],
+                ObjectChange.objects.none(),
             ).distinct(),
             'current_time': timezone.now(),
         })
