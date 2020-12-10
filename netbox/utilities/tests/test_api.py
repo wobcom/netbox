@@ -19,7 +19,6 @@ class WritableNestedSerializerTest(APITestCase):
     """
 
     def setUp(self):
-
         super().setUp()
 
         self.region_a = Region.objects.create(name='Region A', slug='region-a')
@@ -28,7 +27,6 @@ class WritableNestedSerializerTest(APITestCase):
         self.tenant = Tenant.objects.create(name='My Tenant', slug='mytenant')
 
     def test_related_by_pk(self):
-
         data = {
             'vid': 100,
             'name': 'Test VLAN 100',
@@ -37,17 +35,16 @@ class WritableNestedSerializerTest(APITestCase):
                 'id': self.tenant.id
             },
         }
-
         url = reverse('ipam-api:vlan-list')
-        response = self.client.post(url, data, format='json', **self.header)
+        self.add_permissions('ipam.add_vlan')
 
+        response = self.client.post(url, data, format='json', **self.header)
         self.assertHttpStatus(response, status.HTTP_201_CREATED)
         self.assertEqual(response.data['site']['id'], self.site1.pk)
         vlan = VLAN.objects.get(pk=response.data['id'])
         self.assertEqual(vlan.site, self.site1)
 
     def test_related_by_pk_no_match(self):
-
         data = {
             'vid': 100,
             'name': 'Test VLAN 100',
@@ -56,17 +53,16 @@ class WritableNestedSerializerTest(APITestCase):
                 'id': self.tenant.id
             },
         }
-
         url = reverse('ipam-api:vlan-list')
+        self.add_permissions('ipam.add_vlan')
+
         with disable_warnings('django.request'):
             response = self.client.post(url, data, format='json', **self.header)
-
         self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(VLAN.objects.count(), 0)
         self.assertTrue(response.data['site'][0].startswith("Related object not found"))
 
     def test_related_by_attributes(self):
-
         data = {
             'vid': 100,
             'name': 'Test VLAN 100',
@@ -77,17 +73,16 @@ class WritableNestedSerializerTest(APITestCase):
                 'id': self.tenant.id,
             },
         }
-
         url = reverse('ipam-api:vlan-list')
-        response = self.client.post(url, data, format='json', **self.header)
+        self.add_permissions('ipam.add_vlan')
 
+        response = self.client.post(url, data, format='json', **self.header)
         self.assertHttpStatus(response, status.HTTP_201_CREATED)
         self.assertEqual(response.data['site']['id'], self.site1.pk)
         vlan = VLAN.objects.get(pk=response.data['id'])
         self.assertEqual(vlan.site, self.site1)
 
     def test_related_by_attributes_no_match(self):
-
         data = {
             'vid': 100,
             'name': 'Test VLAN 100',
@@ -98,17 +93,16 @@ class WritableNestedSerializerTest(APITestCase):
                 'id': self.tenant.id
             },
         }
-
         url = reverse('ipam-api:vlan-list')
+        self.add_permissions('ipam.add_vlan')
+
         with disable_warnings('django.request'):
             response = self.client.post(url, data, format='json', **self.header)
-
         self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(VLAN.objects.count(), 0)
         self.assertTrue(response.data['site'][0].startswith("Related object not found"))
 
     def test_related_by_attributes_multiple_matches(self):
-
         data = {
             'vid': 100,
             'name': 'Test VLAN 100',
@@ -121,17 +115,16 @@ class WritableNestedSerializerTest(APITestCase):
                 'id': self.tenant.id
             },
         }
-
         url = reverse('ipam-api:vlan-list')
+        self.add_permissions('ipam.add_vlan')
+
         with disable_warnings('django.request'):
             response = self.client.post(url, data, format='json', **self.header)
-
         self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(VLAN.objects.count(), 0)
         self.assertTrue(response.data['site'][0].startswith("Multiple objects match"))
 
     def test_related_by_invalid(self):
-
         data = {
             'vid': 100,
             'name': 'Test VLAN 100',
@@ -140,11 +133,11 @@ class WritableNestedSerializerTest(APITestCase):
                 'id': self.tenant.id
             },
         }
-
         url = reverse('ipam-api:vlan-list')
+        self.add_permissions('ipam.add_vlan')
+
         with disable_warnings('django.request'):
             response = self.client.post(url, data, format='json', **self.header)
-
         self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(VLAN.objects.count(), 0)
 

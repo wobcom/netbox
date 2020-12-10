@@ -1,19 +1,20 @@
 import netaddr
 from django.conf import settings
-from django.contrib.contenttypes.fields import GenericRelation
-from django.core.exceptions import ValidationError, ObjectDoesNotExist
+from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
+from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from django.db.models import F, Q
+from django.db.models import F
 from django.urls import reverse
 from taggit.managers import TaggableManager
 
 from dcim.models import Device, Interface
-from extras.models import CustomFieldModel, ObjectChange, TaggedItem
+from extras.models import ChangeLoggedModel, CustomFieldModel, ObjectChange, TaggedItem
 from extras.utils import extras_features
-from utilities.models import ChangeLoggedModel
+from utilities.querysets import RestrictedQuerySet
 from utilities.utils import serialize_object
-from virtualization.models import VirtualMachine
+from virtualization.models import VirtualMachine, VMInterface
 from .choices import *
 from .constants import *
 from .fields import IPNetworkField, IPAddressField
@@ -83,6 +84,8 @@ class VRF(ChangeLoggedModel, CustomFieldModel):
 
     tags = TaggableManager(through=TaggedItem)
 
+    objects = RestrictedQuerySet.as_manager()
+
     csv_headers = ['name', 'rd', 'tenant', 'enforce_unique', 'description']
     clone_fields = [
         'tenant', 'enforce_unique', 'description',
@@ -111,7 +114,7 @@ class VRF(ChangeLoggedModel, CustomFieldModel):
     @property
     def display_name(self):
         if self.rd:
-            return "{} ({})".format(self.name, self.rd)
+            return f'{self.name} ({self.rd})'
         return self.name
 
 
@@ -136,6 +139,8 @@ class RIR(ChangeLoggedModel):
         max_length=200,
         blank=True
     )
+
+    objects = RestrictedQuerySet.as_manager()
 
     csv_headers = ['name', 'slug', 'is_private', 'description']
 
@@ -185,8 +190,9 @@ class Aggregate(ChangeLoggedModel, CustomFieldModel):
         content_type_field='obj_type',
         object_id_field='obj_id'
     )
-
     tags = TaggableManager(through=TaggedItem)
+
+    objects = RestrictedQuerySet.as_manager()
 
     csv_headers = ['prefix', 'rir', 'date_added', 'description']
     clone_fields = [
@@ -216,7 +222,9 @@ class Aggregate(ChangeLoggedModel, CustomFieldModel):
                 })
 
             # Ensure that the aggregate being added is not covered by an existing aggregate
-            covering_aggregates = Aggregate.objects.filter(prefix__net_contains_or_equals=str(self.prefix))
+            covering_aggregates = Aggregate.objects.filter(
+                prefix__net_contains_or_equals=str(self.prefix)
+            )
             if self.pk:
                 covering_aggregates = covering_aggregates.exclude(pk=self.pk)
             if covering_aggregates:
@@ -279,6 +287,8 @@ class Role(ChangeLoggedModel):
         max_length=200,
         blank=True,
     )
+
+    objects = RestrictedQuerySet.as_manager()
 
     csv_headers = ['name', 'slug', 'weight', 'description']
 
@@ -366,9 +376,9 @@ class Prefix(ChangeLoggedModel, CustomFieldModel):
         content_type_field='obj_type',
         object_id_field='obj_id'
     )
+    tags = TaggableManager(through=TaggedItem)
 
     objects = PrefixQuerySet.as_manager()
-    tags = TaggableManager(through=TaggedItem)
 
     csv_headers = [
         'prefix', 'vrf', 'tenant', 'site', 'vlan_group', 'vlan', 'status', 'role', 'is_pool', 'description',
@@ -551,7 +561,10 @@ class Prefix(ChangeLoggedModel, CustomFieldModel):
         "container", calculate utilization based on child prefixes. For all others, count child IP addresses.
         """
         if self.status == PrefixStatusChoices.STATUS_CONTAINER:
-            queryset = Prefix.objects.filter(prefix__net_contained=str(self.prefix), vrf=self.vrf)
+            queryset = Prefix.objects.filter(
+                prefix__net_contained=str(self.prefix),
+                vrf=self.vrf
+            )
             child_prefixes = netaddr.IPSet([p.prefix for p in queryset])
             return int(float(child_prefixes.size) / self.prefix.size * 100)
         else:
@@ -605,12 +618,21 @@ class IPAddress(ChangeLoggedModel, CustomFieldModel):
         blank=True,
         help_text='The functional role of this IP'
     )
-    interface = models.ForeignKey(
-        to='dcim.Interface',
-        on_delete=models.CASCADE,
-        related_name='ip_addresses',
+    assigned_object_type = models.ForeignKey(
+        to=ContentType,
+        limit_choices_to=IPADDRESS_ASSIGNMENT_MODELS,
+        on_delete=models.PROTECT,
+        related_name='+',
         blank=True,
         null=True
+    )
+    assigned_object_id = models.PositiveIntegerField(
+        blank=True,
+        null=True
+    )
+    assigned_object = GenericForeignKey(
+        ct_field='assigned_object_type',
+        fk_field='assigned_object_id'
     )
     nat_inside = models.OneToOneField(
         to='self',
@@ -637,16 +659,16 @@ class IPAddress(ChangeLoggedModel, CustomFieldModel):
         content_type_field='obj_type',
         object_id_field='obj_id'
     )
-
-    objects = IPAddressManager()
     tags = TaggableManager(through=TaggedItem)
 
+    objects = IPAddressManager()
+
     csv_headers = [
-        'address', 'vrf', 'tenant', 'status', 'role', 'device', 'virtual_machine', 'interface', 'is_primary',
+        'address', 'vrf', 'tenant', 'status', 'role', 'assigned_object_type', 'assigned_object_id', 'is_primary',
         'dns_name', 'description',
     ]
     clone_fields = [
-        'vrf', 'tenant', 'status', 'role', 'description', 'interface',
+        'vrf', 'tenant', 'status', 'role', 'description',
     ]
 
     STATUS_CLASS_MAP = {
@@ -654,6 +676,7 @@ class IPAddress(ChangeLoggedModel, CustomFieldModel):
         'reserved': 'info',
         'deprecated': 'danger',
         'dhcp': 'success',
+        'slaac': 'success',
     }
 
     ROLE_CLASS_MAP = {
@@ -679,7 +702,10 @@ class IPAddress(ChangeLoggedModel, CustomFieldModel):
         return reverse('ipam:ipaddress', args=[self.pk])
 
     def get_duplicates(self):
-        return IPAddress.objects.filter(vrf=self.vrf, address__net_host=str(self.address.ip)).exclude(pk=self.pk)
+        return IPAddress.objects.filter(
+            vrf=self.vrf,
+            address__net_host=str(self.address.ip)
+        ).exclude(pk=self.pk)
 
     def clean(self):
 
@@ -706,33 +732,26 @@ class IPAddress(ChangeLoggedModel, CustomFieldModel):
                         )
                     })
 
+        # Check for primary IP assignment that doesn't match the assigned device/VM
         if self.pk:
-
-            # Check for primary IP assignment that doesn't match the assigned device/VM
             device = Device.objects.filter(Q(primary_ip4=self) | Q(primary_ip6=self)).first()
             if device:
-                if self.interface is None:
+                if getattr(self.assigned_object, 'device', None) != device:
                     raise ValidationError({
-                        'interface': "IP address is primary for device {} but not assigned".format(device)
-                    })
-                elif (device.primary_ip4 == self or device.primary_ip6 == self) and self.interface.device != device:
-                    raise ValidationError({
-                        'interface': "IP address is primary for device {} but assigned to {} ({})".format(
-                            device, self.interface.device, self.interface
-                        )
+                        'interface': f"IP address is primary for device {device} but not assigned to it!"
                     })
             vm = VirtualMachine.objects.filter(Q(primary_ip4=self) | Q(primary_ip6=self)).first()
             if vm:
-                if self.interface is None:
+                if getattr(self.assigned_object, 'virtual_machine', None) != vm:
                     raise ValidationError({
-                        'interface': "IP address is primary for virtual machine {} but not assigned".format(vm)
+                        'vminterface': f"IP address is primary for virtual machine {vm} but not assigned to it!"
                     })
-                elif (vm.primary_ip4 == self or vm.primary_ip6 == self) and self.interface.virtual_machine != vm:
-                    raise ValidationError({
-                        'interface': "IP address is primary for virtual machine {} but assigned to {} ({})".format(
-                            vm, self.interface.virtual_machine, self.interface
-                        )
-                    })
+
+        # Validate IP status selection
+        if self.status == IPAddressStatusChoices.STATUS_SLAAC and self.family != 6:
+            raise ValidationError({
+                'status': "Only IPv6 addresses can be assigned SLAAC status"
+            })
 
     def save(self, *args, **kwargs):
 
@@ -742,29 +761,27 @@ class IPAddress(ChangeLoggedModel, CustomFieldModel):
         super().save(*args, **kwargs)
 
     def to_objectchange(self, action):
-        # Annotate the assigned Interface (if any)
-        try:
-            parent_obj = self.interface
-        except ObjectDoesNotExist:
-            parent_obj = None
-
+        # Annotate the assigned object, if any
         return ObjectChange(
             changed_object=self,
             object_repr=str(self),
             action=action,
-            related_object=parent_obj,
+            related_object=self.assigned_object,
             object_data=serialize_object(self)
         )
 
     def to_csv(self):
 
         # Determine if this IP is primary for a Device
+        is_primary = False
         if self.address.version == 4 and getattr(self, 'primary_ip4_for', False):
             is_primary = True
         elif self.address.version == 6 and getattr(self, 'primary_ip6_for', False):
             is_primary = True
-        else:
-            is_primary = False
+
+        obj_type = None
+        if self.assigned_object_type:
+            obj_type = f'{self.assigned_object_type.app_label}.{self.assigned_object_type.model}'
 
         return (
             self.address,
@@ -772,9 +789,8 @@ class IPAddress(ChangeLoggedModel, CustomFieldModel):
             self.tenant.name if self.tenant else None,
             self.get_status_display(),
             self.get_role_display(),
-            self.device.identifier if self.device else None,
-            self.virtual_machine.name if self.virtual_machine else None,
-            self.interface.name if self.interface else None,
+            obj_type,
+            self.assigned_object_id,
             is_primary,
             self.dns_name,
             self.description,
@@ -794,18 +810,6 @@ class IPAddress(ChangeLoggedModel, CustomFieldModel):
         if self.address is not None:
             self.address.prefixlen = value
     mask_length = property(fset=_set_mask_length)
-
-    @property
-    def device(self):
-        if self.interface:
-            return self.interface.device
-        return None
-
-    @property
-    def virtual_machine(self):
-        if self.interface:
-            return self.interface.virtual_machine
-        return None
 
     def get_status_class(self):
         return self.STATUS_CLASS_MAP.get(self.status)
@@ -885,6 +889,8 @@ class VLANGroup(ChangeLoggedModel):
         blank=True
     )
 
+    objects = RestrictedQuerySet.as_manager()
+
     csv_headers = ['name', 'slug', 'site', 'description']
 
     class Meta:
@@ -914,9 +920,9 @@ class VLANGroup(ChangeLoggedModel):
         """
         Return the first available VLAN ID (1-4094) in the group.
         """
-        vids = [vlan['vid'] for vlan in self.vlans.order_by('vid').values('vid')]
+        vlan_ids = VLAN.objects.filter(group=self).values_list('vid', flat=True)
         for i in range(1, 4095):
-            if i not in vids:
+            if i not in vlan_ids:
                 return i
         return None
 
@@ -1082,8 +1088,9 @@ class VLAN(ChangeLoggedModel, CustomFieldModel):
         content_type_field='obj_type',
         object_id_field='obj_id'
     )
-
     tags = TaggableManager(through=TaggedItem)
+
+    objects = RestrictedQuerySet.as_manager()
 
     csv_headers = ['site', 'group', 'vid', 'name', 'tenant', 'status', 'role', 'description', 'overlay_network']
     clone_fields = [
@@ -1134,16 +1141,21 @@ class VLAN(ChangeLoggedModel, CustomFieldModel):
 
     @property
     def display_name(self):
-        if self.vid and self.name:
-            return "{} ({})".format(self.vid, self.name)
-        return None
+        return f'{self.name} ({self.vid})'
 
     def get_status_class(self):
         return self.STATUS_CLASS_MAP[self.status]
 
-    def get_members(self):
-        # Return all interfaces assigned to this VLAN
+    def get_interfaces(self):
+        # Return all device interfaces assigned to this VLAN
         return Interface.objects.filter(
+            Q(untagged_vlan_id=self.pk) |
+            Q(tagged_vlans=self.pk)
+        ).distinct()
+
+    def get_vminterfaces(self):
+        # Return all VM interfaces assigned to this VLAN
+        return VMInterface.objects.filter(
             Q(untagged_vlan_id=self.pk) |
             Q(tagged_vlans=self.pk)
         ).distinct()
@@ -1199,8 +1211,9 @@ class Service(ChangeLoggedModel, CustomFieldModel):
         content_type_field='obj_type',
         object_id_field='obj_id'
     )
-
     tags = TaggableManager(through=TaggedItem)
+
+    objects = RestrictedQuerySet.as_manager()
 
     csv_headers = ['device', 'virtual_machine', 'name', 'protocol', 'port', 'description']
 

@@ -30,13 +30,6 @@ class PrefixStatusChoices(ChoiceSet):
         (STATUS_DEPRECATED, 'Deprecated'),
     )
 
-    LEGACY_MAP = {
-        STATUS_CONTAINER: 0,
-        STATUS_ACTIVE: 1,
-        STATUS_RESERVED: 2,
-        STATUS_DEPRECATED: 3,
-    }
-
 
 #
 # IPAddresses
@@ -48,20 +41,15 @@ class IPAddressStatusChoices(ChoiceSet):
     STATUS_RESERVED = 'reserved'
     STATUS_DEPRECATED = 'deprecated'
     STATUS_DHCP = 'dhcp'
+    STATUS_SLAAC = 'slaac'
 
     CHOICES = (
         (STATUS_ACTIVE, 'Active'),
         (STATUS_RESERVED, 'Reserved'),
         (STATUS_DEPRECATED, 'Deprecated'),
         (STATUS_DHCP, 'DHCP'),
+        (STATUS_SLAAC, 'SLAAC'),
     )
-
-    LEGACY_MAP = {
-        STATUS_ACTIVE: 1,
-        STATUS_RESERVED: 2,
-        STATUS_DEPRECATED: 3,
-        STATUS_DHCP: 5,
-    }
 
 
 class IPAddressRoleChoices(ChoiceSet):
@@ -86,17 +74,6 @@ class IPAddressRoleChoices(ChoiceSet):
         (ROLE_CARP, 'CARP'),
     )
 
-    LEGACY_MAP = {
-        ROLE_LOOPBACK: 10,
-        ROLE_SECONDARY: 20,
-        ROLE_ANYCAST: 30,
-        ROLE_VIP: 40,
-        ROLE_VRRP: 41,
-        ROLE_HSRP: 42,
-        ROLE_GLBP: 43,
-        ROLE_CARP: 44,
-    }
-
 
 #
 # VLANs
@@ -114,12 +91,6 @@ class VLANStatusChoices(ChoiceSet):
         (STATUS_DEPRECATED, 'Deprecated'),
     )
 
-    LEGACY_MAP = {
-        STATUS_ACTIVE: 1,
-        STATUS_RESERVED: 2,
-        STATUS_DEPRECATED: 3,
-    }
-
 
 #
 # Services
@@ -134,8 +105,3 @@ class ServiceProtocolChoices(ChoiceSet):
         (PROTOCOL_TCP, 'TCP'),
         (PROTOCOL_UDP, 'UDP'),
     )
-
-    LEGACY_MAP = {
-        PROTOCOL_TCP: 6,
-        PROTOCOL_UDP: 17,
-    }

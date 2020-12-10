@@ -1,7 +1,7 @@
 import django_filters
 from django.db.models import Q
 
-from dcim.models import DeviceRole, Interface, Platform, Region, Site
+from dcim.models import DeviceRole, Platform, Region, Site
 from extras.filters import CustomFieldFilterSet, CreatedUpdatedFilterSet, LocalConfigContextFilterSet
 from tenancy.filters import TenancyFilterSet
 from utilities.filters import (
@@ -9,14 +9,14 @@ from utilities.filters import (
     TreeNodeMultipleChoiceFilter,
 )
 from .choices import *
-from .models import Cluster, ClusterGroup, ClusterType, VirtualMachine
+from .models import Cluster, ClusterGroup, ClusterType, VirtualMachine, VMInterface
 
 __all__ = (
     'ClusterFilterSet',
     'ClusterGroupFilterSet',
     'ClusterTypeFilterSet',
-    'InterfaceFilterSet',
     'VirtualMachineFilterSet',
+    'VMInterfaceFilterSet',
 )
 
 
@@ -186,6 +186,10 @@ class VirtualMachineFilterSet(
         field_name='interfaces__mac_address',
         label='MAC address',
     )
+    has_primary_ip = django_filters.BooleanFilter(
+        method='_has_primary_ip',
+        label='Has a primary IP',
+    )
     tag = TagFilter()
 
     class Meta:
@@ -200,11 +204,28 @@ class VirtualMachineFilterSet(
             Q(comments__icontains=value)
         )
 
+    def _has_primary_ip(self, queryset, name, value):
+        params = Q(primary_ip4__isnull=False) | Q(primary_ip6__isnull=False)
+        if value:
+            return queryset.filter(params)
+        return queryset.exclude(params)
 
-class InterfaceFilterSet(BaseFilterSet):
+
+class VMInterfaceFilterSet(BaseFilterSet):
     q = django_filters.CharFilter(
         method='search',
         label='Search',
+    )
+    cluster_id = django_filters.ModelMultipleChoiceFilter(
+        field_name='virtual_machine__cluster',
+        queryset=Cluster.objects.all(),
+        label='Cluster (ID)',
+    )
+    cluster = django_filters.ModelMultipleChoiceFilter(
+        field_name='virtual_machine__cluster__name',
+        queryset=Cluster.objects.all(),
+        to_field_name='name',
+        label='Cluster',
     )
     virtual_machine_id = django_filters.ModelMultipleChoiceFilter(
         field_name='virtual_machine',
@@ -223,7 +244,7 @@ class InterfaceFilterSet(BaseFilterSet):
     tag = TagFilter()
 
     class Meta:
-        model = Interface
+        model = VMInterface
         fields = ['id', 'name', 'enabled', 'mtu']
 
     def search(self, queryset, name, value):

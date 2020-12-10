@@ -1,16 +1,22 @@
 <tr class="consoleport{% if cp.cable %} {{ cp.cable.get_status_class }}{% endif %}">
 
+    {# Checkbox #}
+    {% if perms.dcim.change_consoleport or perms.dcim.delete_consoleport %}
+        <td class="pk">
+            <input name="pk" type="checkbox" value="{{ cp.pk }}" />
+        </td>
+    {% endif %}
+
     {# Name #}
     <td>
-        <i class="fa fa-fw fa-keyboard-o"></i> {{ cp }}
+        <i class="fa fa-fw fa-keyboard-o"></i>
+        <a href="{{ cp.get_absolute_url }}">{{ cp }}</a>
     </td>
 
     {# Type #}
     <td>
         {% if cp.type %}{{ cp.get_type_display }}{% else %}&mdash;{% endif %}
     </td>
-
-    <td></td>
 
     {# Description #}
     <td>
@@ -60,7 +66,7 @@
             </span>
         {% endif %}
         {% if perms.dcim.change_consoleport %}
-            <a href="{% url 'dcim:consoleport_edit' pk=cp.pk %}" title="Edit port" class="btn btn-info btn-xs">
+            <a href="{% url 'dcim:consoleport_edit' pk=cp.pk %}?return_url={{ device.get_absolute_url }}" title="Edit port" class="btn btn-info btn-xs">
                 <i class="glyphicon glyphicon-pencil" aria-hidden="true"></i>
             </a>
         {% endif %}

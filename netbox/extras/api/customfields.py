@@ -158,7 +158,7 @@ class CustomFieldModelSerializer(ValidatedModelSerializer):
         instance.custom_fields = {}
         for field in custom_fields:
             value = instance.cf.get(field.name)
-            if field.type == CustomFieldTypeChoices.TYPE_SELECT and value is not None:
+            if field.type == CustomFieldTypeChoices.TYPE_SELECT and type(value) is CustomFieldChoice:
                 instance.custom_fields[field.name] = CustomFieldChoiceSerializer(value).data
             else:
                 instance.custom_fields[field.name] = value
@@ -176,13 +176,12 @@ class CustomFieldModelSerializer(ValidatedModelSerializer):
 
     def create(self, validated_data):
 
-        custom_fields = validated_data.pop('custom_fields', None)
-
         with transaction.atomic():
 
             instance = super().create(validated_data)
 
             # Save custom fields
+            custom_fields = validated_data.get('custom_fields')
             if custom_fields is not None:
                 self._save_custom_fields(instance, custom_fields)
                 instance.custom_fields = custom_fields
@@ -191,9 +190,10 @@ class CustomFieldModelSerializer(ValidatedModelSerializer):
 
     def update(self, instance, validated_data):
 
-        custom_fields = validated_data.pop('custom_fields', None)
-
         with transaction.atomic():
+
+            custom_fields = validated_data.get('custom_fields')
+            instance._cf = custom_fields
 
             instance = super().update(instance, validated_data)
 

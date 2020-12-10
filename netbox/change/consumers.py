@@ -11,7 +11,6 @@ from asgiref.sync import async_to_sync
 from django.shortcuts import reverse
 from django.db.models.signals import post_save
 
-from extras.signals import purge_changelog
 from .models import ProvisionSet, ProvStateMachine, ChangeSet
 from .signals import provision_status_message, users_in_change_message
 
@@ -37,13 +36,7 @@ class OdinConsumer(WebsocketConsumer):
         self.buffer_file = None
         self.pset = None
 
-    def ensure_objectcache_ready(self):
-        # this has to happen since we need to ensure that the objectchange
-        # cache is initialized
-        purge_changelog.send(self)
-
     def connect(self):
-        self.ensure_objectcache_ready()
         try:
             pset_id = self.scope['url_route']['kwargs']['pk']
             self.pset = ProvisionSet.objects.get(pk=pset_id)
@@ -67,7 +60,6 @@ class OdinConsumer(WebsocketConsumer):
             self.buffer_file.write(bytes_data)
 
     def disconnect(self, code):
-        self.ensure_objectcache_ready()
         with ProvStateMachine(self.pset):
             # By convention we consider 4201 a successful ansible execution.
             if code == 4201:

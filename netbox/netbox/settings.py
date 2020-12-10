@@ -40,10 +40,12 @@ if platform.python_version_tuple() < ('3', '6'):
 # Import configuration parameters
 try:
     from netbox import configuration
-except ImportError:
-    raise ImproperlyConfigured(
-        "Configuration file is not present. Please define netbox/netbox/configuration.py per the documentation."
-    )
+except ModuleNotFoundError as e:
+    if getattr(e, 'name') == 'configuration':
+        raise ImproperlyConfigured(
+            "Configuration file is not present. Please define netbox/netbox/configuration.py per the documentation."
+        )
+    raise
 
 # Enforce required configuration parameters
 for parameter in ['ALLOWED_HOSTS', 'DATABASE', 'SECRET_KEY', 'REDIS']:
@@ -104,14 +106,15 @@ PREFER_IPV4 = getattr(configuration, 'PREFER_IPV4', False)
 RACK_ELEVATION_DEFAULT_UNIT_HEIGHT = getattr(configuration, 'RACK_ELEVATION_DEFAULT_UNIT_HEIGHT', 22)
 RACK_ELEVATION_DEFAULT_UNIT_WIDTH = getattr(configuration, 'RACK_ELEVATION_DEFAULT_UNIT_WIDTH', 220)
 REMOTE_AUTH_AUTO_CREATE_USER = getattr(configuration, 'REMOTE_AUTH_AUTO_CREATE_USER', False)
-REMOTE_AUTH_BACKEND = getattr(configuration, 'REMOTE_AUTH_BACKEND', 'utilities.auth_backends.RemoteUserBackend')
+REMOTE_AUTH_BACKEND = getattr(configuration, 'REMOTE_AUTH_BACKEND', 'netbox.authentication.RemoteUserBackend')
 REMOTE_AUTH_DEFAULT_GROUPS = getattr(configuration, 'REMOTE_AUTH_DEFAULT_GROUPS', [])
-REMOTE_AUTH_DEFAULT_PERMISSIONS = getattr(configuration, 'REMOTE_AUTH_DEFAULT_PERMISSIONS', [])
+REMOTE_AUTH_DEFAULT_PERMISSIONS = getattr(configuration, 'REMOTE_AUTH_DEFAULT_PERMISSIONS', {})
 REMOTE_AUTH_ENABLED = getattr(configuration, 'REMOTE_AUTH_ENABLED', False)
 REMOTE_AUTH_HEADER = getattr(configuration, 'REMOTE_AUTH_HEADER', 'HTTP_REMOTE_USER')
 RELEASE_CHECK_URL = getattr(configuration, 'RELEASE_CHECK_URL', None)
 RELEASE_CHECK_TIMEOUT = getattr(configuration, 'RELEASE_CHECK_TIMEOUT', 24 * 3600)
 REPORTS_ROOT = getattr(configuration, 'REPORTS_ROOT', os.path.join(BASE_DIR, 'reports')).rstrip('/')
+RQ_DEFAULT_TIMEOUT = getattr(configuration, 'RQ_DEFAULT_TIMEOUT', 300)
 SCRIPTS_ROOT = getattr(configuration, 'SCRIPTS_ROOT', os.path.join(BASE_DIR, 'scripts')).rstrip('/')
 SESSION_FILE_PATH = getattr(configuration, 'SESSION_FILE_PATH', None)
 SHORT_DATE_FORMAT = getattr(configuration, 'SHORT_DATE_FORMAT', 'Y-m-d')
@@ -145,6 +148,24 @@ if RELEASE_CHECK_URL:
 if RELEASE_CHECK_TIMEOUT < 3600:
     raise ImproperlyConfigured("RELEASE_CHECK_TIMEOUT has to be at least 3600 seconds (1 hour)")
 
+# TODO: Remove in v2.10
+# Backward compatibility for REMOTE_AUTH_DEFAULT_PERMISSIONS
+if type(REMOTE_AUTH_DEFAULT_PERMISSIONS) is not dict:
+    try:
+        REMOTE_AUTH_DEFAULT_PERMISSIONS = {perm: None for perm in REMOTE_AUTH_DEFAULT_PERMISSIONS}
+        warnings.warn(
+            "REMOTE_AUTH_DEFAULT_PERMISSIONS should be a dictionary. Backward compatibility will be removed in v2.10."
+        )
+    except TypeError:
+        raise ImproperlyConfigured("REMOTE_AUTH_DEFAULT_PERMISSIONS must be a dictionary.")
+# Backward compatibility for REMOTE_AUTH_BACKEND
+if REMOTE_AUTH_BACKEND == 'utilities.auth_backends.RemoteUserBackend':
+    warnings.warn(
+        "RemoteUserBackend has moved! Please update your configuration to:\n"
+        "    REMOTE_AUTH_BACKEND='netbox.authentication.RemoteUserBackend'"
+    )
+    REMOTE_AUTH_BACKEND = 'netbox.authentication.RemoteUserBackend'
+
 
 #
 # Database
@@ -177,11 +198,13 @@ if STORAGE_BACKEND is not None:
 
         try:
             import storages.utils
-        except ImportError:
-            raise ImproperlyConfigured(
-                "STORAGE_BACKEND is set to {} but django-storages is not present. It can be installed by running 'pip "
-                "install django-storages'.".format(STORAGE_BACKEND)
-            )
+        except ModuleNotFoundError as e:
+            if getattr(e, 'name') == 'storages':
+                raise ImproperlyConfigured(
+                    f"STORAGE_BACKEND is set to {STORAGE_BACKEND} but django-storages is not present. It can be "
+                    f"installed by running 'pip install django-storages'."
+                )
+            raise e
 
         # Monkey-patch django-storages to fetch settings from STORAGE_CONFIG
         def _setting(name, default=None):
@@ -202,19 +225,11 @@ if STORAGE_CONFIG and STORAGE_BACKEND is None:
 #
 
 # Background task queuing
-if 'tasks' in REDIS:
-    TASKS_REDIS = REDIS['tasks']
-elif 'webhooks' in REDIS:
-    # TODO: Remove support for 'webhooks' name in v2.9
-    warnings.warn(
-        "The 'webhooks' REDIS configuration section has been renamed to 'tasks'. Please update your configuration as "
-        "support for the old name will be removed in a future release."
-    )
-    TASKS_REDIS = REDIS['webhooks']
-else:
+if 'tasks' not in REDIS:
     raise ImproperlyConfigured(
         "REDIS section in configuration.py is missing the 'tasks' subsection."
     )
+TASKS_REDIS = REDIS['tasks']
 TASKS_REDIS_HOST = TASKS_REDIS.get('HOST', 'localhost')
 TASKS_REDIS_PORT = TASKS_REDIS.get('PORT', 6379)
 TASKS_REDIS_SENTINELS = TASKS_REDIS.get('SENTINELS', [])
@@ -223,18 +238,20 @@ TASKS_REDIS_USING_SENTINEL = all([
     len(TASKS_REDIS_SENTINELS) > 0
 ])
 TASKS_REDIS_SENTINEL_SERVICE = TASKS_REDIS.get('SENTINEL_SERVICE', 'default')
+TASKS_REDIS_SENTINEL_TIMEOUT = TASKS_REDIS.get('SENTINEL_TIMEOUT', 10)
 TASKS_REDIS_PASSWORD = TASKS_REDIS.get('PASSWORD', '')
 TASKS_REDIS_DATABASE = TASKS_REDIS.get('DATABASE', 0)
-TASKS_REDIS_DEFAULT_TIMEOUT = TASKS_REDIS.get('DEFAULT_TIMEOUT', 300)
 TASKS_REDIS_SSL = TASKS_REDIS.get('SSL', False)
+# TODO: Remove in v2.10 (see #5171)
+if 'DEFAULT_TIMEOUT' in TASKS_REDIS:
+    warnings.warn('DEFAULT_TIMEOUT is no longer supported under REDIS configuration. Set RQ_DEFAULT_TIMEOUT instead.')
 
 # Caching
-if 'caching' in REDIS:
-    CACHING_REDIS = REDIS['caching']
-else:
+if 'caching' not in REDIS:
     raise ImproperlyConfigured(
         "REDIS section in configuration.py is missing caching subsection."
     )
+CACHING_REDIS = REDIS['caching']
 CACHING_REDIS_HOST = CACHING_REDIS.get('HOST', 'localhost')
 CACHING_REDIS_PORT = CACHING_REDIS.get('PORT', 6379)
 CACHING_REDIS_SENTINELS = CACHING_REDIS.get('SENTINELS', [])
@@ -245,7 +262,6 @@ CACHING_REDIS_USING_SENTINEL = all([
 CACHING_REDIS_SENTINEL_SERVICE = CACHING_REDIS.get('SENTINEL_SERVICE', 'default')
 CACHING_REDIS_PASSWORD = CACHING_REDIS.get('PASSWORD', '')
 CACHING_REDIS_DATABASE = CACHING_REDIS.get('DATABASE', 0)
-CACHING_REDIS_DEFAULT_TIMEOUT = CACHING_REDIS.get('DEFAULT_TIMEOUT', 300)
 CACHING_REDIS_SSL = CACHING_REDIS.get('SSL', False)
 
 
@@ -298,7 +314,6 @@ INSTALLED_APPS = [
     'mptt',
     'rest_framework',
     'taggit',
-    'taggit_serializer',
     'timezone_field',
     'change',
     'circuits',
@@ -400,74 +415,13 @@ LOGIN_URL = '/{}login/'.format(BASE_PATH)
 
 CSRF_TRUSTED_ORIGINS = ALLOWED_HOSTS
 
-
-#
-# LDAP authentication (optional)
-#
-
-try:
-    from netbox import ldap_config as LDAP_CONFIG
-except ImportError:
-    LDAP_CONFIG = None
-
-if LDAP_CONFIG is not None:
-
-    # Check that django_auth_ldap is installed
-    try:
-        import ldap
-        import django_auth_ldap
-    except ImportError:
-        raise ImproperlyConfigured(
-            "LDAP authentication has been configured, but django-auth-ldap is not installed. Remove "
-            "netbox/ldap_config.py to disable LDAP."
-        )
-
-    # Required configuration parameters
-    try:
-        AUTH_LDAP_SERVER_URI = getattr(LDAP_CONFIG, 'AUTH_LDAP_SERVER_URI')
-    except AttributeError:
-        raise ImproperlyConfigured(
-            "Required parameter AUTH_LDAP_SERVER_URI is missing from ldap_config.py."
-        )
-
-    # Optional configuration parameters
-    AUTH_LDAP_ALWAYS_UPDATE_USER = getattr(LDAP_CONFIG, 'AUTH_LDAP_ALWAYS_UPDATE_USER', True)
-    AUTH_LDAP_AUTHORIZE_ALL_USERS = getattr(LDAP_CONFIG, 'AUTH_LDAP_AUTHORIZE_ALL_USERS', False)
-    AUTH_LDAP_BIND_AS_AUTHENTICATING_USER = getattr(LDAP_CONFIG, 'AUTH_LDAP_BIND_AS_AUTHENTICATING_USER', False)
-    AUTH_LDAP_BIND_DN = getattr(LDAP_CONFIG, 'AUTH_LDAP_BIND_DN', '')
-    AUTH_LDAP_BIND_PASSWORD = getattr(LDAP_CONFIG, 'AUTH_LDAP_BIND_PASSWORD', '')
-    AUTH_LDAP_CACHE_TIMEOUT = getattr(LDAP_CONFIG, 'AUTH_LDAP_CACHE_TIMEOUT', 0)
-    AUTH_LDAP_CONNECTION_OPTIONS = getattr(LDAP_CONFIG, 'AUTH_LDAP_CONNECTION_OPTIONS', {})
-    AUTH_LDAP_DENY_GROUP = getattr(LDAP_CONFIG, 'AUTH_LDAP_DENY_GROUP', None)
-    AUTH_LDAP_FIND_GROUP_PERMS = getattr(LDAP_CONFIG, 'AUTH_LDAP_FIND_GROUP_PERMS', False)
-    AUTH_LDAP_GLOBAL_OPTIONS = getattr(LDAP_CONFIG, 'AUTH_LDAP_GLOBAL_OPTIONS', {})
-    AUTH_LDAP_GROUP_SEARCH = getattr(LDAP_CONFIG, 'AUTH_LDAP_GROUP_SEARCH', None)
-    AUTH_LDAP_GROUP_TYPE = getattr(LDAP_CONFIG, 'AUTH_LDAP_GROUP_TYPE', None)
-    AUTH_LDAP_MIRROR_GROUPS = getattr(LDAP_CONFIG, 'AUTH_LDAP_MIRROR_GROUPS', None)
-    AUTH_LDAP_MIRROR_GROUPS_EXCEPT = getattr(LDAP_CONFIG, 'AUTH_LDAP_MIRROR_GROUPS_EXCEPT', None)
-    AUTH_LDAP_PERMIT_EMPTY_PASSWORD = getattr(LDAP_CONFIG, 'AUTH_LDAP_PERMIT_EMPTY_PASSWORD', False)
-    AUTH_LDAP_REQUIRE_GROUP = getattr(LDAP_CONFIG, 'AUTH_LDAP_REQUIRE_GROUP', None)
-    AUTH_LDAP_NO_NEW_USERS = getattr(LDAP_CONFIG, 'AUTH_LDAP_NO_NEW_USERS', False)
-    AUTH_LDAP_START_TLS = getattr(LDAP_CONFIG, 'AUTH_LDAP_START_TLS', False)
-    AUTH_LDAP_USER_QUERY_FIELD = getattr(LDAP_CONFIG, 'AUTH_LDAP_USER_QUERY_FIELD', None)
-    AUTH_LDAP_USER_ATTRLIST = getattr(LDAP_CONFIG, 'AUTH_LDAP_USER_ATTRLIST', None)
-    AUTH_LDAP_USER_ATTR_MAP = getattr(LDAP_CONFIG, 'AUTH_LDAP_USER_ATTR_MAP', {})
-    AUTH_LDAP_USER_DN_TEMPLATE = getattr(LDAP_CONFIG, 'AUTH_LDAP_USER_DN_TEMPLATE', None)
-    AUTH_LDAP_USER_FLAGS_BY_GROUP = getattr(LDAP_CONFIG, 'AUTH_LDAP_USER_FLAGS_BY_GROUP', {})
-    AUTH_LDAP_USER_SEARCH = getattr(LDAP_CONFIG, 'AUTH_LDAP_USER_SEARCH', None)
-
-    # Optionally disable strict certificate checking
-    if getattr(LDAP_CONFIG, 'LDAP_IGNORE_CERT_ERRORS', False):
-        ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, ldap.OPT_X_TLS_NEVER)
-
-    # Prepend LDAPBackend to the authentication backends list
-    AUTHENTICATION_BACKENDS.insert(0, 'change.auth_backends.LDAPProxyBackend')
-
-    # Enable logging for django_auth_ldap
-    ldap_logger = logging.getLogger('django_auth_ldap')
-    ldap_logger.addHandler(logging.StreamHandler())
-    ldap_logger.setLevel(logging.DEBUG)
-
+# Exclude potentially sensitive models from wildcard view exemption. These may still be exempted
+# by specifying the model individually in the EXEMPT_VIEW_PERMISSIONS configuration parameter.
+EXEMPT_EXCLUDE_MODELS = (
+    ('auth', 'group'),
+    ('auth', 'user'),
+    ('users', 'objectpermission'),
+)
 
 #
 # Caching
@@ -542,7 +496,7 @@ FILTERS_NULL_CHOICE_VALUE = 'null'
 # Django REST framework (API)
 #
 
-REST_FRAMEWORK_VERSION = VERSION[0:3]  # Use major.minor as API version
+REST_FRAMEWORK_VERSION = VERSION.rsplit('.', 1)[0]  # Use major.minor as API version
 REST_FRAMEWORK = {
     'ALLOWED_VERSIONS': [REST_FRAMEWORK_VERSION],
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -577,7 +531,6 @@ SWAGGER_SETTINGS = {
         'utilities.custom_inspectors.JSONFieldInspector',
         'utilities.custom_inspectors.NullableBooleanFieldInspector',
         'utilities.custom_inspectors.CustomChoiceFieldInspector',
-        'utilities.custom_inspectors.TagListFieldInspector',
         'utilities.custom_inspectors.SerializedPKRelatedFieldInspector',
         'drf_yasg.inspectors.CamelCaseJSONFilter',
         'drf_yasg.inspectors.ReferencingSerializerInspector',
@@ -622,7 +575,7 @@ if TASKS_REDIS_USING_SENTINEL:
         'PASSWORD': TASKS_REDIS_PASSWORD,
         'SOCKET_TIMEOUT': None,
         'CONNECTION_KWARGS': {
-            'socket_connect_timeout': TASKS_REDIS_DEFAULT_TIMEOUT
+            'socket_connect_timeout': TASKS_REDIS_SENTINEL_TIMEOUT
         },
     }
 else:
@@ -631,8 +584,8 @@ else:
         'PORT': TASKS_REDIS_PORT,
         'DB': TASKS_REDIS_DATABASE,
         'PASSWORD': TASKS_REDIS_PASSWORD,
-        'DEFAULT_TIMEOUT': TASKS_REDIS_DEFAULT_TIMEOUT,
         'SSL': TASKS_REDIS_SSL,
+        'DEFAULT_TIMEOUT': RQ_DEFAULT_TIMEOUT,
     }
 
 RQ_QUEUES = {
@@ -674,11 +627,13 @@ for plugin_name in PLUGINS:
     # Import plugin module
     try:
         plugin = importlib.import_module(plugin_name)
-    except ImportError:
-        raise ImproperlyConfigured(
-            "Unable to import plugin {}: Module not found. Check that the plugin module has been installed within the "
-            "correct Python environment.".format(plugin_name)
-        )
+    except ModuleNotFoundError as e:
+        if getattr(e, 'name') == plugin_name:
+            raise ImproperlyConfigured(
+                "Unable to import plugin {}: Module not found. Check that the plugin module has been installed within the "
+                "correct Python environment.".format(plugin_name)
+            )
+        raise e
 
     # Determine plugin config and add to INSTALLED_APPS.
     try:
