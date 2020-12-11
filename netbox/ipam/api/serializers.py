@@ -5,7 +5,6 @@ from drf_yasg.utils import swagger_serializer_method
 from rest_framework import serializers
 from rest_framework.reverse import reverse
 from rest_framework.validators import UniqueTogetherValidator
-from taggit_serializer.serializers import TaggitSerializer, TagListSerializerField
 
 from dcim.api.nested_serializers import NestedDeviceSerializer, NestedSiteSerializer
 from dcim.models import Interface
@@ -293,12 +292,11 @@ class ServiceSerializer(TaggedObjectSerializer, CustomFieldModelSerializer):
 # Services
 #
 
-class OverlayNetworkSerializer(TaggitSerializer, CustomFieldModelSerializer):
+class OverlayNetworkSerializer(TaggedObjectSerializer, CustomFieldModelSerializer):
     site = NestedSiteSerializer(required=False, allow_null=True)
     group = NestedOverlayNetworkGroupSerializer(required=False, allow_null=True)
     tenant = NestedTenantSerializer(required=False, allow_null=True)
     role = NestedRoleSerializer(required=False, allow_null=True)
-    tags = TagListSerializerField(required=False)
 
     class Meta:
         model = OverlayNetwork
