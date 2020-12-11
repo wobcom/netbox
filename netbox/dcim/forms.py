@@ -5,7 +5,6 @@ from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.forms.array import SimpleArrayField
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import Q, Count
 from django.utils.safestring import mark_safe
 from netaddr import EUI
 from netaddr.core import AddrFormatError
@@ -32,11 +31,9 @@ from .choices import *
 from .constants import *
 from .models import (
     Cable, DeviceBay, DeviceBayTemplate, ConsolePort, ConsolePortTemplate, ConsoleServerPort, ConsoleServerPortTemplate,
-    Device, DeviceRole, DeviceType, FrontPort,
-    FrontPortTemplate, Interface, InterfaceTemplate, Manufacturer,
-    InventoryItem, Platform, PowerFeed, PowerOutlet, PowerOutletTemplate, PowerPanel, PowerPort,
-    PowerPortTemplate, Rack, RackGroup, RackReservation, RackRole, RearPort, RearPortTemplate, Region, Site,
-    VirtualChassis
+    Device, DeviceRole, DeviceType, FrontPort, FrontPortTemplate, Interface, InterfaceTemplate, Manufacturer,
+    InventoryItem, Platform, PowerFeed, PowerOutlet, PowerOutletTemplate, PowerPanel, PowerPort, PowerPortTemplate,
+    Rack, RackGroup, RackReservation, RackRole, RearPort, RearPortTemplate, Region, Site, VirtualChassis,
 )
 
 DEVICE_BY_PK_RE = r'{\d+\}'
@@ -1825,8 +1822,8 @@ class DeviceForm(BootstrapMixin, TenancyForm, CustomFieldModelForm):
         model = Device
         fields = [
             'name', 'device_role', 'device_type', 'serial', 'asset_tag', 'site', 'rack', 'position', 'face',
-            'status', 'platform', 'primary_ip4', 'primary_ip6', 'cluster_group', 'cluster',
-            'tenant_group', 'tenant', 'comments', 'tags', 'local_context_data'
+            'status', 'platform', 'primary_ip4', 'primary_ip6', 'cluster_group', 'cluster', 'tenant_group', 'tenant',
+            'comments', 'tags', 'local_context_data'
         ]
         help_texts = {
             'device_role': "The function this device serves",
@@ -2665,10 +2662,6 @@ class PowerOutletCSVForm(CSVModelForm):
 
 class InterfaceFilterForm(DeviceComponentFilterForm):
     model = Interface
-    q = forms.CharField(
-        required=False,
-        label='Search'
-    )
     type = forms.MultipleChoiceField(
         choices=InterfaceTypeChoices,
         required=False,

@@ -1466,7 +1466,6 @@ class InterfaceListView(ObjectListView):
     filterset_form = forms.InterfaceFilterForm
     table = tables.InterfaceTable
     action_buttons = ('import', 'export')
-    template_name = "dcim/interface_list.html"
 
 
 class InterfaceView(ObjectView):

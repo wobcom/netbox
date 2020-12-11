@@ -269,7 +269,6 @@ urlpatterns = [
     path('interfaces/disconnect/', views.InterfaceBulkDisconnectView.as_view(), name='interface_bulk_disconnect'),
     path('interfaces/delete/', views.InterfaceBulkDeleteView.as_view(), name='interface_bulk_delete'),
     path('interfaces/add-vlan/', views.InterfaceBulkAddVLANView.as_view(), name='interface_bulk_add_vlan'),
-    path('interfaces/<int:termination_a_id>/connect/<str:termination_b_type>/', views.CableCreateView.as_view(), name='interface_connect', kwargs={'termination_a_type': Interface}),
     path('interfaces/<int:pk>/', views.InterfaceView.as_view(), name='interface'),
     path('interfaces/<int:pk>/edit/', views.InterfaceEditView.as_view(), name='interface_edit'),
     path('interfaces/<int:pk>/delete/', views.InterfaceDeleteView.as_view(), name='interface_delete'),
