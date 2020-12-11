@@ -50,15 +50,11 @@ OBJECTCHANGE_REQUEST_ID = """
 
 class BaseTagTable(BaseTable):
     pk = ToggleColumn()
-    name = tables.LinkColumn(
-        viewname='extras:tag',
-        args=[Accessor('slug')]
-    )
     color = ColorColumn()
 
     class Meta(BaseTable.Meta):
         model = Tag
-        fields = ('pk', 'name', 'items', 'slug', 'color', 'description', 'actions')
+        fields = ('pk', 'name', 'items', 'slug', 'color', 'description')
 
 
 class TagTable(BaseTagTable):
