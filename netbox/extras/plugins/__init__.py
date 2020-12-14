@@ -1,6 +1,7 @@
 import collections
 import inspect
 from packaging import version
+import re
 
 from django.apps import AppConfig
 from django.core.exceptions import ImproperlyConfigured
@@ -73,7 +74,11 @@ class PluginConfig(AppConfig):
     def validate(cls, user_config, netbox_version):
 
         # Enforce version constraints
-        current_version = version.parse(netbox_version)
+        match = re.search(r'^wc_(.*)_.*', netbox_version)
+        if match:
+            current_version = version.parse(match.group(1))
+        else:
+            current_version = version.parse(netbox_version)
         if cls.min_version is not None:
             min_version = version.parse(cls.min_version)
             if current_version < min_version:
