@@ -36,3 +36,5 @@ REDIS = {
 }
 
 SECRET_KEY = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+
+ODIN_WORKER_URL = 'http://localhost:8001'
