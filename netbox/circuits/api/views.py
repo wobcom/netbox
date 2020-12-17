@@ -1,15 +1,12 @@
 from django.db.models import Prefetch
-from django.shortcuts import get_object_or_404
-from rest_framework.decorators import action
-from rest_framework.response import Response
+from django.db.models.functions import Coalesce
 from rest_framework.routers import APIRootView
 
 from circuits import filters
 from circuits.models import Provider, CircuitTermination, CircuitType, Circuit
-from extras.api.serializers import RenderedGraphSerializer
+from dcim.api.views import PathEndpointMixin
 from extras.api.views import CustomFieldModelViewSet
-from extras.models import Graph
-from utilities.api import ModelViewSet
+from netbox.api.views import ModelViewSet
 from utilities.utils import get_subquery
 from . import serializers
 
@@ -28,20 +25,10 @@ class CircuitsRootView(APIRootView):
 
 class ProviderViewSet(CustomFieldModelViewSet):
     queryset = Provider.objects.prefetch_related('tags').annotate(
-        circuit_count=get_subquery(Circuit, 'provider')
+        circuit_count=Coalesce(get_subquery(Circuit, 'provider'), 0)
     )
     serializer_class = serializers.ProviderSerializer
     filterset_class = filters.ProviderFilterSet
-
-    @action(detail=True)
-    def graphs(self, request, pk):
-        """
-        A convenience method for rendering graphs for a particular provider.
-        """
-        provider = get_object_or_404(self.queryset, pk=pk)
-        queryset = Graph.objects.restrict(request.user).filter(type__model='provider')
-        serializer = RenderedGraphSerializer(queryset, many=True, context={'graphed_object': provider})
-        return Response(serializer.data)
 
 
 #
@@ -50,7 +37,7 @@ class ProviderViewSet(CustomFieldModelViewSet):
 
 class CircuitTypeViewSet(ModelViewSet):
     queryset = CircuitType.objects.annotate(
-        circuit_count=get_subquery(Circuit, 'type')
+        circuit_count=Coalesce(get_subquery(Circuit, 'type'), 0)
     )
     serializer_class = serializers.CircuitTypeSerializer
     filterset_class = filters.CircuitTypeFilterSet
@@ -62,9 +49,7 @@ class CircuitTypeViewSet(ModelViewSet):
 
 class CircuitViewSet(CustomFieldModelViewSet):
     queryset = Circuit.objects.prefetch_related(
-        Prefetch('terminations', queryset=CircuitTermination.objects.prefetch_related(
-            'site', 'connected_endpoint__device'
-        )),
+        Prefetch('terminations', queryset=CircuitTermination.objects.prefetch_related('site')),
         'type', 'tenant', 'provider',
     ).prefetch_related('tags')
     serializer_class = serializers.CircuitSerializer
@@ -75,9 +60,9 @@ class CircuitViewSet(CustomFieldModelViewSet):
 # Circuit Terminations
 #
 
-class CircuitTerminationViewSet(ModelViewSet):
+class CircuitTerminationViewSet(PathEndpointMixin, ModelViewSet):
     queryset = CircuitTermination.objects.prefetch_related(
-        'circuit', 'site', 'connected_endpoint__device', 'cable'
+        'circuit', 'site', '_path__destination', 'cable'
     )
     serializer_class = serializers.CircuitTerminationSerializer
     filterset_class = filters.CircuitTerminationFilterSet

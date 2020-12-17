@@ -13,7 +13,7 @@ from django.utils import timezone
 from django.utils.safestring import mark_safe
 
 from extras.models import ObjectChange
-from utilities.views import ObjectListView, GetReturnURLMixin
+from netbox.views.generic import ObjectListView, GetReturnURLMixin
 from .forms import ChangeInformationForm
 from .models import ChangeInformation, ChangeSet, AlreadyExistsError, ProvisionSet
 from .odin import odin_rollback

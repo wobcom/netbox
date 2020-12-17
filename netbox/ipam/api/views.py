@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
 from django_pglocks import advisory_lock
 from drf_yasg.utils import swagger_auto_schema
@@ -9,8 +10,8 @@ from rest_framework.routers import APIRootView
 
 from extras.api.views import CustomFieldModelViewSet
 from ipam import filters
-from ipam.models import Aggregate, IPAddress, Prefix, RIR, Role, Service, VLAN, VLANGroup, VRF, OverlayNetwork, OverlayNetworkGroup
-from utilities.api import ModelViewSet
+from ipam.models import Aggregate, IPAddress, Prefix, RIR, Role, RouteTarget, Service, VLAN, VLANGroup, VRF, OverlayNetwork, OverlayNetworkGroup
+from netbox.api.views import ModelViewSet
 from utilities.constants import ADVISORY_LOCK_KEYS
 from utilities.utils import get_subquery
 from . import serializers
@@ -29,12 +30,24 @@ class IPAMRootView(APIRootView):
 #
 
 class VRFViewSet(CustomFieldModelViewSet):
-    queryset = VRF.objects.prefetch_related('tenant').prefetch_related('tags').annotate(
-        ipaddress_count=get_subquery(IPAddress, 'vrf'),
-        prefix_count=get_subquery(Prefix, 'vrf')
+    queryset = VRF.objects.prefetch_related('tenant').prefetch_related(
+        'import_targets', 'export_targets', 'tags'
+    ).annotate(
+        ipaddress_count=Coalesce(get_subquery(IPAddress, 'vrf'), 0),
+        prefix_count=Coalesce(get_subquery(Prefix, 'vrf'), 0)
     )
     serializer_class = serializers.VRFSerializer
     filterset_class = filters.VRFFilterSet
+
+
+#
+# Route targets
+#
+
+class RouteTargetViewSet(CustomFieldModelViewSet):
+    queryset = RouteTarget.objects.prefetch_related('tenant').prefetch_related('tags')
+    serializer_class = serializers.RouteTargetSerializer
+    filterset_class = filters.RouteTargetFilterSet
 
 
 #
@@ -43,7 +56,7 @@ class VRFViewSet(CustomFieldModelViewSet):
 
 class RIRViewSet(ModelViewSet):
     queryset = RIR.objects.annotate(
-        aggregate_count=get_subquery(Aggregate, 'rir')
+        aggregate_count=Coalesce(get_subquery(Aggregate, 'rir'), 0)
     )
     serializer_class = serializers.RIRSerializer
     filterset_class = filters.RIRFilterSet
@@ -65,8 +78,8 @@ class AggregateViewSet(CustomFieldModelViewSet):
 
 class RoleViewSet(ModelViewSet):
     queryset = Role.objects.annotate(
-        prefix_count=get_subquery(Prefix, 'role'),
-        vlan_count=get_subquery(VLAN, 'role')
+        prefix_count=Coalesce(get_subquery(Prefix, 'role'), 0),
+        vlan_count=Coalesce(get_subquery(VLAN, 'role'), 0)
     )
     serializer_class = serializers.RoleSerializer
     filterset_class = filters.RoleFilterSet
@@ -260,7 +273,7 @@ class IPAddressViewSet(CustomFieldModelViewSet):
 
 class VLANGroupViewSet(ModelViewSet):
     queryset = VLANGroup.objects.prefetch_related('site').annotate(
-        vlan_count=get_subquery(VLAN, 'group')
+        vlan_count=Coalesce(get_subquery(VLAN, 'group'), 0)
     )
     serializer_class = serializers.VLANGroupSerializer
     filterset_class = filters.VLANGroupFilterSet
@@ -274,7 +287,7 @@ class VLANViewSet(CustomFieldModelViewSet):
     queryset = VLAN.objects.prefetch_related(
         'site', 'group', 'tenant', 'role', 'tags'
     ).annotate(
-        prefix_count=get_subquery(Prefix, 'vlan')
+        prefix_count=Coalesce(get_subquery(Prefix, 'vlan'), 0)
     )
     serializer_class = serializers.VLANSerializer
     filterset_class = filters.VLANFilterSet
