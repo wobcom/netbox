@@ -24,8 +24,8 @@ def perm_available(user, perm):
         or (is_change and not is_rollback)
 
 
-def proxy_backend_factory(backend_string):
-    class ProxyBackend(import_string(backend_string)):
+def proxy_backend_factory(backend):
+    class ProxyBackend(backend):
         def has_perm(self, user_obj, perm, obj=None):
             if perm_available(user_obj, perm):
                 return super(ProxyBackend, self).has_perm(user_obj, perm, obj=obj)
@@ -36,13 +36,9 @@ def proxy_backend_factory(backend_string):
 
 # Must be explicit class definitions, pickling fails otherwise,
 # see (https://gitlab.service.wobcom.de/infrastructure/netbox/issues/90)
-class ModelProxyBackend(proxy_backend_factory('utilities.auth_backends.ViewExemptModelBackend')):
+class ModelProxyBackend(proxy_backend_factory(import_string('netbox.authentication.ObjectPermissionBackend'))):
     pass
 
 
-class LDAPProxyBackend(proxy_backend_factory('django_auth_ldap.backend.LDAPBackend')):
-    pass
-
-
-class RemoteAuthProxyBackend(proxy_backend_factory(settings.REMOTE_AUTH_BACKEND)):
+class RemoteAuthProxyBackend(proxy_backend_factory(import_string(settings.REMOTE_AUTH_BACKEND))):
     pass

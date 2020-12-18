@@ -5,8 +5,7 @@ from rest_framework import status
 
 from dcim.models import Device, DeviceRole, DeviceType, Manufacturer, Site
 from secrets.models import Secret, SecretRole, SessionKey, UserKey
-from users.models import Token
-from utilities.testing import APITestCase, APIViewTestCases, create_test_user
+from utilities.testing import APITestCase, APIViewTestCases
 from .constants import PRIVATE_KEY, PUBLIC_KEY
 
 
@@ -37,6 +36,9 @@ class SecretRoleTest(APIViewTestCases.APIViewTestCase):
             'slug': 'secret-role-6',
         },
     ]
+    bulk_update_data = {
+        'description': 'New description',
+    }
 
     @classmethod
     def setUpTestData(cls):
@@ -81,9 +83,9 @@ class SecretTest(APIViewTestCases.APIViewTestCase):
         SecretRole.objects.bulk_create(secret_roles)
 
         secrets = (
-            Secret(device=device, role=secret_roles[0], name='Secret 1', plaintext='ABC'),
-            Secret(device=device, role=secret_roles[0], name='Secret 2', plaintext='DEF'),
-            Secret(device=device, role=secret_roles[0], name='Secret 3', plaintext='GHI'),
+            Secret(assigned_object=device, role=secret_roles[0], name='Secret 1', plaintext='ABC'),
+            Secret(assigned_object=device, role=secret_roles[0], name='Secret 2', plaintext='DEF'),
+            Secret(assigned_object=device, role=secret_roles[0], name='Secret 3', plaintext='GHI'),
         )
         for secret in secrets:
             secret.encrypt(self.master_key)
@@ -91,26 +93,77 @@ class SecretTest(APIViewTestCases.APIViewTestCase):
 
         self.create_data = [
             {
-                'device': device.pk,
+                'assigned_object_type': 'dcim.device',
+                'assigned_object_id': device.pk,
                 'role': secret_roles[1].pk,
                 'name': 'Secret 4',
                 'plaintext': 'JKL',
             },
             {
-                'device': device.pk,
+                'assigned_object_type': 'dcim.device',
+                'assigned_object_id': device.pk,
                 'role': secret_roles[1].pk,
                 'name': 'Secret 5',
                 'plaintext': 'MNO',
             },
             {
-                'device': device.pk,
+                'assigned_object_type': 'dcim.device',
+                'assigned_object_id': device.pk,
                 'role': secret_roles[1].pk,
                 'name': 'Secret 6',
                 'plaintext': 'PQR',
             },
         ]
 
+        self.bulk_update_data = {
+            'role': secret_roles[1].pk,
+        }
+
     def prepare_instance(self, instance):
         # Unlock the plaintext prior to evaluation of the instance
         instance.decrypt(self.master_key)
         return instance
+
+
+class GetSessionKeyTest(APITestCase):
+
+    def setUp(self):
+
+        super().setUp()
+
+        userkey = UserKey(user=self.user, public_key=PUBLIC_KEY)
+        userkey.save()
+        master_key = userkey.get_master_key(PRIVATE_KEY)
+        self.session_key = SessionKey(userkey=userkey)
+        self.session_key.save(master_key)
+
+        self.header = {
+            'HTTP_AUTHORIZATION': 'Token {}'.format(self.token.key),
+        }
+
+    def test_get_session_key(self):
+
+        encoded_session_key = base64.b64encode(self.session_key.key).decode()
+
+        url = reverse('secrets-api:get-session-key-list')
+        data = {
+            'private_key': PRIVATE_KEY,
+        }
+        response = self.client.post(url, data, **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+        self.assertIsNotNone(response.data.get('session_key'))
+        self.assertNotEqual(response.data.get('session_key'), encoded_session_key)
+
+    def test_get_session_key_preserved(self):
+
+        encoded_session_key = base64.b64encode(self.session_key.key).decode()
+
+        url = reverse('secrets-api:get-session-key-list') + '?preserve_key=True'
+        data = {
+            'private_key': PRIVATE_KEY,
+        }
+        response = self.client.post(url, data, **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+        self.assertEqual(response.data.get('session_key'), encoded_session_key)

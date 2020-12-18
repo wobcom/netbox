@@ -24,7 +24,6 @@ REDIS = {
         'PORT': 6379,
         'PASSWORD': '',
         'DATABASE': 0,
-        'DEFAULT_TIMEOUT': 300,
         'SSL': False,
     },
     'caching': {
@@ -32,9 +31,10 @@ REDIS = {
         'PORT': 6379,
         'PASSWORD': '',
         'DATABASE': 1,
-        'DEFAULT_TIMEOUT': 300,
         'SSL': False,
     }
 }
 
 SECRET_KEY = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+
+ODIN_WORKER_URL = 'http://localhost:8001'

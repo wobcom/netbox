@@ -33,7 +33,6 @@ REDIS = {
         # 'SENTINEL_SERVICE': 'netbox',
         'PASSWORD': '',
         'DATABASE': 0,
-        'DEFAULT_TIMEOUT': 300,
         'SSL': False,
     },
     'caching': {
@@ -44,7 +43,6 @@ REDIS = {
         # 'SENTINEL_SERVICE': 'netbox',
         'PASSWORD': '',
         'DATABASE': 1,
-        'DEFAULT_TIMEOUT': 300,
         'SSL': False,
     }
 }
@@ -214,11 +212,11 @@ RACK_ELEVATION_DEFAULT_UNIT_WIDTH = 220
 
 # Remote authentication support
 REMOTE_AUTH_ENABLED = False
-REMOTE_AUTH_BACKEND = 'utilities.auth_backends.RemoteUserBackend'
+REMOTE_AUTH_BACKEND = 'netbox.authentication.LDAPBackend'
 REMOTE_AUTH_HEADER = 'HTTP_REMOTE_USER'
 REMOTE_AUTH_AUTO_CREATE_USER = True
 REMOTE_AUTH_DEFAULT_GROUPS = []
-REMOTE_AUTH_DEFAULT_PERMISSIONS = []
+REMOTE_AUTH_DEFAULT_PERMISSIONS = {}
 
 # This determines how often the GitHub API is called to check the latest release of NetBox. Must be at least 1 hour.
 RELEASE_CHECK_TIMEOUT = 24 * 3600
@@ -231,6 +229,9 @@ RELEASE_CHECK_URL = None
 # The file path where custom reports will be stored. A trailing slash is not needed. Note that the default value of
 # this setting is derived from the installed location.
 # REPORTS_ROOT = '/opt/netbox/netbox/reports'
+
+# Maximum execution time for background tasks, in seconds.
+RQ_DEFAULT_TIMEOUT = 300
 
 # The file path where custom scripts will be stored. A trailing slash is not needed. Note that the default value of
 # this setting is derived from the installed location.

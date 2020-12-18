@@ -6,7 +6,7 @@ from rest_framework import status
 
 from dcim.models import Device, DeviceRole, DeviceType, Manufacturer, Site
 from ipam.choices import *
-from ipam.models import Aggregate, IPAddress, Prefix, RIR, Role, Service, VLAN, VLANGroup, VRF
+from ipam.models import Aggregate, IPAddress, Prefix, RIR, Role, RouteTarget, Service, VLAN, VLANGroup, VRF
 from tenancy.models import Tenant
 from utilities.testing import APITestCase, APIViewTestCases, disable_warnings
 
@@ -23,7 +23,7 @@ class AppTest(APITestCase):
 
 class VRFTest(APIViewTestCases.APIViewTestCase):
     model = VRF
-    brief_fields = ['id', 'name', 'prefix_count', 'rd', 'url']
+    brief_fields = ['display_name', 'id', 'name', 'prefix_count', 'rd', 'url']
     create_data = [
         {
             'name': 'VRF 4',
@@ -38,6 +38,9 @@ class VRFTest(APIViewTestCases.APIViewTestCase):
             'rd': '65000:6',
         },
     ]
+    bulk_update_data = {
+        'description': 'New description',
+    }
 
     @classmethod
     def setUpTestData(cls):
@@ -48,6 +51,35 @@ class VRFTest(APIViewTestCases.APIViewTestCase):
             VRF(name='VRF 3'),  # No RD
         )
         VRF.objects.bulk_create(vrfs)
+
+
+class RouteTargetTest(APIViewTestCases.APIViewTestCase):
+    model = RouteTarget
+    brief_fields = ['id', 'name', 'url']
+    create_data = [
+        {
+            'name': '65000:1004',
+        },
+        {
+            'name': '65000:1005',
+        },
+        {
+            'name': '65000:1006',
+        },
+    ]
+    bulk_update_data = {
+        'description': 'New description',
+    }
+
+    @classmethod
+    def setUpTestData(cls):
+
+        route_targets = (
+            RouteTarget(name='65000:1001'),
+            RouteTarget(name='65000:1002'),
+            RouteTarget(name='65000:1003'),
+        )
+        RouteTarget.objects.bulk_create(route_targets)
 
 
 class RIRTest(APIViewTestCases.APIViewTestCase):
@@ -67,6 +99,9 @@ class RIRTest(APIViewTestCases.APIViewTestCase):
             'slug': 'rir-6',
         },
     ]
+    bulk_update_data = {
+        'description': 'New description',
+    }
 
     @classmethod
     def setUpTestData(cls):
@@ -82,6 +117,9 @@ class RIRTest(APIViewTestCases.APIViewTestCase):
 class AggregateTest(APIViewTestCases.APIViewTestCase):
     model = Aggregate
     brief_fields = ['family', 'id', 'prefix', 'url']
+    bulk_update_data = {
+        'description': 'New description',
+    }
 
     @classmethod
     def setUpTestData(cls):
@@ -132,6 +170,9 @@ class RoleTest(APIViewTestCases.APIViewTestCase):
             'slug': 'role-6',
         },
     ]
+    bulk_update_data = {
+        'description': 'New description',
+    }
 
     @classmethod
     def setUpTestData(cls):
@@ -158,6 +199,9 @@ class PrefixTest(APIViewTestCases.APIViewTestCase):
             'prefix': '192.168.6.0/24',
         },
     ]
+    bulk_update_data = {
+        'description': 'New description',
+    }
 
     @classmethod
     def setUpTestData(cls):
@@ -177,6 +221,7 @@ class PrefixTest(APIViewTestCases.APIViewTestCase):
         Prefix.objects.create(prefix=IPNetwork('192.0.2.64/26'))
         Prefix.objects.create(prefix=IPNetwork('192.0.2.192/27'))
         url = reverse('ipam-api:prefix-available-prefixes', kwargs={'pk': prefix.pk})
+        self.add_permissions('ipam.view_prefix')
 
         # Retrieve all available IPs
         response = self.client.get(url, **self.header)
@@ -191,6 +236,7 @@ class PrefixTest(APIViewTestCases.APIViewTestCase):
         vrf = VRF.objects.create(name='Test VRF 1', rd='1234')
         prefix = Prefix.objects.create(prefix=IPNetwork('192.0.2.0/28'), vrf=vrf, is_pool=True)
         url = reverse('ipam-api:prefix-available-prefixes', kwargs={'pk': prefix.pk})
+        self.add_permissions('ipam.add_prefix')
 
         # Create four available prefixes with individual requests
         prefixes_to_be_created = [
@@ -226,6 +272,7 @@ class PrefixTest(APIViewTestCases.APIViewTestCase):
         """
         prefix = Prefix.objects.create(prefix=IPNetwork('192.0.2.0/28'), is_pool=True)
         url = reverse('ipam-api:prefix-available-prefixes', kwargs={'pk': prefix.pk})
+        self.add_permissions('ipam.view_prefix', 'ipam.add_prefix')
 
         # Try to create five /30s (only four are available)
         data = [
@@ -241,6 +288,7 @@ class PrefixTest(APIViewTestCases.APIViewTestCase):
 
         # Verify that no prefixes were created (the entire /28 is still available)
         response = self.client.get(url, **self.header)
+        self.assertHttpStatus(response, status.HTTP_200_OK)
         self.assertEqual(response.data[0]['prefix'], '192.0.2.0/28')
 
         # Create four /30s in a single request
@@ -254,6 +302,7 @@ class PrefixTest(APIViewTestCases.APIViewTestCase):
         """
         prefix = Prefix.objects.create(prefix=IPNetwork('192.0.2.0/29'), is_pool=True)
         url = reverse('ipam-api:prefix-available-ips', kwargs={'pk': prefix.pk})
+        self.add_permissions('ipam.view_prefix', 'ipam.view_ipaddress')
 
         # Retrieve all available IPs
         response = self.client.get(url, **self.header)
@@ -272,6 +321,7 @@ class PrefixTest(APIViewTestCases.APIViewTestCase):
         vrf = VRF.objects.create(name='Test VRF 1', rd='1234')
         prefix = Prefix.objects.create(prefix=IPNetwork('192.0.2.0/30'), vrf=vrf, is_pool=True)
         url = reverse('ipam-api:prefix-available-ips', kwargs={'pk': prefix.pk})
+        self.add_permissions('ipam.view_prefix', 'ipam.add_ipaddress')
 
         # Create all four available IPs with individual requests
         for i in range(1, 5):
@@ -294,16 +344,13 @@ class PrefixTest(APIViewTestCases.APIViewTestCase):
         """
         prefix = Prefix.objects.create(prefix=IPNetwork('192.0.2.0/29'), is_pool=True)
         url = reverse('ipam-api:prefix-available-ips', kwargs={'pk': prefix.pk})
+        self.add_permissions('ipam.view_prefix', 'ipam.add_ipaddress')
 
         # Try to create nine IPs (only eight are available)
-        data = [{'description': 'Test IP {}'.format(i)} for i in range(1, 10)]  # 9 IPs
+        data = [{'description': f'Test IP {i}'} for i in range(1, 10)]  # 9 IPs
         response = self.client.post(url, data, format='json', **self.header)
         self.assertHttpStatus(response, status.HTTP_204_NO_CONTENT)
         self.assertIn('detail', response.data)
-
-        # Verify that no IPs were created (eight are still available)
-        response = self.client.get(url, **self.header)
-        self.assertEqual(len(response.data), 8)
 
         # Create all eight available IPs in a single request
         data = [{'description': 'Test IP {}'.format(i)} for i in range(1, 9)]  # 8 IPs
@@ -326,6 +373,9 @@ class IPAddressTest(APIViewTestCases.APIViewTestCase):
             'address': '192.168.0.6/24',
         },
     ]
+    bulk_update_data = {
+        'description': 'New description',
+    }
 
     @classmethod
     def setUpTestData(cls):
@@ -355,6 +405,9 @@ class VLANGroupTest(APIViewTestCases.APIViewTestCase):
             'slug': 'vlan-group-6',
         },
     ]
+    bulk_update_data = {
+        'description': 'New description',
+    }
 
     @classmethod
     def setUpTestData(cls):
@@ -370,6 +423,9 @@ class VLANGroupTest(APIViewTestCases.APIViewTestCase):
 class VLANTest(APIViewTestCases.APIViewTestCase):
     model = VLAN
     brief_fields = ['display_name', 'id', 'name', 'url', 'vid']
+    bulk_update_data = {
+        'description': 'New description',
+    }
 
     @classmethod
     def setUpTestData(cls):
@@ -416,6 +472,7 @@ class VLANTest(APIViewTestCases.APIViewTestCase):
         vlan = VLAN.objects.first()
         Prefix.objects.create(prefix=IPNetwork('192.0.2.0/24'), vlan=vlan)
 
+        self.add_permissions('ipam.delete_vlan')
         url = reverse('ipam-api:vlan-detail', kwargs={'pk': vlan.pk})
         with disable_warnings('django.request'):
             response = self.client.delete(url, **self.header)
@@ -429,7 +486,10 @@ class VLANTest(APIViewTestCases.APIViewTestCase):
 
 class ServiceTest(APIViewTestCases.APIViewTestCase):
     model = Service
-    brief_fields = ['id', 'name', 'port', 'protocol', 'url']
+    brief_fields = ['id', 'name', 'ports', 'protocol', 'url']
+    bulk_update_data = {
+        'description': 'New description',
+    }
 
     @classmethod
     def setUpTestData(cls):
@@ -445,9 +505,9 @@ class ServiceTest(APIViewTestCases.APIViewTestCase):
         Device.objects.bulk_create(devices)
 
         services = (
-            Service(device=devices[0], name='Service 1', protocol=ServiceProtocolChoices.PROTOCOL_TCP, port=1),
-            Service(device=devices[0], name='Service 2', protocol=ServiceProtocolChoices.PROTOCOL_TCP, port=2),
-            Service(device=devices[0], name='Service 3', protocol=ServiceProtocolChoices.PROTOCOL_TCP, port=3),
+            Service(device=devices[0], name='Service 1', protocol=ServiceProtocolChoices.PROTOCOL_TCP, ports=[1]),
+            Service(device=devices[0], name='Service 2', protocol=ServiceProtocolChoices.PROTOCOL_TCP, ports=[2]),
+            Service(device=devices[0], name='Service 3', protocol=ServiceProtocolChoices.PROTOCOL_TCP, ports=[3]),
         )
         Service.objects.bulk_create(services)
 
@@ -456,18 +516,18 @@ class ServiceTest(APIViewTestCases.APIViewTestCase):
                 'device': devices[1].pk,
                 'name': 'Service 4',
                 'protocol': ServiceProtocolChoices.PROTOCOL_TCP,
-                'port': 4,
+                'ports': [4],
             },
             {
                 'device': devices[1].pk,
                 'name': 'Service 5',
                 'protocol': ServiceProtocolChoices.PROTOCOL_TCP,
-                'port': 5,
+                'ports': [5],
             },
             {
                 'device': devices[1].pk,
                 'name': 'Service 6',
                 'protocol': ServiceProtocolChoices.PROTOCOL_TCP,
-                'port': 6,
+                'ports': [6],
             },
         ]

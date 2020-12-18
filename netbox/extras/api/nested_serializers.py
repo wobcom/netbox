@@ -1,15 +1,25 @@
 from rest_framework import serializers
 
-from extras import models
-from utilities.api import WritableNestedSerializer
+from extras import choices, models
+from netbox.api import ChoiceField, WritableNestedSerializer
+from users.api.nested_serializers import NestedUserSerializer
 
 __all__ = [
     'NestedConfigContextSerializer',
+    'NestedCustomFieldSerializer',
     'NestedExportTemplateSerializer',
-    'NestedGraphSerializer',
-    'NestedReportResultSerializer',
+    'NestedImageAttachmentSerializer',
+    'NestedJobResultSerializer',
     'NestedTagSerializer',
 ]
+
+
+class NestedCustomFieldSerializer(WritableNestedSerializer):
+    url = serializers.HyperlinkedIdentityField(view_name='extras-api:customfield-detail')
+
+    class Meta:
+        model = models.CustomField
+        fields = ['id', 'url', 'name']
 
 
 class NestedConfigContextSerializer(WritableNestedSerializer):
@@ -28,30 +38,29 @@ class NestedExportTemplateSerializer(WritableNestedSerializer):
         fields = ['id', 'url', 'name']
 
 
-class NestedGraphSerializer(WritableNestedSerializer):
-    url = serializers.HyperlinkedIdentityField(view_name='extras-api:graph-detail')
+class NestedImageAttachmentSerializer(WritableNestedSerializer):
+    url = serializers.HyperlinkedIdentityField(view_name='extras-api:imageattachment-detail')
 
     class Meta:
-        model = models.Graph
-        fields = ['id', 'url', 'name']
+        model = models.ImageAttachment
+        fields = ['id', 'url', 'name', 'image']
 
 
 class NestedTagSerializer(WritableNestedSerializer):
     url = serializers.HyperlinkedIdentityField(view_name='extras-api:tag-detail')
-    tagged_items = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = models.Tag
-        fields = ['id', 'url', 'name', 'slug', 'color', 'tagged_items']
+        fields = ['id', 'url', 'name', 'slug', 'color']
 
 
-class NestedReportResultSerializer(serializers.ModelSerializer):
-    url = serializers.HyperlinkedIdentityField(
-        view_name='extras-api:report-detail',
-        lookup_field='report',
-        lookup_url_kwarg='pk'
+class NestedJobResultSerializer(serializers.ModelSerializer):
+    url = serializers.HyperlinkedIdentityField(view_name='extras-api:jobresult-detail')
+    status = ChoiceField(choices=choices.JobResultStatusChoices)
+    user = NestedUserSerializer(
+        read_only=True
     )
 
     class Meta:
-        model = models.ReportResult
-        fields = ['url', 'created', 'user', 'failed']
+        model = models.JobResult
+        fields = ['url', 'created', 'completed', 'user', 'status']

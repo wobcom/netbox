@@ -1,4 +1,4 @@
-{% extends 'utilities/obj_edit.html' %}
+{% extends 'generic/object_edit.html' %}
 {% load form_helpers %}
 {% load helpers %}
 
@@ -19,7 +19,7 @@
 {% block javascript %}
     <script type="application/javascript">
     document.addEventListener('DOMContentLoaded', function () {
-        var buttons = document.getElementsByName('_addanother');
+        let buttons = document.getElementsByName('_addanother');
         for (i of buttons) {
             i.remove();
         }

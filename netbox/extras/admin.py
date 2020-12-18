@@ -2,8 +2,7 @@ from django import forms
 from django.contrib import admin
 
 from utilities.forms import LaxURLField
-from .models import CustomField, CustomFieldChoice, CustomLink, Graph, ExportTemplate, ReportResult, Webhook
-from .reports import get_report
+from .models import CustomField, CustomLink, ExportTemplate, JobResult, Webhook
 
 
 def order_content_types(field):
@@ -30,8 +29,8 @@ class WebhookForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        if 'obj_type' in self.fields:
-            order_content_types(self.fields['obj_type'])
+        if 'content_types' in self.fields:
+            order_content_types(self.fields['content_types'])
 
 
 @admin.register(Webhook)
@@ -41,12 +40,12 @@ class WebhookAdmin(admin.ModelAdmin):
         'ssl_verification',
     ]
     list_filter = [
-        'enabled', 'type_create', 'type_update', 'type_delete', 'obj_type',
+        'enabled', 'type_create', 'type_update', 'type_delete', 'content_types',
     ]
     form = WebhookForm
     fieldsets = (
         (None, {
-            'fields': ('name', 'obj_type', 'enabled')
+            'fields': ('name', 'content_types', 'enabled')
         }),
         ('Events', {
             'fields': ('type_create', 'type_update', 'type_delete')
@@ -63,7 +62,7 @@ class WebhookAdmin(admin.ModelAdmin):
     )
 
     def models(self, obj):
-        return ', '.join([ct.name for ct in obj.obj_type.all()])
+        return ', '.join([ct.name for ct in obj.content_types.all()])
 
 
 #
@@ -75,31 +74,52 @@ class CustomFieldForm(forms.ModelForm):
     class Meta:
         model = CustomField
         exclude = []
+        widgets = {
+            'default': forms.TextInput(),
+            'validation_regex': forms.Textarea(
+                attrs={
+                    'cols': 80,
+                    'rows': 3,
+                }
+            )
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        order_content_types(self.fields['obj_type'])
-
-
-class CustomFieldChoiceAdmin(admin.TabularInline):
-    model = CustomFieldChoice
-    extra = 5
+        order_content_types(self.fields['content_types'])
 
 
 @admin.register(CustomField)
 class CustomFieldAdmin(admin.ModelAdmin):
-    inlines = [CustomFieldChoiceAdmin]
+    actions = None
+    form = CustomFieldForm
     list_display = [
         'name', 'models', 'type', 'required', 'filter_logic', 'default', 'weight', 'description',
     ]
     list_filter = [
-        'type', 'required', 'obj_type',
+        'type', 'required', 'content_types',
     ]
-    form = CustomFieldForm
+    fieldsets = (
+        ('Custom Field', {
+            'fields': ('type', 'name', 'weight', 'label', 'description', 'required', 'default', 'filter_logic')
+        }),
+        ('Assignment', {
+            'description': 'A custom field must be assigned to one or more object types.',
+            'fields': ('content_types',)
+        }),
+        ('Validation Rules', {
+            'fields': ('validation_minimum', 'validation_maximum', 'validation_regex'),
+            'classes': ('monospace',)
+        }),
+        ('Choices', {
+            'description': 'A selection field must have two or more choices assigned to it.',
+            'fields': ('choices',)
+        })
+    )
 
     def models(self, obj):
-        return ', '.join([ct.name for ct in obj.obj_type.all()])
+        return ', '.join([ct.name for ct in obj.content_types.all()])
 
 
 #
@@ -152,41 +172,6 @@ class CustomLinkAdmin(admin.ModelAdmin):
 
 
 #
-# Graphs
-#
-
-class GraphForm(forms.ModelForm):
-
-    class Meta:
-        model = Graph
-        exclude = ()
-        widgets = {
-            'source': forms.Textarea,
-            'link': forms.Textarea,
-        }
-
-
-@admin.register(Graph)
-class GraphAdmin(admin.ModelAdmin):
-    fieldsets = (
-        ('Graph', {
-            'fields': ('type', 'name', 'weight')
-        }),
-        ('Templates', {
-            'fields': ('template_language', 'source', 'link'),
-            'classes': ('monospace',)
-        })
-    )
-    form = GraphForm
-    list_display = [
-        'name', 'type', 'weight', 'template_language', 'source',
-    ]
-    list_filter = [
-        'type', 'template_language',
-    ]
-
-
-#
 # Export templates
 #
 
@@ -211,7 +196,7 @@ class ExportTemplateAdmin(admin.ModelAdmin):
             'fields': ('content_type', 'name', 'description', 'mime_type', 'file_extension')
         }),
         ('Content', {
-            'fields': ('template_language', 'template_code'),
+            'fields': ('template_code',),
             'classes': ('monospace',)
         })
     )
@@ -228,27 +213,18 @@ class ExportTemplateAdmin(admin.ModelAdmin):
 # Reports
 #
 
-@admin.register(ReportResult)
-class ReportResultAdmin(admin.ModelAdmin):
+@admin.register(JobResult)
+class JobResultAdmin(admin.ModelAdmin):
     list_display = [
-        'report', 'active', 'created', 'user', 'passing',
+        'obj_type', 'name', 'created', 'completed', 'user', 'status',
     ]
     fields = [
-        'report', 'user', 'passing', 'data',
+        'obj_type', 'name', 'created', 'completed', 'user', 'status', 'data', 'job_id'
     ]
     list_filter = [
-        'failed',
+        'status',
     ]
     readonly_fields = fields
 
     def has_add_permission(self, request):
         return False
-
-    def active(self, obj):
-        module, report_name = obj.report.split('.')
-        return True if get_report(module, report_name) else False
-    active.boolean = True
-
-    def passing(self, obj):
-        return not obj.failed
-    passing.boolean = True

@@ -1,9 +1,0 @@
-{% extends 'utilities/obj_list.html' %}
-
-{% block bulk_buttons %}
-    {% if permissions.change %}
-        <button class="btn btn-primary btn-sm" name="_add_vlans" type="submit" formaction="{% url 'dcim:interface_bulk_add_vlan' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}">
-            <span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Add VLANs
-        </button>
-    {% endif %}
-{% endblock %}
