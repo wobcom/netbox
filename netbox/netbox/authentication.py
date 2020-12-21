@@ -137,7 +137,7 @@ class LDAPBackend:
 
     def __new__(cls, *args, **kwargs):
         try:
-            from change.auth_backends import proxy_backend_factory
+            from change.auth_backends import LDAPProxyBackend
             from django_auth_ldap.backend import LDAPBackend as LDAPBackend_, LDAPSettings
             import ldap
         except ModuleNotFoundError as e:
@@ -165,7 +165,7 @@ class LDAPBackend:
             )
 
         # Create a new instance of django-auth-ldap's LDAPBackend
-        obj = proxy_backend_factory(LDAPBackend_)()
+        obj = LDAPProxyBackend()
 
         # Read LDAP configuration parameters from ldap_config.py instead of settings.py
         settings = LDAPSettings()

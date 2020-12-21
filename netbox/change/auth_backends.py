@@ -42,3 +42,7 @@ class ModelProxyBackend(proxy_backend_factory(import_string('netbox.authenticati
 
 class RemoteAuthProxyBackend(proxy_backend_factory(import_string(settings.REMOTE_AUTH_BACKEND))):
     pass
+
+
+class LDAPProxyBackend(proxy_backend_factory(import_string('django_auth_ldap.backend.LDAPBackend'))):
+    pass
