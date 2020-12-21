@@ -857,6 +857,8 @@ class OverlayNetworkGroup(ChangeLoggedModel):
         null=True
     )
 
+    objects = RestrictedQuerySet.as_manager()
+
     csv_headers = ['name', 'slug', 'site']
 
     class Meta:
@@ -994,6 +996,8 @@ class OverlayNetwork(ChangeLoggedModel, CustomFieldModel):
     )
 
     tags = TaggableManager(through=TaggedItem)
+
+    objects = RestrictedQuerySet.as_manager()
 
     csv_headers = ['site', 'group_name', 'vxlan_prefix', 'name', 'tenant', 'role', 'description']
 
