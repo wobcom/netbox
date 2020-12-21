@@ -100,6 +100,22 @@ class DeployView(PermissionRequiredMixin, View):
                                                       .exclude(status=ChangeSet.IN_REVIEW)\
                                                       .exclude(reverted=True) \
                                                       .order_by('id')
+        self.deployable = True
+
+    def dispatch(self, request, *args, **kwargs):
+        a = list(ProvisionSet.active_exists())
+        if a:
+            self.deployable = False
+            a = a[0]
+            url = reverse('change:provision_set', kwargs={'pk': a})
+            messages.error(
+                request,
+                mark_safe(
+                    'Provisioning can not be started, another provisioning is already running. '
+                    f'<a href="{url}">Provision #{a}</a>'
+                )
+            )
+        return super(DeployView, self).dispatch(request, *args, **kwargs)
 
     def get(self, request):
         return render(request, 'change/deploy.html', context={
@@ -110,21 +126,14 @@ class DeployView(PermissionRequiredMixin, View):
                 lambda x, y: x | y,
                 [c.object_changes.all() for c in self.undeployed_changesets.all()],
                 ObjectChange.objects.none(),
-            ).distinct()
+            ).distinct(),
+            'deployable': self.deployable,
         })
 
     def post(self, request):
         try:
             provision_set = ProvisionSet(user=request.user)
         except AlreadyExistsError as e:
-            url = reverse('change:provision_set', kwargs={'pk': e.active})
-            messages.error(
-                request,
-                mark_safe(
-                    'Provisioning can not be started, another provisioning is already running. '
-                    f'<a href="{url}">Provision #{e.active}</a>'
-                )
-            )
             return redirect('change:deploy')
 
         provision_set.save()
