@@ -365,8 +365,8 @@
                         <li>
                             {% if perms.ipam.add_overlaynetwork %}
                                 <div class="buttons pull-right">
-                                    <a href="{% url 'ipam:overlay_network_add' %}" class="btn btn-xs btn-success" title="Add"><i class="fa fa-plus"></i></a>
-                                    <a href="{% url 'ipam:overlay_network_import' %}" class="btn btn-xs btn-info" title="Import"><i class="fa fa-download"></i></a>
+                                    <a href="{% url 'ipam:overlay_network_add' %}" class="btn btn-xs btn-success" title="Add"><i class="mdi mdi-plus-thick"></i></a>
+                                    <a href="{% url 'ipam:overlay_network_import' %}" class="btn btn-xs btn-info" title="Import"><i class="mdi mdi-database-import-outline"></i></a>
                                 </div>
                             {% endif %}
                             <a href="{% url 'ipam:overlay_network_list' %}">Overlay Networks</a>
@@ -374,8 +374,8 @@
                         <li>
                             {% if perms.ipam.add_overlaynetworkgroup %}
                                 <div class="buttons pull-right">
-                                    <a href="{% url 'ipam:overlay_networkgroup_add' %}" class="btn btn-xs btn-success" title="Add"><i class="fa fa-plus"></i></a>
-                                    <a href="{% url 'ipam:overlay_networkgroup_import' %}" class="btn btn-xs btn-info" title="Import"><i class="fa fa-download"></i></a>
+                                    <a href="{% url 'ipam:overlay_networkgroup_add' %}" class="btn btn-xs btn-success" title="Add"><i class="mdi mdi-plus-thick"></i></a>
+                                    <a href="{% url 'ipam:overlay_networkgroup_import' %}" class="btn btn-xs btn-info" title="Import"><i class="mdi mdi-database-import-outline"></i></a>
                                 </div>
                             {% endif %}
                             <a href="{% url 'ipam:overlay_networkgroup_list' %}">Overlay Network Groups</a>
