@@ -21,9 +21,9 @@ def odin_prepare(pid):
     )
 
     if r.ok:
-        return OdinResponse(r.text, False)
+        return OdinResponse(r.content.decode('utf-8'), False)
     elif r.status_code == 422:
-        return OdinResponse(r.text, True)
+        return OdinResponse(r.content.decode('utf-8'), True)
     else:
         raise OdinException("odin_prepare: Unexpected response {}: {}".format(r.status_code, r.text))
 
