@@ -26,7 +26,7 @@ from secrets.tables import SecretTable
 from tenancy.filters import TenantFilterSet
 from tenancy.models import Tenant
 from tenancy.tables import TenantTable
-from utilities.utils import get_subquery
+from utilities.utils import count_related
 from virtualization.filters import ClusterFilterSet, VirtualMachineFilterSet
 from virtualization.models import Cluster, VirtualMachine
 from virtualization.tables import ClusterTable, VirtualMachineDetailTable
@@ -36,7 +36,7 @@ SEARCH_TYPES = OrderedDict((
     # Circuits
     ('provider', {
         'queryset': Provider.objects.annotate(
-            count_circuits=get_subquery(Circuit, 'provider')
+            count_circuits=count_related(Circuit, 'provider')
         ),
         'filterset': ProviderFilterSet,
         'table': ProviderTable,
@@ -77,7 +77,7 @@ SEARCH_TYPES = OrderedDict((
     }),
     ('devicetype', {
         'queryset': DeviceType.objects.prefetch_related('manufacturer').annotate(
-            instance_count=get_subquery(Device, 'device_type')
+            instance_count=count_related(Device, 'device_type')
         ),
         'filterset': DeviceTypeFilterSet,
         'table': DeviceTypeTable,
@@ -100,7 +100,7 @@ SEARCH_TYPES = OrderedDict((
     }),
     ('virtualchassis', {
         'queryset': VirtualChassis.objects.prefetch_related('master').annotate(
-            member_count=get_subquery(Device, 'virtual_chassis')
+            member_count=count_related(Device, 'virtual_chassis')
         ),
         'filterset': VirtualChassisFilterSet,
         'table': VirtualChassisTable,
@@ -121,8 +121,8 @@ SEARCH_TYPES = OrderedDict((
     # Virtualization
     ('cluster', {
         'queryset': Cluster.objects.prefetch_related('type', 'group').annotate(
-            device_count=get_subquery(Device, 'cluster'),
-            vm_count=get_subquery(VirtualMachine, 'cluster')
+            device_count=count_related(Device, 'cluster'),
+            vm_count=count_related(VirtualMachine, 'cluster')
         ),
         'filterset': ClusterFilterSet,
         'table': ClusterTable,
