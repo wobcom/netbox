@@ -140,7 +140,8 @@ class DeployView(PermissionRequiredMixin, View):
         self.undeployed_changesets.update(provision_set=provision_set)
 
         provision_set.run_odin()
-        provision_set.run_ansible_diff()
+        if provision_set.state is not provision_set.FAILED:
+            provision_set.run_ansible_diff()
 
         return redirect('change:provision_set', pk=provision_set.pk)
 
