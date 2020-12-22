@@ -8,7 +8,7 @@ from django_tables2 import RequestConfig
 from dcim.models import Device, Interface
 from netbox.views import generic
 from utilities.paginator import EnhancedPaginator, get_paginate_count
-from utilities.utils import get_subquery
+from utilities.utils import count_related
 from virtualization.models import VirtualMachine, VMInterface
 from . import filters, forms, tables
 from .constants import *
@@ -145,7 +145,7 @@ class RouteTargetBulkDeleteView(generic.BulkDeleteView):
 
 class RIRListView(generic.ObjectListView):
     queryset = RIR.objects.annotate(
-        aggregate_count=get_subquery(Aggregate, 'rir')
+        aggregate_count=count_related(Aggregate, 'rir')
     )
     filterset = filters.RIRFilterSet
     filterset_form = forms.RIRFilterForm
@@ -170,7 +170,7 @@ class RIRBulkImportView(generic.BulkImportView):
 
 class RIRBulkDeleteView(generic.BulkDeleteView):
     queryset = RIR.objects.annotate(
-        aggregate_count=get_subquery(Aggregate, 'rir')
+        aggregate_count=count_related(Aggregate, 'rir')
     )
     filterset = filters.RIRFilterSet
     table = tables.RIRTable
@@ -282,8 +282,8 @@ class AggregateBulkDeleteView(generic.BulkDeleteView):
 
 class RoleListView(generic.ObjectListView):
     queryset = Role.objects.annotate(
-        prefix_count=get_subquery(Prefix, 'role'),
-        vlan_count=get_subquery(VLAN, 'role')
+        prefix_count=count_related(Prefix, 'role'),
+        vlan_count=count_related(VLAN, 'role')
     )
     table = tables.RoleTable
 
@@ -710,7 +710,7 @@ class OverlayNetworkGroupOverlayNetworksView(View):
 
 class VLANGroupListView(generic.ObjectListView):
     queryset = VLANGroup.objects.prefetch_related('site').annotate(
-        vlan_count=get_subquery(VLAN, 'group')
+        vlan_count=count_related(VLAN, 'group')
     )
     filterset = filters.VLANGroupFilterSet
     filterset_form = forms.VLANGroupFilterForm
@@ -734,7 +734,7 @@ class VLANGroupBulkImportView(generic.BulkImportView):
 
 class VLANGroupBulkDeleteView(generic.BulkDeleteView):
     queryset = VLANGroup.objects.prefetch_related('site').annotate(
-        vlan_count=get_subquery(VLAN, 'group')
+        vlan_count=count_related(VLAN, 'group')
     )
     filterset = filters.VLANGroupFilterSet
     table = tables.VLANGroupTable
