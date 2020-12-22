@@ -61,7 +61,7 @@ export class ProvisionTerminal extends React.Component {
         this.terminal.open(this.termRef.current)
     }
 
-    componentDidUpdate(prevProps, prevState, snapshot) {
+    componentDidUpdate() {
         this.terminalFit.fit()
     }
 
@@ -79,7 +79,7 @@ export class ProvisionTerminal extends React.Component {
                 <Panel>
                     <Panel.Heading>
                         <div className={'pull-right'}>
-                            <Button bsSize='xsmall' onClick={this.toggleFullscreen}>
+                            <Button bsSize="xsmall" onClick={this.toggleFullscreen}>
                                 {fullscreenIcon}
                             </Button>
                         </div>
