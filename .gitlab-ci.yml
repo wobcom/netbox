@@ -70,7 +70,8 @@ tests:
     REDIS_PORT: 6379
     SECRET_KEY: "r8OwDznj!!dci#P9ghmRfdu1Ysxm0AiPeDCQhKE+N_rClfWNj"
   script:
-    - /opt/netbox/manage.py test
+    - cd /opt/netbox/
+    - ./manage.py test
 
 push_prod_tags:
     stage: push
