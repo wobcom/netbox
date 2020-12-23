@@ -69,6 +69,8 @@ tests:
     REDIS_HOST: redis
     REDIS_PORT: 6379
     SECRET_KEY: "r8OwDznj!!dci#P9ghmRfdu1Ysxm0AiPeDCQhKE+N_rClfWNj"
+    PLUGINS: extras.tests.dummy_plugin
+    NEED_CHANGE_FOR_WRITE: "false"
   script:
     - cd /opt/netbox/
     - ./manage.py test
