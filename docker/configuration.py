@@ -236,5 +236,5 @@ TOPDESK_SSL_VERIFICATION = os.environ.get('TOPDESK_SSL_VERIFICATION', 'True').lo
 ODIN_EXTRA_ARGS = json.loads(os.environ.get('ODIN_EXTRA_ARGS', "[]"))
 ODIN_WORKER_URL = os.environ.get('ODIN_WORKER_URL', '')
 
-REMOTE_AUTH_ENABLED = os.environ.get('REMOTE_AUTH_ENABLED', False).lower() == 'true'
+REMOTE_AUTH_ENABLED = os.environ.get('REMOTE_AUTH_ENABLED', 'False').lower() == 'true'
 REMOTE_AUTH_BACKEND = os.environ.get('REMOTE_AUTH_BACKEND', None)
