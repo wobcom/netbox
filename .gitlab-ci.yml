@@ -9,50 +9,16 @@ variables:
   POSTGRES_HOST_AUTH_METHOD: trust
 
 stages:
-  - test
+  - validate
   - build
-
-lint:
-  stage: test
-  image: python:3.6
-  tags:
-    - docker
-  script:
-    - "pip install virtualenv"
-    - "virtualenv --python=python3.6 venv"
-    - "venv/bin/pip install pycodestyle"
-    - "venv/bin/pycodestyle --ignore=W504,E501 netbox/"
-
-eslint:
-  stage: test
-  image: node:latest
-  tags:
-    - docker
-  script:
-    - "yarn install"
-    - "yarn run eslint --ignore-pattern netbox/project-static/wobcom/dist netbox/project-static/wobcom/wobcom.js netbox/project-static/wobcom"
-
-tests:
-  stage: test
-  image: python:3.6
-  tags:
-    - docker
-  before_script:
-    - "git config --global credential.helper store"
-    - "echo https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.service.wobcom.de >> ~/.git-credentials"
-    - "cat ~/.git-credentials"
-  script:
-    - "apt update"
-    - "apt install -y libldap2-dev python3-dev libsasl2-dev"
-    - "pip install virtualenv"
-    - "virtualenv --python=python3.6 venv"
-    - "venv/bin/pip install -r requirements.txt"
-    - "cp -f netbox/netbox/configuration.testing.py netbox/netbox/configuration.py"
-    - "cd netbox/"
-    - "../venv/bin/python manage.py test"
+  - push_unstable
+  - lint
+  - test
+  - push
+  - cleanup
 
 check_version:
-  stage: test
+  stage: validate
   image: python:3.6
   tags:
     - docker
@@ -65,15 +31,91 @@ build:
   stage: build
   tags:
     - docker-build
-  only:
-    - tags
   dependencies:
     - check_version
   script:
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-    - docker build --cache-from $CI_REGISTRY_IMAGE:latest --build-arg CI_JOB_TOKEN --tag $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME --tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA --tag $CI_REGISTRY_IMAGE:latest .
+    - docker build --cache-from $CI_REGISTRY_IMAGE:latest --build-arg CI_JOB_TOKEN --tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA  .
     - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
-    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
-    - docker push $CI_REGISTRY_IMAGE:latest
     - docker logout $CI_REGISTRY
-    - docker image rm --force $CI_REGISTRY_IMAGE
+
+push_unstable:
+  stage: push_unstable
+  tags:
+    - docker-build
+  only:
+    - tags
+  dependencies:
+    - build
+  script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA $CI_REGISTRY_IMAGE:latest_unstable
+    - docker push $CI_REGISTRY_IMAGE:latest_unstable
+    - docker logout $CI_REGISTRY
+
+tests:
+  stage: test
+  image:
+    name: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+    entrypoint: []
+  tags:
+    - docker
+  dependencies:
+    - build
+  variables:
+    DB_NAME: netbox
+    DB_USER: root
+    DB_HOST: postgres
+    REDIS_HOST: redis
+    REDIS_PORT: 6379
+    SECRET_KEY: "r8OwDznj!!dci#P9ghmRfdu1Ysxm0AiPeDCQhKE+N_rClfWNj"
+    PLUGINS: extras.tests.dummy_plugin
+    NEED_CHANGE_FOR_WRITE: "false"
+  script:
+    - cd /opt/netbox/
+    - ./manage.py test
+
+push_prod_tags:
+    stage: push
+    tags:
+      - docker-build
+    only:
+      - tags
+    dependencies:
+      - tests
+    script:
+      - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+      - docker tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
+      - docker tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA $CI_REGISTRY_IMAGE:latest
+      - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
+      - docker push $CI_REGISTRY_IMAGE:latest
+      - docker logout $CI_REGISTRY
+
+lint:
+  stage: lint
+  image: python:3.6
+  tags:
+    - docker
+  script:
+    - "pip install virtualenv"
+    - "virtualenv --python=python3.6 venv"
+    - "venv/bin/pip install pycodestyle"
+    - "venv/bin/pycodestyle --ignore=W504,E501 netbox/"
+
+eslint:
+  stage: lint
+  image: node:latest
+  tags:
+    - docker
+  script:
+    - "yarn install"
+    - "yarn run eslint --ignore-pattern netbox/project-static/wobcom/dist netbox/project-static/wobcom/wobcom.js netbox/project-static/wobcom"
+
+cleanup:
+  stage: cleanup
+  tags:
+    - docker-build
+  dependencies:
+    - build
+  script:
+    - "docker image ls $CI_REGISTRY_IMAGE --quiet | xargs -I {} docker image rm -f {}"
