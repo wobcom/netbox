@@ -12,9 +12,9 @@ stages:
   - validate
   - build
   - push_unstable
+  - lint
   - test
   - push
-  - lint
   - cleanup
 
 check_version:
