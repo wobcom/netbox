@@ -52,6 +52,7 @@ FROM builder as main
 
 RUN apk add --no-cache \
       bash \
+      bind-tools \
       ca-certificates \
       graphviz \
       libevent \
