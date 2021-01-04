@@ -72,8 +72,8 @@ tests:
     PLUGINS: extras.tests.dummy_plugin
     NEED_CHANGE_FOR_WRITE: "false"
   script:
-    - /opt/netbox/prepare_netbox.sh
     - cd /opt/netbox/
+    - ./prepare_netbox.sh
     - ./manage.py test
 
 push_prod_tags:
