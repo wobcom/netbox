@@ -73,6 +73,7 @@ RUN rm -rf /opt/netbox/project-static/wobcom/*
 
 COPY --from=js_builder /opt/netbox/netbox/project-static/wobcom/dist /opt/netbox/project-static/wobcom/dist
 
+COPY docker/prepare_netbox.sh /opt/netbox/prepare_netbox.sh
 COPY docker/entrypoint.sh /opt/netbox/docker-entrypoint.sh
 COPY docker/nginx.conf /etc/netbox-nginx/nginx.conf
 

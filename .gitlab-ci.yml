@@ -57,7 +57,7 @@ tests:
   stage: test
   image:
     name: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
-    entrypoint: []
+    entrypoint: [ "/opt/netbox/prepare_netbox.sh" ]
   tags:
     - docker
   dependencies:
