@@ -57,7 +57,7 @@ tests:
   stage: test
   image:
     name: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
-    entrypoint: [ "/opt/netbox/prepare_netbox.sh" ]
+    entrypoint: [ "/bin/bash" ]
   tags:
     - docker
   dependencies:
@@ -72,6 +72,7 @@ tests:
     PLUGINS: extras.tests.dummy_plugin
     NEED_CHANGE_FOR_WRITE: "false"
   script:
+    - /opt/netbox/prepare_netbox.sh
     - cd /opt/netbox/
     - ./manage.py test
 
