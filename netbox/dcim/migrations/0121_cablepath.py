@@ -7,7 +7,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('contenttypes', '0002_remove_content_type_name'),
-        ('dcim', '0120_cache_cable_peer'),
+        ('dcim', '0120a_cache_cable_peer_data'),
     ]
 
     operations = [
