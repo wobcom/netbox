@@ -69,7 +69,7 @@ def migrate_customfieldvalues(apps, schema_editor):
             continue
         try:
             cf_data['custom_field_data'][cfv.field.name] = deserialize_value(cfv.field, cfv.serialized_value)
-        except ValueError as e:
+        except Exception as e:
             print(f'{cfv.field.name} ({cfv.field.type}): {cfv.serialized_value} ({cfv.pk})')
             raise e
         model.objects.filter(pk=cfv.obj_id).update(**cf_data)
