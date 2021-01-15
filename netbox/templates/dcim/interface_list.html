@@ -1,0 +1,7 @@
+{% extends 'generic/object_list.html' %}
+
+{% block bulk_buttons %}
+<button type="submit" name="_bulk_add_vlan" formaction="{% url 'dcim:interface_bulk_add_vlan' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}" class="btn btn-primary btn-sm">
+    <span class="mdi mdi-plus" aria-hidden="true"></span> Add VLANs
+</button>
+{% endblock %}
